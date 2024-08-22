@@ -1,35 +1,33 @@
 name: Update MoeCounter
-
-on:
+'on':
   schedule:
-    - cron: "0 0 * * 0"
-  workflow_dispatch:
-
+    - cron: 0 0 * * 0
+  workflow_dispatch: null
 jobs:
   update-counter:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup Go
         uses: actions/setup-go@v5.0.2
-
       - name: Get binary count
         id: get-listc
         run: |
           LISTC=$(go run *.go list | wc -l)
           echo "LISTC=$LISTC" >> $GITHUB_ENV
-
       - name: Download MoeCounter image
-        run: |
+        run: >
           wget -O ./misc/assets/counter.svg \
-          "https://api.sefinek.net/api/v2/moecounter?number=${{ env.LISTC }}&length=5&theme=gelbooru&pixelated=true"
 
+          "https://api.sefinek.net/api/v2/moecounter?number=${{ env.LISTC
+          }}&length=5&theme=gelbooru&pixelated=true"
       - name: Commit and push updated counter image
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add ./misc/assets/counter.svg
-          git commit -m "[WEEKLY] Update MoeCounter image"
-          git push
+  env:
+    GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+  run: |
+    git config --local user.email "action@github.com"
+    git config --local user.name "GitHub Action"
+    git add ./misc/assets/counter.svg
+    git commit -m "[WEEKLY] Update MoeCounter image"
+    git push
