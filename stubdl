@@ -10,7 +10,7 @@ case "$ARCH" in
     *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-BIGDL_URL="https://github.com/xplshn/bigdl/releases/latest/download/bigdl_${ARCH_SUFFIX}_upx"
+BIGDL_URL="https://github.com/xplshn/dbin/releases/latest/download/bigdl_${ARCH_SUFFIX}_upx"
 
 # Handle --install option
 if [ "$1" = "--install" ]; then
