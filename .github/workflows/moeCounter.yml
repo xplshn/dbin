@@ -9,11 +9,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+       - name: Setup Go
+        uses: actions/setup-go@v5.0.2
+        
       - name: Get binary count
         id: get-listc
         run: |
-          LISTC=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- list | wc -l)
+          LISTC="go run *.go list | wc -l"
           echo "LISTC=$LISTC" >> $GITHUB_ENV
       
       - name: Download MoeCounter image
