@@ -1,0 +1,30 @@
+name: Update MoeCounter
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Runs every Sunday at midnight UTC
+  workflow_dispatch:  # Allows manual triggering
+jobs:
+  update-counter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Get binary count
+        id: get-listc
+        run: |
+          LISTC=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- list | wc -l)
+          echo "LISTC=$LISTC" >> $GITHUB_ENV
+      
+      - name: Download MoeCounter image
+        run: |
+          LISTC=$LISTC
+          wget -O ./misc/assets/counter.svg "https://api.sefinek.net/api/v2/moecounter?number=${LISTC}&length=5&theme=gelbooru&pixelated=true"
+      
+      - name: Commit and push updated counter image
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./misc/assets/counter.svg
+          git commit -m "[WEEKLY] Update MoeCounter image"
+          git push

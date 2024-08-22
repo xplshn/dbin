@@ -1,0 +1,51 @@
+#!/bin/sh
+
+DEST="/tmp/._bdlstub_bigdl.bin"
+
+# Determine architecture
+ARCH="$(uname -m)"
+case "$ARCH" in
+    x86_64) ARCH_SUFFIX="amd64" ;;
+    aarch64) ARCH_SUFFIX="arm64" ;;
+    *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+
+BIGDL_URL="https://github.com/xplshn/bigdl/releases/latest/download/bigdl_${ARCH_SUFFIX}_upx"
+
+# Handle --install option
+if [ "$1" = "--install" ]; then
+    DEST="$2"
+    shift 2
+fi
+
+# Function to download the binary
+download_bigdl() {
+    if command -v wget >/dev/null 2>&1; then
+        wget -q "$BIGDL_URL" -O "$DEST"
+    elif command -v curl >/dev/null 2>&1; then
+        curl -qfsSL "$BIGDL_URL" -o "$DEST"
+    else
+        echo "Neither wget nor curl is available."
+        exit 1
+    fi
+}
+
+# Check if binary exists and is executable
+if [ -e "$DEST" ] && [ ! "$1" = "--install" ]; then
+    # Run the binary
+    "$DEST" "$@"
+else
+    # Download and install the binary
+    mkdir -p "$(dirname "$DEST")"
+    download_bigdl
+
+    if [ "$1" = "--install" ]; then
+        chmod +x "$DEST"
+        echo "BIGDL IS NOW AVAILABLE. ($DEST)"
+        exit 0
+    fi
+
+    # Make the binary executable and run it
+    chmod +x "$DEST"
+    "$DEST" "$@"
+fi

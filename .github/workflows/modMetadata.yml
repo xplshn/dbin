@@ -1,0 +1,36 @@
+name: Modify Toolpacks & Baseutils metadata
+
+on:
+  schedule:
+    - cron: '0 0 * * MON,THU'  # Runs bi-weekly
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  update-modified-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Go
+        uses: actions/setup-go@v5.0.2
+
+      - name: Build the modMetadata command
+        run: |
+          cd misc/cmd/modMetadata
+          if find . -maxdepth 1 -type f -name "*.json" | grep -q "."; then rm *.json; fi
+          go build
+
+      - name: Fetch and modify the Metadata
+        run: |
+          cd misc/cmd/modMetadata
+          ./modMetadata
+          rm ./modMetadata
+      
+      - name: Commit and push the updated metadata files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./misc/cmd/modMetadata
+          git commit -m "[WEEKLY] Update Metadata files"
+          git push
