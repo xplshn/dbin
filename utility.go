@@ -219,14 +219,14 @@ func isExecutable(filePath string) bool {
 
 // listFilesInDir lists all files in a directory
 func listFilesInDir(dir string) ([]string, error) {
-	var files []string
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
+	files := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() {
-			files = append(files, dir+"/"+entry.Name())
+			files = append(files, filepath.Join(dir, entry.Name()))
 		}
 	}
 	return files, nil
@@ -252,7 +252,7 @@ func validateProgramsFrom(installDir, trackerFile string, metadataURLs, programs
 	// Remove duplicate entries from the programs list
 	programsToValidate = removeDuplicates(programsToValidate)
 
-	// Define a function to get the program name for validation
+	// Function to get the program name for validation
 	getProgramNameForValidation := func(binaryName string) (string, error) {
 		realBinaryName, err := getBinaryNameFromTrackerFile(trackerFile, binaryName)
 		if err != nil {
@@ -261,31 +261,37 @@ func validateProgramsFrom(installDir, trackerFile string, metadataURLs, programs
 		return realBinaryName, nil
 	}
 
-	// Validate all programs in the install directory if no specific programs are provided
-	if programsToValidate == nil {
+	// Inline function to validate a program name
+	validateProgram := func(program string) (bool, string) {
+		realBinaryName, _ := getProgramNameForValidation(program)
+		if realBinaryName == "" {
+			realBinaryName = program
+		}
+		if contains(remotePrograms, realBinaryName) {
+			return true, realBinaryName
+		}
+		return false, realBinaryName
+	}
+
+	if len(programsToValidate) == 0 {
+		// Validate all files in the directory
 		for _, file := range files {
 			fileName := filepath.Base(file)
-			realBinaryName, _ := getProgramNameForValidation(fileName)
-			if realBinaryName == "" {
-				realBinaryName = fileName
-			}
-			if contains(remotePrograms, realBinaryName) {
-				validPrograms = append(validPrograms, realBinaryName)
+			isValid, binaryName := validateProgram(fileName)
+			if isValid {
+				validPrograms = append(validPrograms, binaryName)
 			} else {
-				invalidPrograms = append(invalidPrograms, fileName)
+				invalidPrograms = append(invalidPrograms, binaryName)
 			}
 		}
 	} else {
 		// Validate only the specified programs
 		for _, program := range programsToValidate {
-			realBinaryName, _ := getProgramNameForValidation(program)
-			if realBinaryName == "" {
-				realBinaryName = program
-			}
-			if contains(remotePrograms, realBinaryName) {
-				validPrograms = append(validPrograms, realBinaryName)
+			isValid, binaryName := validateProgram(program)
+			if isValid {
+				validPrograms = append(validPrograms, binaryName)
 			} else {
-				invalidPrograms = append(invalidPrograms, realBinaryName)
+				invalidPrograms = append(invalidPrograms, binaryName)
 			}
 		}
 	}

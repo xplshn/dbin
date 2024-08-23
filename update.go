@@ -23,15 +23,6 @@ func update(programsToUpdate []string, installDir, trackerFile string, silent Si
 		padding                               = " "
 	)
 
-	// Populate programsToUpdate if it is nil
-	if programsToUpdate == nil {
-		files, err := listFilesInDir(installDir)
-		if err != nil {
-			return fmt.Errorf("Failed to list files in %s: %v\n", installDir, err)
-		}
-		programsToUpdate = files
-	}
-
 	// Call validateProgramsFrom with InstallDir and programsToUpdate
 	programsToUpdate, err := validateProgramsFrom(installDir, trackerFile, metadataURLs, programsToUpdate)
 	if err != nil {
