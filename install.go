@@ -29,7 +29,7 @@ func installBinary(ctx context.Context, binaryName, installDir, trackerFile stri
 		fmt.Printf("Successfully installed %s\n", destination)
 	}
 
-	if err := addToTrackerFile(trackerFile, binaryName); err != nil {
+	if err := addToTrackerFile(trackerFile, binaryName, installDir); err != nil {
 		fmt.Printf("failed to update tracker file for %s: %v", binaryName, err)
 	}
 

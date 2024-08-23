@@ -16,7 +16,7 @@ type Silent byte
 
 const (
 	unsupportedArchMsg               = "Unsupported architecture: "
-	version                          = "1.7sid"
+	version                          = "0.1"
 	indicator                        = "...>"
 	maxCacheSize                     = 10
 	binariesToDelete                 = 5
@@ -52,10 +52,10 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 	trackerFile := getEnvVar("DBIN_TRACKERFILE", filepath.Join(confDir, "dbin.tracker.json"))
 	installDir := getEnvVar("DBIN_INSTALL_DIR", filepath.Join(homeDir, ".local/bin"))
 
-	disableTruncationStr := getEnvVar("DBIN_DISABLETRUNCATION", "false")
+	disableTruncationStr := getEnvVar("DBIN_NOTRUNCATION", "false")
 	disableTruncation, err := strconv.ParseBool(disableTruncationStr)
 	if err != nil {
-		return "", "", "", nil, nil, false, fmt.Errorf("failed to parse DBIN_DISABLETRUNCATION: %v", err)
+		return "", "", "", nil, nil, false, fmt.Errorf("failed to parse DBIN_NOTRUNCATION: %v", err)
 	}
 
 	// The repo, its like this...
@@ -101,9 +101,39 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 func main() {
 	cmdInfo := &ccmd.CmdInfo{
 		Authors:     []string{"xplshn"},
+		Repository:  "https://github.com/xplshn/dbin",
 		Name:        "dbin",
-		Synopsis:    "<|--silent|> [|add/del [binaries]|update <binaries>|run [binary] <args>|info <binary>|list|search <searchTerm>]",
+		Synopsis:    "[-v|-h] [list|install|remove|update|run|info|search|tldr] <-args->",
 		Description: "The easy to use, easy to get, software distribution system",
+		CustomFields: map[string]interface{}{
+			"Options": `-h, --help        Show this help message
+-v, --version     Show the version number`,
+			"Commands": `list              List all available binaries
+install, add      Install a binary
+remove, del       Remove a binary
+update            Update binaries, by checking their SHA against the repo's SHA
+run               Run a specified binary from cache
+info              Show information about a specific binary OR display installed binaries
+search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
+tldr              Equivalent to "run --transparent --verbose tlrc" as argument`,
+			"Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory
+DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
+DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing directory`,
+			"Examples": `dbin search editor
+dbin install micro
+dbin install lux kakoune aretext shfmt
+dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
+dbin del bed
+dbin del orbiton tgpt lux
+dbin info
+dbin info jq
+dbin list --described
+dbin tldr gum
+dbin run --verbose curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
+dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
+dbin run --transparent --silent micro ~/.profile
+dbin run btop`,
+		},
 	}
 
 	helpPage, err := cmdInfo.GenerateHelpPage()
@@ -151,7 +181,7 @@ func main() {
 		binaryName := args[0]
 		url, _ := findURL(binaryName, trackerFile, repositories, metadataURLs)
 		fmt.Println(url)
-	case "install", "add", "a":
+	case "install", "add":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for install command.")
 			os.Exit(1)
@@ -162,7 +192,19 @@ func main() {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println("Installation completed successfully.")
+		//fmt.Println("Installation completed successfully.")
+	case "remove", "del":
+		if len(args) < 1 {
+			fmt.Println("No binary name provided for remove command.")
+			os.Exit(1)
+		}
+		binaries := args
+		err := removeCommand(binaries, installDir, trackerFile, silentMode)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		//fmt.Println("Removal completed successfully.")
 	case "list", "l":
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
@@ -283,11 +325,9 @@ func main() {
 		binaryName := flag.Arg(0)
 		runArgs := flag.Args()[1:]
 
-		err := RunFromCache(binaryName, runArgs, tempDir, trackerFile, transparentMode, silentMode, repositories, metadataURLs)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
+		RunFromCache(binaryName, runArgs, tempDir, trackerFile, transparentMode, silentMode, repositories, metadataURLs)
+	case "tldr":
+		RunFromCache("tlrc", flag.Args()[1:], tempDir, trackerFile, true, silentMode, repositories, metadataURLs)
 	case "update", "u":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {

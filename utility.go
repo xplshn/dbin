@@ -371,7 +371,7 @@ func truncatePrintf(disableTruncation, addNewLine bool, format string, a ...inte
 }
 
 // addToTrackerFile appends a binary name to the tracker file.
-func addToTrackerFile(trackerFile, binaryName string) error {
+func addToTrackerFile(trackerFile, binaryName, installDir string) error {
 	tracker, err := readTrackerFile(trackerFile)
 	if err != nil {
 		return err
@@ -385,6 +385,8 @@ func addToTrackerFile(trackerFile, binaryName string) error {
 			return fmt.Errorf("could not write to tracker file: %w", err)
 		}
 	}
+
+	cleanupTrackerFile(trackerFile, installDir)
 	return nil
 }
 
@@ -412,15 +414,14 @@ func cleanupTrackerFile(trackerFile, installDir string) error {
 	}
 
 	newTracker := make(map[string]string)
-	for baseName, binaryPath := range tracker {
-		if _, err := exec.LookPath(binaryPath); err != nil {
+	for baseName, repoPath := range tracker {
+		expectedPath := filepath.Join(installDir, baseName)
+		if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+			// If the file does not exist in the installDir, skip adding it to newTracker
 			continue
 		}
-
-		expectedPath := filepath.Join(installDir, baseName)
-		if binaryPath != expectedPath {
-			newTracker[baseName] = binaryPath
-		}
+		// Keep the entry if the file exists
+		newTracker[baseName] = repoPath
 	}
 
 	err = writeTrackerFile(trackerFile, newTracker)
