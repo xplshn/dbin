@@ -115,10 +115,6 @@ Yes! Absolutely. The repo's URL's are declared in main.go, simply add another on
 
 MetadataURLs provide info about the binaries, which is used to `search` and update `binaries`, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $INSTALL_DIR from the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo) and showing a binary's description, size, etc.
 
-## NOTE
-A rewrite of `dbin` from start to finish is underway. Applying the Data-Oriented paradigm, in a procedural/functional way, avoiding global variables and race conditions. (0.1/1)
-It will be release [One of These Days](https://music.youtube.com/watch?v=48PJGVf4xqk)...
-
 ### Libraries
 I am using these two libraries for `dbin`:
 1. https://github.com/schollz/progressbar
