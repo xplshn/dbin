@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DEST="/tmp/._bdlstub_bigdl.bin"
+DEST="/tmp/._bdlstub_dbin.bin"
 
 # Determine architecture
 ARCH="$(uname -m)"
@@ -10,7 +10,7 @@ case "$ARCH" in
     *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-BIGDL_URL="https://github.com/xplshn/dbin/releases/latest/download/bigdl_${ARCH_SUFFIX}_upx"
+DBIN_URL="https://github.com/xplshn/dbin/releases/latest/download/dbin_${ARCH_SUFFIX}_upx"
 
 # Handle --install option
 if [ "$1" = "--install" ]; then
@@ -19,11 +19,11 @@ if [ "$1" = "--install" ]; then
 fi
 
 # Function to download the binary
-download_bigdl() {
+download_dbin() {
     if command -v wget >/dev/null 2>&1; then
-        wget -q "$BIGDL_URL" -O "$DEST"
+        wget -q "$DBIN_URL" -O "$DEST"
     elif command -v curl >/dev/null 2>&1; then
-        curl -qfsSL "$BIGDL_URL" -o "$DEST"
+        curl -qfsSL "$DBIN_URL" -o "$DEST"
     else
         echo "Neither wget nor curl is available."
         exit 1
@@ -37,11 +37,11 @@ if [ -e "$DEST" ] && [ ! "$1" = "--install" ]; then
 else
     # Download and install the binary
     mkdir -p "$(dirname "$DEST")"
-    download_bigdl
+    download_dbin
 
     if [ "$1" = "--install" ]; then
         chmod +x "$DEST"
-        echo "BIGDL IS NOW AVAILABLE. ($DEST)"
+        echo "DBIN IS NOW AVAILABLE. ($DEST)"
         exit 0
     fi
 
