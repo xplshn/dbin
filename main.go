@@ -115,7 +115,7 @@ update            Update binaries, by checking their SHA against the repo's SHA
 run               Run a specified binary from cache
 info              Show information about a specific binary OR display installed binaries
 search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
-tldr              Equivalent to "run --transparent --verbose tlrc" as argument`,
+tldr              Equivalent to "run --transparent --verbose tlrc"`,
 			"Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory
 DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
 DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing directory`,
