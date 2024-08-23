@@ -54,7 +54,7 @@ $ dbin --help
 ### Examples
 ```
  dbin search editor
- dbin install micro
+ dbin install micro.upx # A lot of binaries are provided with a .upx (best compression) version
  dbin install lux kakoune aretext shfmt
  dbin install --silent bed && echo "[bed] was installed to $DBIN_INSTALL_DIR/bed"
  dbin del bed
