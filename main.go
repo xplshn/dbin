@@ -159,7 +159,7 @@ dbin run btop`,
 	args := flag.Args()
 
 	if len(args) < 1 {
-		fmt.Println("No command provided.")
+		fmt.Print(helpPage)
 		os.Exit(1)
 	}
 
