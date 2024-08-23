@@ -121,7 +121,7 @@ DBIN_INSTALL_DIR  If present, it must contain a valid directory path
 DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
 DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing directory`,
 			"Examples": `dbin search editor
-dbin install micro
+dbin install micro.upx
 dbin install lux kakoune aretext shfmt
 dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
 dbin del bed
