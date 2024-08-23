@@ -23,22 +23,32 @@ dbin is a sophisticated, Golang-based rewrite of the original [BDL](https://gith
 
 ```
 $ dbin --help
-Usage:
- [-v|-h] [list|install|remove|update|run|info|search|tldr] <{args}>
 
-Options:
- -h, --help       Show this help message
- -v, --version    Show the version number
+ Copyright (c) 2024: xplshn and contributors
+ For more details refer to https://github.com/xplshn/dbin
 
-Commands:
- list             List all available binaries
- install, add     Install a binary to $INSTALL_DIR
- remove, del      Remove a binary from the $INSTALL_DIR
- update           Update binaries, by checking their SHA against the repo's SHA
- run              Run a binary from cache
- info             Show information about a specific binary OR display installed binaries
- search           Search for a binary - (not all binaries have metadata. Use list to see all binaries)
- tldr             Show a brief description & usage examples for a given program/command. This is an alias equivalent to using "run" with "tlrc" as argument.
+  Synopsis
+    dbin [-v|-h] [list|install|remove|update|run|info|search|tldr] <-args->
+  Description:
+    The easy to use, easy to get, software distribution system
+  Options:
+    -h, --help        Show this help message
+    -v, --version     Show the version number
+  Commands:
+    list              List all available binaries
+    install, add      Install a binary
+    remove, del       Remove a binary
+    update            Update binaries, by checking their SHA against the repo's SHA
+    run               Run a specified binary from cache
+    info              Show information about a specific binary OR display installed binaries
+    search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
+    tldr              Equivalent to "run --transparent --verbose tlrc"
+  Variables:
+    DBIN_CACHEDIR     If present, it must contain a valid directory path
+    DBIN_INSTALL_DIR  If present, it must contain a valid directory path
+    DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
+    DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing directory
+
 ```
 
 ### Examples
@@ -46,7 +56,7 @@ Commands:
  dbin search editor
  dbin install micro
  dbin install lux kakoune aretext shfmt
- dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
+ dbin install --silent bed && echo "[bed] was installed to $DBIN_INSTALL_DIR/bed"
  dbin del bed
  dbin del orbiton tgpt lux
  dbin info
@@ -66,9 +76,9 @@ In the case of `--silent`, it simply hides the progressbar and all optional mess
 ##### Flags that correspond to the `install` functionality
 `--silent`, it hides the progressbar and doesn't print the installation message
 ##### `Update` arguments:
-Update can receive an optional list of specific binaries to update OR no arguments at all. When `update` receives no arguments it updates everything that is both found in the repos and in your `$INSTALL_DIR`.
+Update can receive an optional list of specific binaries to update OR no arguments at all. When `update` receives no arguments it updates everything that is both found in the repos and in your `$DBIN_INSTALL_DIR`.
 ##### Arguments of `info`
-When `info` is called with no arguments, it displays binaries which are part of the `list` and are also found on your `$INSTALL_DIR`. If `info` is called with a binary's name as argument, `info` will display as much information of it as is available. The "Size", "SHA256", "Version" fields may not match your local installation if the binary wasn't provided by `dbin` or if it isn't up-to-date.
+When `info` is called with no arguments, it displays binaries which are part of the `list` and are also found on your `$DBIN_INSTALL_DIR`. If `info` is called with a binary's name as argument, `info` will display as much information of it as is available. The "Size", "SHA256", "Version" fields may not match your local installation if the binary wasn't provided by `dbin` or if it isn't up-to-date.
 ###### Example:
 ```
 $ dbin info micro
@@ -113,7 +123,7 @@ Yes! Absolutely. The repo's URL's are declared in main.go, simply add another on
 
 >Good to hear, now... What about the so-called MetadataURLs?
 
-MetadataURLs provide info about the binaries, which is used to `search` and update `binaries`, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $INSTALL_DIR from the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo) and showing a binary's description, size, etc.
+MetadataURLs provide info about the binaries, which is used to `search` and update `binaries`, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $DBIN_INSTALL_DIR from the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo) and showing a binary's description, size, etc.
 
 ### Libraries
 I am using these two libraries for `dbin`:
