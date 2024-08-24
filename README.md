@@ -9,7 +9,7 @@
 [![ARM64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_aarch64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
 -->
 
-dbin is a sophisticated, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux systems, dbin is particularly well-suited for embedded systems, with support for both Amd64 AND Aarch64. Optionally, it works under Android too, but you'll have to set $INSTALL_DIR and $dbin_CACHE if you aren't running it under Termux, since depending the Android version and the ROM used, directories vary and the user's permission to modify them too.
+dbin is a sophisticated, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux systems, dbin is particularly well-suited for embedded systems, with support for both Amd64 AND Aarch64. Optionally, it works under Android too, but you'll have to set $DBIN_INSTALL_DIR and $DBIN_CACHEDIR if you aren't running it under Termux, since depending the Android version and the ROM used, directories vary and the user's permission to modify them too.
 
 > Why?
 
@@ -53,20 +53,20 @@ $ dbin --help
 
 ### Examples
 ```
- dbin search editor
- dbin install micro.upx # A lot of binaries are provided with a .upx (best compression) version
- dbin install lux kakoune aretext shfmt
- dbin install --silent bed && echo "[bed] was installed to $DBIN_INSTALL_DIR/bed"
- dbin del bed
- dbin del orbiton tgpt lux
- dbin info
- dbin info jq
- dbin list --described
- dbin tldr gum
- dbin run --verbose curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
- dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
- dbin run --transparent --silent micro ~/.profile
- dbin run btop
+    dbin search editor
+    dbin install micro.upx
+    dbin install lux kakoune aretext shfmt
+    dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
+    dbin del bed
+    dbin del orbiton tgpt lux
+    dbin info
+    dbin info jq
+    dbin list --described
+    dbin tldr gum
+    dbin run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
+    dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
+    dbin run --transparent --silent micro ~/.profile
+    dbin run btop
 ```
 
 #### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
@@ -123,7 +123,7 @@ Yes! Absolutely. The repo's URL's are declared in main.go, simply add another on
 
 >Good to hear, now... What about the so-called MetadataURLs?
 
-MetadataURLs provide info about the binaries, which is used to `search` and update `binaries`, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $DBIN_INSTALL_DIR from the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo) and showing a binary's description, size, etc.
+MetadataURLs provide info about the binaries, which is used to `search` and `update` binaries, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $DBIN_INSTALL_DIR from the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo) and showing a binary's description, size, etc.
 
 ### Libraries
 I am using these two libraries for `dbin`:

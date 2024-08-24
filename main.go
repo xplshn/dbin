@@ -16,7 +16,7 @@ type Silent byte
 
 const (
 	unsupportedArchMsg               = "Unsupported architecture: "
-	version                          = "0.1"
+	version                          = "0.2"
 	indicator                        = "...>"
 	maxCacheSize                     = 10
 	binariesToDelete                 = 5
@@ -108,21 +108,21 @@ func main() {
 		Synopsis:    "[-v|-h] [list|install|remove|update|run|info|search|tldr] <-args->",
 		Description: "The easy to use, easy to get, software distribution system",
 		CustomFields: map[string]interface{}{
-			"Options": `-h, --help        Show this help message
+			"1_Options": `-h, --help        Show this help message
 -v, --version     Show the version number`,
-			"Commands": `list              List all available binaries
+			"2_Commands": `list              List all available binaries
 install, add      Install a binary
 remove, del       Remove a binary
 update            Update binaries, by checking their SHA against the repo's SHA
 run               Run a specified binary from cache
 info              Show information about a specific binary OR display installed binaries
 search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
-tldr              Equivalent to "run --transparent --verbose tlrc"`,
+tldr              Equivalent to "run --transparent --silent tlrc"`,
 			"Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory path
 DBIN_INSTALL_DIR  If present, it must contain a valid directory path
 DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
 DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing directory`,
-			"Examples": `dbin search editor
+			"3_Examples": `dbin search editor
 dbin install micro.upx
 dbin install lux kakoune aretext shfmt
 dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
@@ -132,7 +132,7 @@ dbin info
 dbin info jq
 dbin list --described
 dbin tldr gum
-dbin run --verbose curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
+dbin run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
 dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
 dbin run --transparent --silent micro ~/.profile
 dbin run btop`,
