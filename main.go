@@ -16,7 +16,7 @@ type Silent byte
 
 const (
 	unsupportedArchMsg               = "Unsupported architecture: "
-	version                          = "0.1"
+	version                          = "0.2"
 	indicator                        = "...>"
 	maxCacheSize                     = 10
 	binariesToDelete                 = 5
