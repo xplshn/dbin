@@ -53,20 +53,20 @@ $ dbin --help
 
 ### Examples
 ```
- dbin search editor
- dbin install micro.upx # A lot of binaries are provided with a .upx (best compression) version
- dbin install lux kakoune aretext shfmt
- dbin install --silent bed && echo "[bed] was installed to $DBIN_INSTALL_DIR/bed"
- dbin del bed
- dbin del orbiton tgpt lux
- dbin info
- dbin info jq
- dbin list --described
- dbin tldr gum
- dbin run --verbose curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
- dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
- dbin run --transparent --silent micro ~/.profile
- dbin run btop
+    dbin search editor
+    dbin install micro.upx
+    dbin install lux kakoune aretext shfmt
+    dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
+    dbin del bed
+    dbin del orbiton tgpt lux
+    dbin info
+    dbin info jq
+    dbin list --described
+    dbin tldr gum
+    dbin run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
+    dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
+    dbin run --transparent --silent micro ~/.profile
+    dbin run btop
 ```
 
 #### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
