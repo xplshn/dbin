@@ -42,7 +42,7 @@ $ dbin --help
     run               Run a specified binary from cache
     info              Show information about a specific binary OR display installed binaries
     search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
-    tldr              Equivalent to "run --transparent --verbose tlrc"
+    tldr              Equivalent to "run --transparent tlrc"
   Variables:
     DBIN_CACHEDIR     If present, it must contain a valid directory path
     DBIN_INSTALL_DIR  If present, it must contain a valid directory path
@@ -72,7 +72,7 @@ $ dbin --help
 #### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 ##### Flags that correspond to the `run` functionality
 In the case of `--transparent`, it runs the program from $PATH and if it isn't available in the user's $PATH it will pull the binary from `dbin`'s repos and run it from cache.
-In the case of `--silent`, it simply hides the progressbar and all optional messages (warnings) that `dbin` can show, as oppossed to `--verbose`, which will always report if the binary is found on cache + the return code of the binary to be ran if it differs from 0.
+In the case of `--silent`, it simply hides the progressbar and all optional messages (warnings) that `dbin` can show, which would always report if the binary is found on cache + the return code of the binary to be ran if it differs from 0 otherwise.
 ##### Flags that correspond to the `install` functionality
 `--silent`, it hides the progressbar and doesn't print the installation message
 ##### `Update` arguments:
