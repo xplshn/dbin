@@ -115,7 +115,7 @@ update            Update binaries, by checking their SHA against the repo's SHA
 run               Run a specified binary from cache
 info              Show information about a specific binary OR display installed binaries
 search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
-tldr              Equivalent to "run --transparent --verbose tlrc"`,
+tldr              Equivalent to "run --transparent --silent tlrc"`,
 			"Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory path
 DBIN_INSTALL_DIR  If present, it must contain a valid directory path
 DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
@@ -130,7 +130,7 @@ dbin info
 dbin info jq
 dbin list --described
 dbin tldr gum
-dbin run --verbose curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
+dbin run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
 dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
 dbin run --transparent --silent micro ~/.profile
 dbin run btop`,
