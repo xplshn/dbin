@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -90,12 +89,12 @@ func cleanCache(tempDir string, verbosityLevel Verbosity) error {
 		return nil
 	}
 
-	type fileWithAtime struct {
-		info  os.FileInfo
-		atime time.Time
+	type fileWithMtime struct {
+		info os.FileInfo
+		mtime time.Time
 	}
 
-	var filesWithAtime []fileWithAtime
+	var filesWithMtime []fileWithMtime
 	for _, entry := range files {
 		fileInfo, err := entry.Info()
 		if err != nil {
@@ -105,26 +104,18 @@ func cleanCache(tempDir string, verbosityLevel Verbosity) error {
 			continue
 		}
 
-		var stat syscall.Stat_t
-		if err := syscall.Stat(filepath.Join(tempDir, entry.Name()), &stat); err != nil {
-			if verbosityLevel >= silentVerbosityWithErrors {
-				fmt.Fprintf(os.Stderr, "error getting file stat: %v\n", err)
-			}
-			continue
-		}
-
-		atime := time.Unix(int64(stat.Atim.Sec), int64(stat.Atim.Nsec))
-		filesWithAtime = append(filesWithAtime, fileWithAtime{info: fileInfo, atime: atime})
+		// Use the modification time instead of access time
+		filesWithMtime = append(filesWithMtime, fileWithMtime{info: fileInfo, mtime: fileInfo.ModTime()})
 	}
 
-	sort.Slice(filesWithAtime, func(i, j int) bool {
-		return filesWithAtime[i].atime.Before(filesWithAtime[j].atime)
+	sort.Slice(filesWithMtime, func(i, j int) bool {
+		return filesWithMtime[i].mtime.Before(filesWithMtime[j].mtime)
 	})
 
-	for i := 0; i < binariesToDelete; i++ {
-		if err := os.Remove(filepath.Join(tempDir, filesWithAtime[i].info.Name())); err != nil {
-			if verbosityLevel >= silentVerbosityWithErrors {
-				fmt.Fprintf(os.Stderr, "error removing file: %v\n", err)
+	for i := 0; i < binariesToDelete && i < len(filesWithMtime); i++ {
+		if err := os.Remove(filepath.Join(tempDir, filesWithMtime[i].info.Name())); err != nil {
+			if !isSilent(silentMode) {
+				fmt.Printf("Error removing file: %v\n", err)
 			}
 		}
 	}
