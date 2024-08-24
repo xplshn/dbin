@@ -3,15 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 )
 
-func installBinary(ctx context.Context, binaryName, installDir, trackerFile string, silent Silent, repositories, metadataURLs []string) error {
+// installBinary fetches and installs the binary, logging based on verbosity levels.
+func installBinary(ctx context.Context, binaryName, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	url, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
 	if err != nil {
-		if silent != disabledVerbosity {
-			fmt.Printf("Error finding URL for %s: %v\n", binaryName, err)
+		if verbosityLevel >= normalVerbosity {
+			fmt.Fprintf(os.Stderr, "error finding URL for %s: %v\n", binaryName, err)
 		}
 		return err
 	}
@@ -19,24 +21,25 @@ func installBinary(ctx context.Context, binaryName, installDir, trackerFile stri
 	destination := filepath.Join(installDir, filepath.Base(binaryName))
 	_, err = fetchBinaryFromUrlToDest(ctx, url, destination)
 	if err != nil {
-		if silent != disabledVerbosity {
-			fmt.Printf("Error fetching binary %s: %v\n", binaryName, err)
+		if verbosityLevel >= normalVerbosity {
+			fmt.Fprintf(os.Stderr, "error fetching binary %s: %v\n", binaryName, err)
 		}
 		return err
 	}
 
-	if silent == normalVerbosity {
-		fmt.Printf("Successfully installed %s\n", destination)
+	if verbosityLevel >= normalVerbosity {
+		fmt.Printf("Successfully downloaded %s and put it at %s\n", binaryName, destination)
 	}
 
-	if err := addToTrackerFile(trackerFile, binaryName, installDir); err != nil {
-		fmt.Printf("failed to update tracker file for %s: %v", binaryName, err)
+	if err := addToTrackerFile(trackerFile, binaryName, installDir); err != nil && verbosityLevel >= normalVerbosity {
+		fmt.Printf("Failed to update tracker file for %s: %v\n", binaryName, err)
 	}
 
 	return nil
 }
 
-func multipleInstall(ctx context.Context, binaries []string, installDir, trackerFile string, silent Silent, repositories, metadataURLs []string) error {
+// multipleInstall installs multiple binaries concurrently, respecting verbosity levels.
+func multipleInstall(ctx context.Context, binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(binaries))
 
@@ -49,7 +52,7 @@ func multipleInstall(ctx context.Context, binaries []string, installDir, tracker
 		wg.Add(1)
 		go func(binaryName string) {
 			defer wg.Done()
-			if err := installBinary(ctx, binaryName, installDir, trackerFile, silent, repositories, metadataURLs); err != nil {
+			if err := installBinary(ctx, binaryName, installDir, trackerFile, verbosityLevel, repositories, metadataURLs); err != nil {
 				errChan <- err
 			}
 		}(binaryName)
@@ -64,24 +67,26 @@ func multipleInstall(ctx context.Context, binaries []string, installDir, tracker
 		}
 	}
 
-	if silent == normalVerbosity && finalErr != nil {
+	if verbosityLevel >= normalVerbosity && finalErr != nil {
 		fmt.Printf("Final errors: %v\n", finalErr)
 	}
 
 	return finalErr
 }
 
-func installCommand(binaries []string, installDir, trackerFile string, silent Silent, repositories, metadataURLs []string) error {
+// installCommand installs one or more binaries based on the verbosity level.
+func installCommand(binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	if len(binaries) == 1 {
-		return installBinary(context.Background(), binaries[0], installDir, trackerFile, silent, repositories, metadataURLs)
+		return installBinary(context.Background(), binaries[0], installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 	} else if len(binaries) > 1 {
 		// Remove duplicates before processing
 		binaries = removeDuplicates(binaries)
-		return multipleInstall(context.Background(), binaries, installDir, trackerFile, silent, repositories, metadataURLs)
+		return multipleInstall(context.Background(), binaries, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 	}
 	return nil
 }
 
+// removeDuplicates removes duplicate binaries from the list.
 func removeDuplicates(binaries []string) []string {
 	seen := make(map[string]struct{})
 	result := []string{}

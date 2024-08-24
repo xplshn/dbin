@@ -24,11 +24,9 @@ func ReturnCachedFile(tempDir, binaryName string) (string, error) {
 }
 
 // RunFromCache runs the binary from cache or fetches it if not found.
-func RunFromCache(binaryName string, args []string, tempDir, trackerFile string, transparentMode bool, silentMode Silent, repositories []string, metadataURLs []string) error {
+func RunFromCache(binaryName string, args []string, tempDir, trackerFile string, transparentMode bool, verbosityLevel Verbosity, repositories []string, metadataURLs []string) error {
 	flagsAndBinaryName := append(strings.Fields(binaryName), args...)
 	flag.CommandLine.Parse(flagsAndBinaryName)
-
-	verboseMode := !isSilent(silentMode)
 
 	if binaryName == "" {
 		return errors.New("binary name not provided")
@@ -36,53 +34,53 @@ func RunFromCache(binaryName string, args []string, tempDir, trackerFile string,
 
 	binaryPath, err := exec.LookPath(binaryName)
 	if err == nil && transparentMode {
-		if verboseMode {
+		if verbosityLevel >= normalVerbosity {
 			fmt.Printf("Running '%s' from PATH...\n", binaryName)
 		}
-		return runBinary(binaryPath, args, verboseMode)
+		return runBinary(binaryPath, args, verbosityLevel)
 	}
 
 	cachedFile := filepath.Join(tempDir, filepath.Base(binaryName))
 	if fileExists(cachedFile) && isExecutable(cachedFile) {
-		if verboseMode {
+		if verbosityLevel >= normalVerbosity {
 			fmt.Printf("Running '%s' from cache...\n", binaryName)
 		}
-		if err := runBinary(cachedFile, args, verboseMode); err != nil {
+		if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
 			return err
 		}
-		return cleanCache(tempDir, silentMode)
+		return cleanCache(tempDir, verbosityLevel)
 	}
 
-	if verboseMode {
+	if verbosityLevel >= normalVerbosity {
 		fmt.Printf("Couldn't find '%s' in the cache. Fetching a new one...\n", binaryName)
 	}
 
-	if err := installCommand([]string{binaryName}, tempDir, trackerFile, silentMode, repositories, metadataURLs); err != nil {
-		return fmt.Errorf("installation failed: %v", err)
+	if err := installCommand([]string{binaryName}, tempDir, trackerFile, silentVerbosityWithErrors, repositories, metadataURLs); err != nil {
+		return fmt.Errorf("err: Could not cache the binary: %v", err)
 	}
 
-	if err := runBinary(cachedFile, args, verboseMode); err != nil {
+	if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
 		return err
 	}
-	return cleanCache(tempDir, silentMode)
+	return cleanCache(tempDir, verbosityLevel)
 }
 
 // runBinary executes the binary with the given arguments.
-func runBinary(binaryPath string, args []string, verboseMode bool) error {
+func runBinary(binaryPath string, args []string, verbosityLevel Verbosity) error {
 	cmd := exec.Command(binaryPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
 	err := cmd.Run()
-	if err != nil && verboseMode {
+	if err != nil && verbosityLevel == extraVerbose {
 		fmt.Printf("The program (%s) errored out with a non-zero exit code (%d).\n", binaryPath, cmd.ProcessState.ExitCode())
 	}
 	return err
 }
 
 // cleanCache removes the oldest binaries when the cache size exceeds MaxCacheSize.
-func cleanCache(tempDir string, silentMode Silent) error {
+func cleanCache(tempDir string, verbosityLevel Verbosity) error {
 	files, err := os.ReadDir(tempDir)
 	if err != nil {
 		return fmt.Errorf("error reading cache directory: %v", err)
@@ -101,16 +99,16 @@ func cleanCache(tempDir string, silentMode Silent) error {
 	for _, entry := range files {
 		fileInfo, err := entry.Info()
 		if err != nil {
-			if !isSilent(silentMode) {
-				fmt.Printf("Error getting file info: %v\n", err)
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "error getting file info: %v\n", err)
 			}
 			continue
 		}
 
 		var stat syscall.Stat_t
 		if err := syscall.Stat(filepath.Join(tempDir, entry.Name()), &stat); err != nil {
-			if !isSilent(silentMode) {
-				fmt.Printf("Error getting file stat: %v\n", err)
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "error getting file stat: %v\n", err)
 			}
 			continue
 		}
@@ -125,14 +123,10 @@ func cleanCache(tempDir string, silentMode Silent) error {
 
 	for i := 0; i < binariesToDelete; i++ {
 		if err := os.Remove(filepath.Join(tempDir, filesWithAtime[i].info.Name())); err != nil {
-			if !isSilent(silentMode) {
-				fmt.Printf("Error removing file: %v\n", err)
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "error removing file: %v\n", err)
 			}
 		}
 	}
 	return nil
-}
-
-func isSilent(silentMode Silent) bool {
-	return silentMode == silentVerbosityWithErrors || silentMode == disabledVerbosity
 }

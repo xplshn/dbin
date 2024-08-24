@@ -11,18 +11,19 @@ import (
 	"github.com/xplshn/a-utils/pkg/ccmd"
 )
 
-// Define Silent type
-type Silent byte
+// Define Verbosity type
+type Verbosity int8
 
 const (
-	unsupportedArchMsg               = "Unsupported architecture: "
-	version                          = "0.2"
-	indicator                        = "...>"
-	maxCacheSize                     = 10
-	binariesToDelete                 = 5
-	normalVerbosity           Silent = iota + 1 // 1
-	silentVerbosityWithErrors                   // 0
-	disabledVerbosity                           // -1
+	unsupportedArchMsg                  = "Unsupported architecture: "
+	version                             = "0.2"
+	indicator                           = "...>"
+	maxCacheSize                        = 10
+	binariesToDelete                    = 5
+	normalVerbosity           Verbosity = 1  // 0
+	extraVerbose              Verbosity = 2  // 1
+	silentVerbosityWithErrors Verbosity = -1 //-1
+	extraSilent               Verbosity = -2 //-2
 )
 
 func getEnvVar(key, defaultValue string) string {
@@ -123,44 +124,80 @@ DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing
 			"3_Examples": `dbin search editor
 dbin install micro.upx
 dbin install lux kakoune aretext shfmt
-dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
+dbin --silent install bed && echo "[bed] was installed to $INSTALL_DIR/bed"
 dbin del bed
 dbin del orbiton tgpt lux
 dbin info
 dbin info jq
 dbin list --described
 dbin tldr gum
-dbin run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
-dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
-dbin run --transparent --silent micro ~/.profile
+dbin --verbose run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
+dbin --silent run elinks -no-home "https://fatbuffalo.neocities.org/def"
+dbin --silent run --transparent micro ~/.profile
 dbin run btop`,
 		},
 	}
 
 	helpPage, err := cmdInfo.GenerateHelpPage()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error generating help page:", err)
+		fmt.Fprintln(os.Stderr, "error generating help page:", err)
 		os.Exit(1)
 	}
 	flag.Usage = func() {
-		fmt.Print(helpPage)
+		print(helpPage)
 	}
 
-	// Parse the flags
-	silent := flag.Bool("silent", false, "Run in silent mode")
+	// Define and parse flags
+	verboseFlag := flag.Bool("verbose", false, "Run in extra verbose mode")
+	silentFlag := flag.Bool("silent", false, "Run in silent mode, only errors will be shown")
+	extraSilentFlag := flag.Bool("extra-silent", false, "Run in extra silent mode, suppressing almost all output")
+	versionFlag := flag.Bool("v", false, "Show the version number")
+	longVersionFlag := flag.Bool("version", false, "Show the version number")
 	flag.Parse()
 
-	var silentMode Silent
-	if *silent {
-		silentMode = silentVerbosityWithErrors
-	} else {
-		silentMode = normalVerbosity
+	if *versionFlag || *longVersionFlag {
+		fmt.Println(helpPage, "dbin version", version)
+		os.Exit(1)
 	}
+
+	// Check for conflicting flags
+	if (*verboseFlag && *silentFlag) || (*verboseFlag && *extraSilentFlag) || (*silentFlag && *extraSilentFlag) {
+		fmt.Fprintln(os.Stderr, "error: Conflicting verbose flags provided.")
+		os.Exit(1)
+	}
+
+	// determineVerbosity determines the verbosity level based on the flags provided.
+	determineVerbosity := func(
+		silentFlag, verboseFlag, extraSilentFlag bool,
+		normalVerbosity, extraVerbose, silentVerbosityWithErrors, extraSilent Verbosity,
+	) Verbosity {
+		switch {
+		case extraSilentFlag:
+			return extraSilent
+		case silentFlag:
+			return silentVerbosityWithErrors
+		case verboseFlag:
+			return extraVerbose
+		default:
+			return normalVerbosity
+		}
+	}
+
+	// Determine verbosity level
+	verbosityLevel := determineVerbosity(
+		*silentFlag,
+		*verboseFlag,
+		*extraSilentFlag,
+		normalVerbosity,
+		extraVerbose,
+		silentVerbosityWithErrors,
+		extraSilent,
+	)
 
 	args := flag.Args()
 
 	if len(args) < 1 {
-		fmt.Print(helpPage)
+		print(helpPage)
 		os.Exit(1)
 	}
 
@@ -169,7 +206,7 @@ dbin run btop`,
 
 	trackerFile, installDir, tempDir, repositories, metadataURLs, disableTruncation, err := setupEnvironment()
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -188,7 +225,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := installCommand(binaries, installDir, trackerFile, silentMode, repositories, metadataURLs)
+		err := installCommand(binaries, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -200,7 +237,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := removeCommand(binaries, installDir, trackerFile, silentMode)
+		err := removeCommand(binaries, installDir, trackerFile, verbosityLevel)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -319,26 +356,24 @@ dbin run btop`,
 
 		// Ensure binary name is provided
 		if len(flag.Args()) < 1 {
-			fmt.Println("Usage: dbin run <--silent, --transparent> [binary] <args>")
+			fmt.Println("Usage: dbin run <--transparent> [binary] <args>")
 			os.Exit(1)
 		}
 
-		binaryName := flag.Arg(0)
-		runArgs := flag.Args()[1:]
-
-		RunFromCache(binaryName, runArgs, tempDir, trackerFile, transparentMode, silentMode, repositories, metadataURLs)
+		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, trackerFile, transparentMode, verbosityLevel, repositories, metadataURLs)
 	case "tldr":
-		RunFromCache("tlrc", flag.Args()[1:], tempDir, trackerFile, true, silentMode, repositories, metadataURLs)
+		RunFromCache("tlrc", flag.Args()[1:], tempDir, trackerFile, true, verbosityLevel, repositories, metadataURLs)
 	case "update", "u":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {
 			programsToUpdate = os.Args[2:]
 		}
-		if err := update(programsToUpdate, installDir, trackerFile, silentMode, repositories, metadataURLs); err != nil {
+		if err := update(programsToUpdate, installDir, trackerFile, verbosityLevel, repositories, metadataURLs); err != nil {
 			fmt.Println("Update failed:", err)
 		}
 	default:
-		fmt.Printf("Unknown command: %s\n", command)
+		print(helpPage)
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
 		os.Exit(1)
 	}
 }

@@ -56,16 +56,16 @@ $ dbin --help
     dbin search editor
     dbin install micro.upx
     dbin install lux kakoune aretext shfmt
-    dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
+    dbin --silent install bed && echo "[bed] was installed to $INSTALL_DIR/bed"
     dbin del bed
     dbin del orbiton tgpt lux
     dbin info
     dbin info jq
     dbin list --described
     dbin tldr gum
-    dbin run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
-    dbin run --silent elinks -no-home "https://fatbuffalo.neocities.org/def"
-    dbin run --transparent --silent micro ~/.profile
+    dbin --verbose run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
+    dbin --silent run elinks -no-home "https://fatbuffalo.neocities.org/def"
+    dbin --silent run --transparent micro ~/.profile
     dbin run btop
 ```
 

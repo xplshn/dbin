@@ -14,7 +14,7 @@ import (
 )
 
 // update checks for updates to the valid programs and installs any that have changed.
-func update(programsToUpdate []string, installDir, trackerFile string, silent Silent, repositories, metadataURLs []string) error {
+func update(programsToUpdate []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	// Initialize counters
 	var (
 		skipped, updated, errors, toBeChecked uint32
@@ -52,7 +52,9 @@ func update(programsToUpdate []string, installDir, trackerFile string, silent Si
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
-				truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Tried to update a non-existent program %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				if verbosityLevel >= normalVerbosity {
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Tried to update a non-existent program %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				}
 				progressMutex.Unlock()
 				return
 			}
@@ -61,7 +63,9 @@ func update(programsToUpdate []string, installDir, trackerFile string, silent Si
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
-				truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get SHA256 for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				if verbosityLevel >= normalVerbosity {
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get SHA256 for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				}
 				progressMutex.Unlock()
 				return
 			}
@@ -71,7 +75,9 @@ func update(programsToUpdate []string, installDir, trackerFile string, silent Si
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
-				truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get metadata for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				if verbosityLevel >= normalVerbosity {
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get metadata for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				}
 				progressMutex.Unlock()
 				return
 			}
@@ -80,29 +86,37 @@ func update(programsToUpdate []string, installDir, trackerFile string, silent Si
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
-				truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Skipping %s because the SHA256 field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				if verbosityLevel >= normalVerbosity {
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Skipping %s because the SHA256 field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				}
 				progressMutex.Unlock()
 				return
 			}
 
 			if checkDifferences(localSHA256, binaryInfo.SHA256) == 1 {
-				err := installCommand([]string{program}, installDir, trackerFile, silent, repositories, metadataURLs)
+				err := installCommand([]string{program}, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 				if err != nil {
 					progressMutex.Lock()
 					atomic.AddUint32(&errors, 1)
-					errorMessages += fmt.Sprintf("Failed to update '%s', please check this file's properties, etc\n", program)
+					if verbosityLevel >= silentVerbosityWithErrors {
+						errorMessages += fmt.Sprintf("Failed to update '%s', please check this file's properties, etc.\n", program)
+					}
 					progressMutex.Unlock()
 					return
 				}
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&updated, 1)
-				truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Successfully updated %s.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				if verbosityLevel >= normalVerbosity {
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Successfully updated %s.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				}
 				progressMutex.Unlock()
 			} else {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
-				truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | No updates available for %s.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				if verbosityLevel >= normalVerbosity {
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | No updates available for %s.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+				}
 				progressMutex.Unlock()
 			}
 		}(program)
@@ -113,13 +127,15 @@ func update(programsToUpdate []string, installDir, trackerFile string, silent Si
 
 	// Prepare final counts
 	finalCounts := fmt.Sprintf("\033[2K\rSkipped: %d\tUpdated: %d\tChecked: %d", atomic.LoadUint32(&skipped), atomic.LoadUint32(&updated), uint32(int(atomic.LoadUint32(&checked))))
-	if errors > 0 {
+	if errors > 0 && verbosityLevel >= silentVerbosityWithErrors {
 		finalCounts += fmt.Sprintf("\tErrors: %d", atomic.LoadUint32(&errors))
 	}
 	// Print final counts
-	fmt.Printf(finalCounts)
-	for _, error := range strings.Split(errorMessages, "\n") {
-		fmt.Println(strings.TrimSpace(error))
+	if verbosityLevel >= normalVerbosity || (errors > 0 && verbosityLevel >= silentVerbosityWithErrors) {
+		fmt.Printf(finalCounts)
+		for _, error := range strings.Split(errorMessages, "\n") {
+			fmt.Println(strings.TrimSpace(error))
+		}
 	}
 
 	return nil
@@ -144,6 +160,7 @@ func getLocalSHA256(filePath string) (string, error) {
 	return sha256Checksum, nil
 }
 
+// checkDifferences compares local and remote SHA256 checksums.
 func checkDifferences(localSHA256, remoteSHA256 string) int {
 	if localSHA256 != remoteSHA256 {
 		return 1
