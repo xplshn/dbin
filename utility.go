@@ -150,9 +150,36 @@ downloadLoop:
 		}
 	}
 
+	copyFile := func(src, dst string) error {
+		input, err := os.Open(src)
+		if err != nil {
+			return err
+		}
+		defer input.Close()
+
+		output, err := os.Create(dst)
+		if err != nil {
+			return err
+		}
+		defer output.Close()
+
+		_, err = io.Copy(output, input)
+		return err
+	}
+
+	// Try renaming the temp file
 	if err := os.Rename(tempFile, destination); err != nil {
+		// If renaming fails, fall back to copying
+		if copyErr := copyFile(tempFile, destination); copyErr != nil {
+			_ = os.Remove(tempFile)
+			return "", fmt.Errorf("failed to copy file: %v", copyErr)
+		}
 		_ = os.Remove(tempFile)
-		return "", err
+	}
+
+	if err := os.Chmod(destination, 0755); err != nil {
+		_ = os.Remove(destination)
+		return "", fmt.Errorf("failed to set executable bit for %s: %v", destination, err)
 	}
 
 	if err := os.Chmod(destination, 0755); err != nil {
