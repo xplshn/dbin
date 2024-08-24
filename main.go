@@ -69,6 +69,8 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 			return "aarch64_arm64_Linux", nil
 		case "arm64_android":
 			return "arm64_v8a_Android", nil
+		case "amd64_windows":
+			return "x64_Windows", nil
 		default:
 			return "", fmt.Errorf(unsupportedArchMsg + arch)
 		}

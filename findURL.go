@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-// findURL fetches the URL for the specified binary.
+// findURL fetches the URL for the specified binary
 func findURL(binaryName, trackerFile string, repositories, metadataURLs []string) (string, error) {
 	// Check the tracker file first
 	realBinaryName, err := getBinaryNameFromTrackerFile(trackerFile, binaryName)
@@ -19,10 +19,7 @@ func findURL(binaryName, trackerFile string, repositories, metadataURLs []string
 		iterations++
 		url := fmt.Sprintf("%s%s", repository, binaryName)
 		fmt.Printf("\033[2K\r<%d/%d> | Working: Checking if \"%s\" is in the repos.", iterations, len(repositories), binaryName)
-		resp, err := http.Head(url)
-		if err != nil {
-			return "", err
-		}
+		resp, _ := http.Head(url)
 
 		if resp.StatusCode == http.StatusOK {
 			fmt.Printf("\033[2K\r<%d/%d> | Found \"%s\" at %s", iterations, len(repositories), binaryName, repository)
@@ -31,5 +28,5 @@ func findURL(binaryName, trackerFile string, repositories, metadataURLs []string
 		}
 	}
 
-	return "", fmt.Errorf("\033[2K\rDidn't find the SOURCE_URL for [%s]", binaryName)
+	return "", fmt.Errorf("\033[2K\rerror: didn't find the SOURCE_URL for [%s]", binaryName)
 }

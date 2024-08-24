@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 )
@@ -12,19 +11,17 @@ import (
 func installBinary(ctx context.Context, binaryName, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	url, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
 	if err != nil {
-		if verbosityLevel >= normalVerbosity {
-			fmt.Fprintf(os.Stderr, "error finding URL for %s: %v\n", binaryName, err)
+		if verbosityLevel >= silentVerbosityWithErrors {
+			return err
 		}
-		return err
 	}
 
 	destination := filepath.Join(installDir, filepath.Base(binaryName))
 	_, err = fetchBinaryFromUrlToDest(ctx, url, destination)
 	if err != nil {
-		if verbosityLevel >= normalVerbosity {
-			fmt.Fprintf(os.Stderr, "error fetching binary %s: %v\n", binaryName, err)
+		if verbosityLevel >= silentVerbosityWithErrors {
+			return fmt.Errorf("error fetching binary %s: %v\n", binaryName, err)
 		}
-		return err
 	}
 
 	if verbosityLevel >= normalVerbosity {
@@ -32,7 +29,9 @@ func installBinary(ctx context.Context, binaryName, installDir, trackerFile stri
 	}
 
 	if err := addToTrackerFile(trackerFile, binaryName, installDir); err != nil && verbosityLevel >= normalVerbosity {
-		fmt.Printf("Failed to update tracker file for %s: %v\n", binaryName, err)
+		if verbosityLevel >= silentVerbosityWithErrors {
+			return fmt.Errorf("Failed to update tracker file for %s: %v\n", binaryName, err)
+		}
 	}
 
 	return nil
