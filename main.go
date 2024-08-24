@@ -106,9 +106,9 @@ func main() {
 		Synopsis:    "[-v|-h] [list|install|remove|update|run|info|search|tldr] <-args->",
 		Description: "The easy to use, easy to get, software distribution system",
 		CustomFields: map[string]interface{}{
-			"Options": `-h, --help        Show this help message
+			"1_Options": `-h, --help        Show this help message
 -v, --version     Show the version number`,
-			"Commands": `list              List all available binaries
+			"2_Commands": `list              List all available binaries
 install, add      Install a binary
 remove, del       Remove a binary
 update            Update binaries, by checking their SHA against the repo's SHA
@@ -120,7 +120,7 @@ tldr              Equivalent to "run --transparent --verbose tlrc"`,
 DBIN_INSTALL_DIR  If present, it must contain a valid directory path
 DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
 DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing directory`,
-			"Examples": `dbin search editor
+			"3_Examples": `dbin search editor
 dbin install micro.upx
 dbin install lux kakoune aretext shfmt
 dbin install --silent bed && echo "[bed] was installed to $INSTALL_DIR/bed"
