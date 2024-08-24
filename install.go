@@ -12,7 +12,7 @@ func installBinary(ctx context.Context, binaryName, installDir, trackerFile stri
 	url, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
 	if err != nil {
 		if verbosityLevel >= silentVerbosityWithErrors {
-			return err
+			return fmt.Errorf("%v", err)
 		}
 	}
 

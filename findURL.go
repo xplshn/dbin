@@ -22,11 +22,11 @@ func findURL(binaryName, trackerFile string, repositories, metadataURLs []string
 		resp, _ := http.Head(url)
 
 		if resp.StatusCode == http.StatusOK {
-			fmt.Printf("\033[2K\r<%d/%d> | Found \"%s\" at %s", iterations, len(repositories), binaryName, repository)
-			fmt.Printf("\033[2K\r")
+			fmt.Printf("\033[2K\r<%d/%d> | Found \"%s\" at %s\033[2K\r", iterations, len(repositories), binaryName, repository)
 			return url, nil
 		}
 	}
 
-	return "", fmt.Errorf("\033[2K\rerror: didn't find the SOURCE_URL for [%s]", binaryName)
+	print("\033[2K\r")
+	return "", fmt.Errorf("error: didn't find the SOURCE_URL for [%s]", binaryName)
 }

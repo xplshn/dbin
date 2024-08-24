@@ -219,7 +219,12 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaryName := args[0]
-		url, _ := findURL(binaryName, trackerFile, repositories, metadataURLs)
+		url, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
+		if err != nil {
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "%v", err)
+			}
+		}
 		fmt.Println(url)
 	case "install", "add":
 		if len(args) < 1 {
