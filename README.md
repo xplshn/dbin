@@ -9,7 +9,7 @@
 [![ARM64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_aarch64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
 -->
 
-dbin is a sophisticated, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux systems, dbin is particularly well-suited for embedded systems, with support for both Amd64 AND Aarch64. Optionally, it works under Android too, but you'll have to set $DBIN_INSTALL_DIR and $DBIN_CACHEDIR if you aren't running it under Termux, since depending the Android version and the ROM used, directories vary and the user's permission to modify them too.
+dbin is a sophisticated, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux systems, dbin is particularly well-suited for embedded systems, with support for both Amd64 AND Aarch64. Optionally, it works under Android too, but you'll have to set `$DBIN_INSTALL_DIR` and `$DBIN_CACHEDIR` if you aren't running it under Termux, since depending the Android version and the ROM used, directories vary and the user's permission to modify them too.
 
 > Why?
 
@@ -119,11 +119,11 @@ system_info=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/st
 - https://github.com/Azathothas/Toolpacks [https://bin.ajam.dev] [https://bin.ajam.dev/*/Baseutils/]
 >Hmm, can I add my own repos?
 
-Yes! Absolutely. The repo's URL's are declared in main.go, simply add another one if your repo is hosted at Github or your endpoint follows the same JSON format that Github's endpoint provides. You can also provide a repo URL in the same format that the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo uses.
+Yes! Absolutely. The repo's URL's are declared in main.go. Its simply a matter of providing a repo URL in the same format that the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo uses. You may skip the metadata part if you're only interested in the `install/add` functionality.
 
 >Good to hear, now... What about the so-called MetadataURLs?
 
-MetadataURLs provide info about the binaries, which is used to `search` and `update` binaries, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $DBIN_INSTALL_DIR from the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo) and showing a binary's description, size, etc.
+MetadataURLs provide info about the binaries, which is used to `search` and `update` binaries, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $DBIN_INSTALL_DIR from the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo) and showing a binary's description, size, etc. You can take a look at [`modMetadata`'s](misc/cmd/modMetadata/main.go) `Item` struct if you want to make a custom repo which's binaries appear in `search`, are compatible with the `update` functionality and also work with `info`.
 
 ### Libraries
 I am using these two libraries for `dbin`:
