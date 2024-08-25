@@ -1,4 +1,4 @@
-# dbin: Advanced Binary Management Tool
+# dbin: The easy to use, easy to get, suckless software distribution system
 [![Go Report Card](https://goreportcard.com/badge/github.com/xplshn/dbin)](https://goreportcard.com/report/github.com/xplshn/dbin)
 [![License](https://img.shields.io/badge/license-%20RABRMS-bright_green)](https://github.com/xplshn/dbin/blob/master/LICENSE)
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/xplshn/dbin?include_prereleases)](https://github.com/xplshn/dbin/releases/latest)
@@ -9,11 +9,11 @@
 [![ARM64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_aarch64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
 -->
 
-dbin is a sophisticated, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux systems, dbin is particularly well-suited for embedded systems, with support for both Amd64 AND Aarch64. Optionally, it works under Android too, but you'll have to set `$DBIN_INSTALL_DIR` and `$DBIN_CACHEDIR` if you aren't running it under Termux, since depending the Android version and the ROM used, directories vary and the user's permission to modify them too.
+dbin is a simple, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux/Android systems, with plans to expand to other platforms soon, dbin is particularly well-suited for embedded systems, we support both amd64 & aarch64.
 
 > Why?
 
- “I tend to think the drawbacks of dynamic linking outweigh the advantages for many (most?) applications.” – John Carmack
+ “I tend to think the drawbacks of dynamic linking outweigh the advantages for many (most?) applications.” – John Carmack. If you are looking for more in-depth arguments, see: [cat-v.ORG - Dynamic Linking](https://harmful.cat-v.org/software/dynamic-linking)
 
 > I've seen lots of package manager projects without "packages". What is different about this one?
 
