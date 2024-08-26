@@ -32,5 +32,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add ./misc/cmd/modMetadata
-          git commit -m "[WEEKLY] Update Metadata files"
+          git commit -m "[BI-WEEKLY] Update Metadata files"
           git push
