@@ -109,11 +109,15 @@ wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s 
 wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- --install "$HOME/.local/bin/dbin"
 ```
 
-#### Example of one use case of dbin | Inside of a SH script
+### Examples of usage cases of `dbin`
+#### Inside of a SH script
 Whenever you want to pull a specific GNU coreutil, busybox, toybox, etc, insert a bash snippet, use a *fetch tool, etc, you can use dbin for the job! There's also a `--transparent` flag for `run`, which will use the users' installed version of the program you want to run, and if it is not found in the `$PATH` dbin will fetch it and run it from `/tmp/dbin_cached`.
 ```sh
 system_info=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- run --silent albafetch --no-logo - || curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- run --silent albafetch --no-logo -)
 ```
+#### For creating a statically-linked & bootable rootfs using `toybox`'s `mkroot`
+![image](https://github.com/user-attachments/assets/949465ab-9572-404f-b02d-319eb3bc2fe0)
+![image](https://github.com/user-attachments/assets/64700072-a087-4206-8b52-212ecfea668d)
 
 ### Where do these binaries come from? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 - https://github.com/Azathothas/Toolpacks [https://bin.ajam.dev] [https://bin.ajam.dev/*/Baseutils/]
