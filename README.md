@@ -72,7 +72,7 @@ $ dbin --help
 #### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 ##### Flags that correspond to the `run` functionality
 In the case of `--transparent`, it runs the program from $PATH and if it isn't available in the user's $PATH it will pull the binary from `dbin`'s repos and run it from cache.
-In the case of `--silent`, it simply hides the progressbar and all optional messages (warnings) that `dbin` can show, which would always report if the binary is found on cache + the return code of the binary to be ran if it differs from 0 otherwise.
+In the case of `--silent`, it simply hides the progressbar and all optional messages (warnings) that `dbin` can show, which would always report if the binary is found on cache + the return code of the binary to be run if it differs from 0 otherwise.
 ##### Flags that correspond to the `install` functionality
 `--silent`, it hides the progressbar and doesn't print the installation message
 ##### `Update` arguments:
