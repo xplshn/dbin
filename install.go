@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -11,27 +12,25 @@ import (
 func installBinary(ctx context.Context, binaryName, installDir, trackerFile string, verbosityLevel Verbosity, repositories []string) error {
 	url, err := findURL(binaryName, trackerFile, repositories)
 	if err != nil {
-		if verbosityLevel >= silentVerbosityWithErrors {
-			return err
-		}
+		// Return the error directly without printing/logging
+		return err
 	}
 
 	destination := filepath.Join(installDir, filepath.Base(binaryName))
 	_, err = fetchBinaryFromURLToDest(ctx, url, destination)
 	if err != nil {
-		if verbosityLevel >= silentVerbosityWithErrors {
-			return fmt.Errorf("error fetching binary %s: %v", binaryName, err)
-		}
+		// Return the error directly without printing/logging
+		return fmt.Errorf("error fetching binary %s: %v", binaryName, err)
 	}
 
 	if verbosityLevel >= normalVerbosity {
 		fmt.Printf("Successfully downloaded %s and put it at %s\n", binaryName, destination)
 	}
 
-	if err := addToTrackerFile(trackerFile, binaryName, installDir); err != nil && verbosityLevel >= normalVerbosity {
-		if verbosityLevel >= silentVerbosityWithErrors {
-			return fmt.Errorf("failed to update tracker file for %s: %v", binaryName, err)
-		}
+	err = addToTrackerFile(trackerFile, binaryName, installDir)
+	if err != nil {
+		// Return the error directly without printing/logging
+		return fmt.Errorf("failed to update tracker file for %s: %v", binaryName, err)
 	}
 
 	return nil
@@ -41,11 +40,6 @@ func installBinary(ctx context.Context, binaryName, installDir, trackerFile stri
 func multipleInstall(ctx context.Context, binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories []string) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(binaries))
-
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
 
 	for _, binaryName := range binaries {
 		wg.Add(1)
@@ -57,20 +51,25 @@ func multipleInstall(ctx context.Context, binaries []string, installDir, tracker
 		}(binaryName)
 	}
 
-	var finalErr error
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	var errors []string
 	for err := range errChan {
-		if finalErr == nil {
-			finalErr = err
-		} else {
-			finalErr = fmt.Errorf("%v; %v", finalErr, err)
+		errors = append(errors, err.Error())
+	}
+
+	if len(errors) > 0 {
+		// Join errors with newline character
+		finalErr := strings.Join(errors, "\n")
+		if verbosityLevel >= silentVerbosityWithErrors {
+			return fmt.Errorf(finalErr)
 		}
 	}
 
-	if verbosityLevel >= normalVerbosity && finalErr != nil {
-		fmt.Printf("Final errors: %v\n", finalErr)
-	}
-
-	return finalErr
+	return nil
 }
 
 // installCommand installs one or more binaries based on the verbosity level.

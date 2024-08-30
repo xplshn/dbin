@@ -131,13 +131,14 @@ downloadLoop:
 				speed := float64(downloaded) / elapsed // bytes per second
 
 				// Adjust spinner speed based on download speed
-				if speed > 1024*1024 { // more than 1MB/s
+				switch {
+				case speed > 1024*1024: // more than 1MB/s
 					spinner.SetSpeed(150 * time.Millisecond)
-				} else if speed > 512*1024 { // more than 512KB/s
+				case speed > 512*1024: // more than 512KB/s
 					spinner.SetSpeed(100 * time.Millisecond)
-				} else if speed > 256*1024 { // more than 256KB/s
+				case speed > 256*1024: // more than 256KB/s
 					spinner.SetSpeed(80 * time.Millisecond)
-				} else {
+				default:
 					spinner.SetSpeed(50 * time.Millisecond)
 				}
 			}
@@ -481,62 +482,43 @@ func writeTrackerFile(trackerFile string, tracker map[string]string) error {
 	return nil
 }
 
+// removeNixGarbageFoundInTheRepos corrects any /nix/store/ or /bin/ binary path in the file.
 func removeNixGarbageFoundInTheRepos(filePath string) error {
-	// Open the file for reading
-	file, err := os.Open(filePath)
+	// Read the entire file content
+	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to open file %s: %v", filePath, err)
-	}
-	defer file.Close()
-
-	// Read the first few bytes to check for a shebang
-	buf := make([]byte, 2)
-	if _, err := file.Read(buf); err != nil {
 		return fmt.Errorf("failed to read file %s: %v", filePath, err)
 	}
 
-	// If the file does not start with a shebang, skip processing
-	if string(buf) != "#!" {
-		return nil
-	}
-
-	// Read the entire file content after confirming it's a script
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read file %s for shebang and exec modification: %v", filePath, err)
-	}
-
-	// Regex to match and remove the /nix/store/*/ prefix in shebang
-	nixShebangRegex := regexp.MustCompile(`^#!\s*/nix/store/[^/]+/(bin|usr/bin)/(\S+)\s*(.*)`)
-	// Regex to match and remove the /nix/store/*/ prefix in the exec line, keeping only the program name
-	nixExecRegex := regexp.MustCompile(`^exec\s+"/nix/store/[^/]+/(bin|usr/bin)/(\S+)"(.*)`)
+	// Regex to match and remove the /nix/store/*/ prefix in the shebang line, preserving the rest of the path
+	nixShebangRegex := regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`)
+	// Regex to match and remove the /nix/store/*/bin/ prefix in other lines
+	nixBinPathRegex := regexp.MustCompile(`/nix/store/[^/]+/bin/`)
 
 	// Split content by lines
 	lines := strings.Split(string(content), "\n")
 
-	// Modify the shebang line if it matches
-	if nixShebangRegex.MatchString(lines[0]) {
-		matches := nixShebangRegex.FindStringSubmatch(lines[0])
-		lines[0] = fmt.Sprintf("#!/%s/%s", matches[1], matches[2])
-		if matches[3] != "" {
-			lines[0] += " " + matches[3]
+	// Flag to track if any corrections were made
+	correctionsMade := false
+
+	// Handle the shebang line separately if it exists and matches the nix pattern
+	if len(lines) > 0 && nixShebangRegex.MatchString(lines[0]) {
+		lines[0] = nixShebangRegex.ReplaceAllString(lines[0], "#!/")
+		// Iterate through the rest of the lines and correct any /nix/store/*/bin/ path
+		for i := 1; i < len(lines); i++ {
+			if nixBinPathRegex.MatchString(lines[i]) {
+				lines[i] = nixBinPathRegex.ReplaceAllString(lines[i], "")
+			}
 		}
-		fmt.Println("This binary is a nix object. Corrections have been made to its shebang.")
+		correctionsMade = true
 	}
 
-	// Modify the exec line if it matches
-	for i := 1; i < len(lines); i++ {
-		if nixExecRegex.MatchString(lines[i]) {
-			matches := nixExecRegex.FindStringSubmatch(lines[i])
-			lines[i] = fmt.Sprintf(`exec "%s"%s`, matches[2], matches[3])
-			fmt.Println("This binary is a nix object. Corrections have been made to its exec line.")
-			break
+	// If any corrections were made, write the modified content back to the file
+	if correctionsMade {
+		if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
+			return fmt.Errorf("failed to correct nix object [%s]: %v", filepath.Base(filePath), err)
 		}
-	}
-
-	// Write the modified content back to the file
-	if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
-		return fmt.Errorf("failed to write modified content to file %s: %v", filePath, err)
+		fmt.Printf("[%s] is a nix object. Corrections have been made.\n", filepath.Base(filePath))
 	}
 
 	return nil

@@ -119,11 +119,11 @@ run               Run a specified binary from cache
 info              Show information about a specific binary OR display installed binaries
 search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
 tldr              Equivalent to "run --transparent --silent tlrc"`,
-			"Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory path
+			"3_Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory path
 DBIN_INSTALL_DIR  If present, it must contain a valid directory path
 DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
 DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing directory`,
-			"3_Examples": `dbin search editor
+			"4_Examples": `dbin search editor
 dbin install micro.upx
 dbin install lux kakoune aretext shfmt
 dbin --silent install bed && echo "[bed] was installed to $INSTALL_DIR/bed"
@@ -237,7 +237,7 @@ dbin run btop`,
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}
-		//fmt.Println("Installation completed successfully.")
+		// fmt.Println("Installation completed successfully.")
 	case "remove", "del":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for remove command.")
@@ -249,12 +249,12 @@ dbin run btop`,
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}
-		//fmt.Println("Removal completed successfully.")
+		// fmt.Println("Removal completed successfully.")
 	case "list", "l":
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
 				// Call fSearch with an empty query and a large limit to list all described binaries
-				fSearch(metadataURLs, installDir, "", disableTruncation, 99999)
+				fSearch(metadataURLs, installDir, tempDir, "", disableTruncation, 99999)
 			} else {
 				errorOut("dbin: Unknown command.\n")
 			}
@@ -298,7 +298,7 @@ dbin run btop`,
 		}
 
 		query := args[queryIndex]
-		err := fSearch(metadataURLs, installDir, query, disableTruncation, limit)
+		err := fSearch(metadataURLs, installDir, tempDir, query, disableTruncation, limit)
 		if err != nil {
 			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
@@ -349,7 +349,7 @@ dbin run btop`,
 		}
 	case "run", "r":
 		if len(args) < 1 {
-			fmt.Println("Usage: dbin run <--silent, --transparent> [binary] <args>")
+			fmt.Println("Usage: dbin run <--transparent> [binary] <args>")
 			os.Exit(1)
 		}
 
