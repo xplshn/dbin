@@ -10,7 +10,7 @@ case "$ARCH" in
     *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-DBIN_URL="https://github.com/xplshn/dbin/releases/latest/download/dbin_${ARCH_SUFFIX}_upx"
+DBIN_URL="https://github.com/xplshn/dbin/releases/latest/download/dbin_${ARCH_SUFFIX}.upx"
 
 # Handle --install option
 if [ "$1" = "--install" ]; then
