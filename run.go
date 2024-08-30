@@ -54,8 +54,12 @@ func RunFromCache(binaryName string, args []string, tempDir, trackerFile string,
 		fmt.Printf("Couldn't find '%s' in the cache. Fetching a new one...\n", binaryName)
 	}
 
+	// Fetch the binary if it doesn't exist in the cache
 	if err := installCommand([]string{binaryName}, tempDir, trackerFile, silentVerbosityWithErrors, repositories, metadataURLs); err != nil {
-		return fmt.Errorf("err: Could not cache the binary: %v", err)
+		if verbosityLevel >= silentVerbosityWithErrors {
+			fmt.Fprintf(os.Stderr, "error: could not cache the binary: %v\n", err)
+		}
+		return err
 	}
 
 	if err := runBinary(cachedFile, args, verbosityLevel); err != nil {

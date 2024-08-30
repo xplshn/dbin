@@ -16,7 +16,7 @@ type Verbosity int8
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
-	version                             = "0.2"
+	version                             = "0.3"
 	indicator                           = "...>"
 	maxCacheSize                        = 10
 	binariesToDelete                    = 5
@@ -219,7 +219,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaryName := args[0]
-		url, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
+		url, err := findURL(binaryName, trackerFile, repositories)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
@@ -234,7 +234,7 @@ dbin run btop`,
 		binaries := args
 		err := installCommand(binaries, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}
 		//fmt.Println("Installation completed successfully.")
@@ -246,7 +246,7 @@ dbin run btop`,
 		binaries := args
 		err := removeCommand(binaries, installDir, trackerFile, verbosityLevel)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}
 		//fmt.Println("Removal completed successfully.")
@@ -282,12 +282,12 @@ dbin run btop`,
 				var err error
 				limit, err = strconv.Atoi(args[queryIndex+1])
 				if err != nil {
-					fmt.Printf("Error: 'limit' value is not an int: %v\n", err)
+					fmt.Printf("error: 'limit' value is not an int: %v\n", err)
 					os.Exit(1)
 				}
 				queryIndex += 2
 			} else {
-				fmt.Println("Error: Missing 'limit' value.")
+				fmt.Println("error: Missing 'limit' value.")
 				os.Exit(1)
 			}
 		}
@@ -300,7 +300,7 @@ dbin run btop`,
 		query := args[queryIndex]
 		err := fSearch(metadataURLs, installDir, query, disableTruncation, limit)
 		if err != nil {
-			fmt.Printf("Error searching binaries: %v\n", err)
+			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
 		}
 	case "info", "i":
@@ -312,7 +312,7 @@ dbin run btop`,
 		if binaryName == "" {
 			installedPrograms, err := validateProgramsFrom(installDir, trackerFile, metadataURLs, nil)
 			if err != nil {
-				fmt.Printf("Error validating programs: %v\n", err)
+				fmt.Printf("error validating programs: %v\n", err)
 				os.Exit(1)
 			}
 			for _, program := range installedPrograms {
@@ -321,7 +321,7 @@ dbin run btop`,
 		} else {
 			binaryInfo, err := getBinaryInfo(trackerFile, binaryName, metadataURLs)
 			if err != nil {
-				fmt.Printf("Error: %v\n", err)
+				fmt.Printf("error: %v\n", err)
 				os.Exit(1)
 			}
 			fmt.Printf("Name: %s\n", binaryInfo.Name)

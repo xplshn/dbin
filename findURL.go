@@ -7,7 +7,7 @@ import (
 )
 
 // findURL fetches the URL for the specified binary
-func findURL(binaryName, trackerFile string, repositories, metadataURLs []string) (string, error) {
+func findURL(binaryName, trackerFile string, repositories []string) (string, error) {
 	// Check the tracker file first
 	realBinaryName, err := getBinaryNameFromTrackerFile(trackerFile, binaryName)
 	if err == nil {

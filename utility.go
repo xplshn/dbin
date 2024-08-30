@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -77,8 +78,8 @@ func (s *Spinner) getSpeed() time.Duration {
 	return s.speed
 }
 
-// fetchBinaryFromUrlToDest downloads the file from the given URL to the specified destination
-func fetchBinaryFromUrlToDest(ctx context.Context, url string, destination string) (string, error) {
+// fetchBinaryFromURLToDest downloads the file from the given URL to the specified destination
+func fetchBinaryFromURLToDest(ctx context.Context, url string, destination string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -148,6 +149,12 @@ downloadLoop:
 				return "", err
 			}
 		}
+	}
+
+	// Modify the shebang if needed
+	if err := removeNixGarbageFoundInTheRepos(tempFile); err != nil {
+		_ = os.Remove(tempFile)
+		return "", err
 	}
 
 	if err := os.Rename(tempFile, destination); err != nil {
@@ -469,6 +476,67 @@ func writeTrackerFile(trackerFile string, tracker map[string]string) error {
 	encoder := json.NewEncoder(file)
 	if err := encoder.Encode(tracker); err != nil {
 		return fmt.Errorf("could not encode tracker file: %w", err)
+	}
+
+	return nil
+}
+
+func removeNixGarbageFoundInTheRepos(filePath string) error {
+	// Open the file for reading
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %v", filePath, err)
+	}
+	defer file.Close()
+
+	// Read the first few bytes to check for a shebang
+	buf := make([]byte, 2)
+	if _, err := file.Read(buf); err != nil {
+		return fmt.Errorf("failed to read file %s: %v", filePath, err)
+	}
+
+	// If the file does not start with a shebang, skip processing
+	if string(buf) != "#!" {
+		return nil
+	}
+
+	// Read the entire file content after confirming it's a script
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file %s for shebang and exec modification: %v", filePath, err)
+	}
+
+	// Regex to match and remove the /nix/store/*/ prefix in shebang
+	nixShebangRegex := regexp.MustCompile(`^#!\s*/nix/store/[^/]+/(bin|usr/bin)/(\S+)\s*(.*)`)
+	// Regex to match and remove the /nix/store/*/ prefix in the exec line, keeping only the program name
+	nixExecRegex := regexp.MustCompile(`^exec\s+"/nix/store/[^/]+/(bin|usr/bin)/(\S+)"(.*)`)
+
+	// Split content by lines
+	lines := strings.Split(string(content), "\n")
+
+	// Modify the shebang line if it matches
+	if nixShebangRegex.MatchString(lines[0]) {
+		matches := nixShebangRegex.FindStringSubmatch(lines[0])
+		lines[0] = fmt.Sprintf("#!/%s/%s", matches[1], matches[2])
+		if matches[3] != "" {
+			lines[0] += " " + matches[3]
+		}
+		fmt.Println("This binary is a nix object. Corrections have been made to its shebang.")
+	}
+
+	// Modify the exec line if it matches
+	for i := 1; i < len(lines); i++ {
+		if nixExecRegex.MatchString(lines[i]) {
+			matches := nixExecRegex.FindStringSubmatch(lines[i])
+			lines[i] = fmt.Sprintf(`exec "%s"%s`, matches[2], matches[3])
+			fmt.Println("This binary is a nix object. Corrections have been made to its exec line.")
+			break
+		}
+	}
+
+	// Write the modified content back to the file
+	if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
+		return fmt.Errorf("failed to write modified content to file %s: %v", filePath, err)
 	}
 
 	return nil
