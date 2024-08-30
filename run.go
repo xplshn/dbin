@@ -23,7 +23,7 @@ func ReturnCachedFile(tempDir, binaryName string) (string, error) {
 }
 
 // RunFromCache runs the binary from cache or fetches it if not found.
-func RunFromCache(binaryName string, args []string, tempDir, trackerFile string, transparentMode bool, verbosityLevel Verbosity, repositories []string, metadataURLs []string) error {
+func RunFromCache(binaryName string, args []string, tempDir, trackerFile string, transparentMode bool, verbosityLevel Verbosity, repositories []string) error {
 	flagsAndBinaryName := append(strings.Fields(binaryName), args...)
 	flag.CommandLine.Parse(flagsAndBinaryName)
 
@@ -55,7 +55,7 @@ func RunFromCache(binaryName string, args []string, tempDir, trackerFile string,
 	}
 
 	// Fetch the binary if it doesn't exist in the cache
-	if err := installCommand([]string{binaryName}, tempDir, trackerFile, silentVerbosityWithErrors, repositories, metadataURLs); err != nil {
+	if err := installCommand([]string{binaryName}, tempDir, trackerFile, silentVerbosityWithErrors, repositories); err != nil {
 		if verbosityLevel >= silentVerbosityWithErrors {
 			fmt.Fprintf(os.Stderr, "error: could not cache the binary: %v\n", err)
 		}

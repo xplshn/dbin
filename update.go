@@ -94,7 +94,7 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 			}
 
 			if checkDifferences(localSHA256, binaryInfo.SHA256) == 1 {
-				err := installCommand([]string{program}, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
+				err := installCommand([]string{program}, installDir, trackerFile, verbosityLevel, repositories)
 				if err != nil {
 					progressMutex.Lock()
 					atomic.AddUint32(&errors, 1)

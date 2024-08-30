@@ -74,7 +74,7 @@ func multipleInstall(ctx context.Context, binaries []string, installDir, tracker
 }
 
 // installCommand installs one or more binaries based on the verbosity level.
-func installCommand(binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
+func installCommand(binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories []string) error {
 	if len(binaries) == 1 {
 		return installBinary(context.Background(), binaries[0], installDir, trackerFile, verbosityLevel, repositories)
 	} else if len(binaries) > 1 {

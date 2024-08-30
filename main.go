@@ -11,7 +11,7 @@ import (
 	"github.com/xplshn/a-utils/pkg/ccmd"
 )
 
-// Define Verbosity type
+// Verbosity is used along with >= and <= to determine which messages to hide when using `--silent` and which messages to display when using `--verbose`
 type Verbosity int8
 
 const (
@@ -232,7 +232,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := installCommand(binaries, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
+		err := installCommand(binaries, installDir, trackerFile, verbosityLevel, repositories)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -367,9 +367,9 @@ dbin run btop`,
 			os.Exit(1)
 		}
 
-		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, trackerFile, transparentMode, verbosityLevel, repositories, metadataURLs)
+		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, trackerFile, transparentMode, verbosityLevel, repositories)
 	case "tldr":
-		RunFromCache("tlrc", flag.Args()[1:], tempDir, trackerFile, true, verbosityLevel, repositories, metadataURLs)
+		RunFromCache("tlrc", flag.Args()[1:], tempDir, trackerFile, true, verbosityLevel, repositories)
 	case "update", "u":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {
