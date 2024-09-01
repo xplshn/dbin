@@ -51,7 +51,16 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 
 	tempDir = getEnvVar("DBIN_CACHEDIR", filepath.Join(tempDir, "dbin_cache"))
 	trackerFile := getEnvVar("DBIN_TRACKERFILE", filepath.Join(confDir, "dbin.tracker.json"))
-	installDir := getEnvVar("DBIN_INSTALL_DIR", filepath.Join(homeDir, ".local/bin"))
+
+	// DBIN_INSTALL_DIR or XDG_BIN_HOME. "$HOME/.local/bin" as fallback
+	installDir := os.Getenv("DBIN_INSTALL_DIR")
+	if installDir == "" {
+		installDir = os.Getenv("XDG_BIN_HOME")
+		if installDir == "" {
+			// If neither are set, default to "$HOME/.local/bin"
+			installDir = filepath.Join(homeDir, ".local/bin")
+		}
+	}
 
 	disableTruncationStr := getEnvVar("DBIN_NOTRUNCATION", "false")
 	disableTruncation, err := strconv.ParseBool(disableTruncationStr)

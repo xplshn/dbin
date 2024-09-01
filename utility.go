@@ -152,7 +152,7 @@ downloadLoop:
 		}
 	}
 
-	// Modify the shebang if needed
+	// Make a few corrections in case the downloaded binary is a nix object
 	if err := removeNixGarbageFoundInTheRepos(tempFile); err != nil {
 		_ = os.Remove(tempFile)
 		return "", err
@@ -490,7 +490,7 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 		return fmt.Errorf("failed to read file %s: %v", filePath, err)
 	}
 
-	// Regex to match and remove the /nix/store/*/ prefix in the shebang line, preserving the rest of the path
+	// Regex to match and remove the /nix/store/.../ prefix in the shebang line, preserving the rest of the path
 	nixShebangRegex := regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`)
 	// Regex to match and remove the /nix/store/*/bin/ prefix in other lines
 	nixBinPathRegex := regexp.MustCompile(`/nix/store/[^/]+/bin/`)
