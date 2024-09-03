@@ -16,7 +16,7 @@ type Verbosity int8
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
-	version                             = "0.3"
+	version                             = "0.4"
 	indicator                           = "...>"
 	maxCacheSize                        = 10
 	binariesToDelete                    = 5
@@ -220,6 +220,7 @@ dbin run btop`,
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+	runCommandTrackerFile := filepath.Join(tempDir, "dbin.cached.tracker.json")
 
 	switch command {
 	case "findurl", "f":
@@ -263,7 +264,7 @@ dbin run btop`,
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
 				// Call fSearch with an empty query and a large limit to list all described binaries
-				fSearch(metadataURLs, installDir, tempDir, "", disableTruncation, 99999)
+				fSearch(metadataURLs, installDir, tempDir, "", disableTruncation, 99999, runCommandTrackerFile)
 			} else {
 				errorOut("dbin: Unknown command.\n")
 			}
@@ -307,7 +308,7 @@ dbin run btop`,
 		}
 
 		query := args[queryIndex]
-		err := fSearch(metadataURLs, installDir, tempDir, query, disableTruncation, limit)
+		err := fSearch(metadataURLs, installDir, tempDir, query, disableTruncation, limit, runCommandTrackerFile)
 		if err != nil {
 			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
@@ -376,9 +377,9 @@ dbin run btop`,
 			os.Exit(1)
 		}
 
-		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, trackerFile, transparentMode, verbosityLevel, repositories)
+		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, runCommandTrackerFile, transparentMode, verbosityLevel, repositories)
 	case "tldr":
-		RunFromCache("tlrc", flag.Args()[1:], tempDir, trackerFile, true, verbosityLevel, repositories)
+		RunFromCache("tlrc", flag.Args()[1:], tempDir, runCommandTrackerFile, true, verbosityLevel, repositories)
 	case "update", "u":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {

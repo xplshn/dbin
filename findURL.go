@@ -4,14 +4,16 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 )
 
 // findURL fetches the URL for the specified binary
 func findURL(binaryName, trackerFile string, repositories []string) (string, error) {
 	// Check the tracker file first
-	realBinaryName, err := getBinaryNameFromTrackerFile(trackerFile, binaryName)
-	if err == nil {
-		binaryName = realBinaryName
+	trackedBinaryName, err := getBinaryNameFromTrackerFile(trackerFile, filepath.Base(binaryName))
+	if err == nil && trackedBinaryName == binaryName {
+		// If the tracked binary name matches the requested binary name, use it.
+		binaryName = trackedBinaryName
 	}
 
 	iterations := 0

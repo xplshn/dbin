@@ -3,13 +3,12 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-// fSearch searches for binaries based on the given search term.
-func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disableTruncation bool, limit int) error {
+// fSearch searches for binaries based on the given search term
+func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disableTruncation bool, limit int, runCommandTrackerFile string) error {
 	type tBinary struct {
 		Architecture string `json:"architecture"`
 		Name         string `json:"name"`
@@ -28,7 +27,7 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 	}
 
 	// Filter binaries based on the search term and architecture
-	searchResultsSet := make(map[string]struct{})
+	searchResults := make([]string, 0)
 	for _, binary := range binaries {
 		if strings.Contains(strings.ToLower(binary.Name), strings.ToLower(searchTerm)) || strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm)) {
 			ext := strings.ToLower(filepath.Ext(binary.Name))
@@ -39,25 +38,20 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 			if _, excludedName := excludedFileNames[base]; excludedName {
 				continue // Skip this binary if its name is excluded
 			}
-			if binary.Description != "" {
-				entry := fmt.Sprintf("%s - %s", binary.Name, binary.Description)
-				searchResultsSet[entry] = struct{}{}
-			}
+			entry := fmt.Sprintf("%s - %s", binary.Name, binary.Description)
+			searchResults = append(searchResults, entry)
 		}
 	}
 
 	// Check if no matching binaries found
-	if len(searchResultsSet) == 0 {
+	if len(searchResults) == 0 {
 		return fmt.Errorf("no matching binaries found for '%s'", searchTerm)
-	} else if len(searchResultsSet) > limit {
+	} else if len(searchResults) > limit {
 		return fmt.Errorf("too many matching binaries (+%d. [Use --limit before your query]) found for '%s'", limit, searchTerm)
 	}
 
-	// Convert set to slice for sorting
-	var searchResults []string
-	for entry := range searchResultsSet {
-		searchResults = append(searchResults, entry)
-	}
+	// Maps to track installed and cached binaries
+	installedBinaries := make(map[string]bool)
 
 	// Check if the binary exists in the INSTALL_DIR and print results with installation state indicators
 	for _, line := range searchResults {
@@ -67,17 +61,17 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 		}
 		name := parts[0]
 		description := parts[1]
+		baseName := filepath.Base(name)
 
 		// Determine the prefix based on conditions
-		var prefix string
-		if installPath := filepath.Join(installDir, name); fileExists(installPath) {
+		prefix := "[-]"
+		cachedLocation, trackedBinaryName := ReturnCachedFile(tempDir, name, runCommandTrackerFile)
+
+		if installPath := filepath.Join(installDir, baseName); fileExists(installPath) && !installedBinaries[baseName] {
 			prefix = "[i]"
-		} else if path, err := exec.LookPath(name); err == nil && path != "" {
-			prefix = "[\033[4mi\033[0m]" // Print [i], 'i' is underlined
-		} else if cachedLocation, _ := ReturnCachedFile(tempDir, filepath.Base(name)); cachedLocation != "" {
+			installedBinaries[baseName] = true
+		} else if trackedBinaryName == name && fileExists(cachedLocation) {
 			prefix = "[c]"
-		} else {
-			prefix = "[-]"
 		}
 
 		truncatePrintf(disableTruncation, true, "%s %s - %s ", prefix, name, description)

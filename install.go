@@ -27,10 +27,12 @@ func installBinary(ctx context.Context, binaryName, installDir, trackerFile stri
 		fmt.Printf("Successfully downloaded %s and put it at %s\n", binaryName, destination)
 	}
 
-	err = addToTrackerFile(trackerFile, binaryName, installDir)
-	if err != nil {
-		// Return the error directly without printing/logging
-		return fmt.Errorf("failed to update tracker file for %s: %v", binaryName, err)
+	if trackerFile != "" {
+		err = addToTrackerFile(trackerFile, binaryName, installDir)
+		if err != nil {
+			// Return the error directly without printing/logging
+			return fmt.Errorf("failed to update tracker file for %s: %v", binaryName, err)
+		}
 	}
 
 	return nil
@@ -82,17 +84,4 @@ func installCommand(binaries []string, installDir, trackerFile string, verbosity
 		return multipleInstall(context.Background(), binaries, installDir, trackerFile, verbosityLevel, repositories)
 	}
 	return nil
-}
-
-// removeDuplicates removes duplicate binaries from the list.
-func removeDuplicates(binaries []string) []string {
-	seen := make(map[string]struct{})
-	result := []string{}
-	for _, binary := range binaries {
-		if _, ok := seen[binary]; !ok {
-			seen[binary] = struct{}{}
-			result = append(result, binary)
-		}
-	}
-	return result
 }

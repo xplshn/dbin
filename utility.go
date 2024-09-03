@@ -171,6 +171,19 @@ downloadLoop:
 	return destination, nil
 }
 
+// removeDuplicates removes duplicate binaries from the list (used in ./install.go)
+func removeDuplicates(binaries []string) []string {
+	seen := make(map[string]struct{})
+	result := []string{}
+	for _, binary := range binaries {
+		if _, ok := seen[binary]; !ok {
+			seen[binary] = struct{}{}
+			result = append(result, binary)
+		}
+	}
+	return result
+}
+
 func fetchJSON(url string, v interface{}) error {
 	spinner := NewSpinner([]rune{
 		'⠁', '⠂', '⠄', '⡀', '⡈', '⡐', '⡠', '⣀',
@@ -384,7 +397,7 @@ func truncatePrintf(disableTruncation, addNewLine bool, format string, a ...inte
 	return fmt.Print(truncateSprintf(indicator, format, a...))
 }
 
-// addToTrackerFile appends a binary name to the tracker file.
+// addToTrackerFile appends a binary name to the tracker file or updates an existing entry.
 func addToTrackerFile(trackerFile, binaryName, installDir string) error {
 	tracker, err := readTrackerFile(trackerFile)
 	if err != nil {
@@ -392,12 +405,11 @@ func addToTrackerFile(trackerFile, binaryName, installDir string) error {
 	}
 
 	baseName := filepath.Base(binaryName)
-	if _, exists := tracker[baseName]; !exists {
-		tracker[baseName] = binaryName
-		err := writeTrackerFile(trackerFile, tracker)
-		if err != nil {
-			return fmt.Errorf("could not write to tracker file: %w", err)
-		}
+	tracker[baseName] = binaryName // Always update or add the entry
+
+	err = writeTrackerFile(trackerFile, tracker)
+	if err != nil {
+		return fmt.Errorf("could not write to tracker file: %w", err)
 	}
 
 	cleanupTrackerFile(trackerFile, installDir)
@@ -407,7 +419,6 @@ func addToTrackerFile(trackerFile, binaryName, installDir string) error {
 // getBinaryNameFromTrackerFile retrieves the full binary name from the tracker file based on the base name.
 func getBinaryNameFromTrackerFile(trackerFile, baseName string) (string, error) {
 	baseName = filepath.Base(baseName)
-
 	tracker, err := readTrackerFile(trackerFile)
 	if err != nil {
 		return "", fmt.Errorf("could not read tracker file: %w", err)
