@@ -42,6 +42,14 @@ func RunFromCache(binaryName string, args []string, tempDir, trackerFile string,
 		return errors.New("binary name not provided")
 	}
 
+	binaryPath, err := exec.LookPath(binaryName)
+	if err == nil && transparentMode {
+		if verbosityLevel >= normalVerbosity {
+			fmt.Printf("Running '%s' from PATH...\n", binaryName)
+		}
+		return runBinary(binaryPath, args, verbosityLevel)
+	}
+
 	// Extract the base name of the binary
 	baseName := filepath.Base(binaryName)
 
@@ -71,16 +79,15 @@ func RunFromCache(binaryName string, args []string, tempDir, trackerFile string,
 				return err
 			}
 			return cleanCache(tempDir, trackerFile, verbosityLevel)
-		} else {
-			// Run the binary from the cache if it matches the requested binary
-			if verbosityLevel >= normalVerbosity {
-				fmt.Printf("Running '%s' from cache...\n", binaryName)
-			}
-			if err := runBinary(filepath.Join(tempDir, baseName), args, verbosityLevel); err != nil {
-				return err
-			}
-			return cleanCache(tempDir, trackerFile, verbosityLevel)
 		}
+		// Run the binary from the cache if it matches the requested binary
+		if verbosityLevel >= normalVerbosity {
+			fmt.Printf("Running '%s' from cache...\n", binaryName)
+		}
+		if err := runBinary(filepath.Join(tempDir, baseName), args, verbosityLevel); err != nil {
+			return err
+		}
+		return cleanCache(tempDir, trackerFile, verbosityLevel)
 	}
 
 	if verbosityLevel >= normalVerbosity {
