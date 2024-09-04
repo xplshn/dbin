@@ -255,64 +255,56 @@ func listFilesInDir(dir string) ([]string, error) {
 
 // validateProgramsFrom checks the validity of programs against a remote source
 func validateProgramsFrom(installDir, trackerFile string, metadataURLs, programsToValidate []string) ([]string, error) {
-	// Fetch the list of binaries from the remote source
 	remotePrograms, err := listBinaries(metadataURLs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list remote binaries: %w", err)
 	}
 
-	// List files from the specified directory
 	files, err := listFilesInDir(installDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files in %s: %w", installDir, err)
 	}
 
-	validPrograms := []string{}
-	invalidPrograms := []string{}
-
-	// Remove duplicate entries from the programs list
 	programsToValidate = removeDuplicates(programsToValidate)
+	validPrograms := make([]string, 0, len(programsToValidate))
 
-	// Function to get the program name for validation
-	getProgramNameForValidation := func(binaryName string) (string, error) {
-		realBinaryName, err := getBinaryNameFromTrackerFile(trackerFile, binaryName)
-		if err != nil {
-			return "", err
-		}
-		return realBinaryName, nil
+	// Inline function to check if a file is a symlink
+	isSymlink := func(filePath string) bool {
+		fileInfo, err := os.Lstat(filePath)
+		return err == nil && fileInfo.Mode()&os.ModeSymlink != 0
 	}
 
-	// Inline function to validate a program name
-	validateProgram := func(program string) (bool, string) {
-		realBinaryName, _ := getProgramNameForValidation(program)
-		if realBinaryName == "" {
-			realBinaryName = program
+	// Inline function to get the binary name or fall back to the original name
+	getBinaryName := func(file string) string {
+		binaryName, err := getBinaryNameFromTrackerFile(trackerFile, file)
+		if err != nil || binaryName == "" {
+			return file
 		}
-		if contains(remotePrograms, realBinaryName) {
-			return true, realBinaryName
+		return binaryName
+	}
+
+	// Inline function to validate a file against the remote program list
+	validate := func(file string) bool {
+		if isSymlink(file) {
+			return false
 		}
-		return false, realBinaryName
+		binaryName := getBinaryName(filepath.Base(file))
+		return contains(remotePrograms, binaryName)
 	}
 
 	if len(programsToValidate) == 0 {
 		// Validate all files in the directory
 		for _, file := range files {
-			fileName := filepath.Base(file)
-			isValid, binaryName := validateProgram(fileName)
-			if isValid {
-				validPrograms = append(validPrograms, binaryName)
-			} else {
-				invalidPrograms = append(invalidPrograms, binaryName)
+			if validate(file) {
+				validPrograms = append(validPrograms, filepath.Base(file))
 			}
 		}
 	} else {
 		// Validate only the specified programs
 		for _, program := range programsToValidate {
-			isValid, binaryName := validateProgram(program)
-			if isValid {
-				validPrograms = append(validPrograms, binaryName)
-			} else {
-				invalidPrograms = append(invalidPrograms, binaryName)
+			file := filepath.Join(installDir, program)
+			if validate(file) {
+				validPrograms = append(validPrograms, program)
 			}
 		}
 	}
