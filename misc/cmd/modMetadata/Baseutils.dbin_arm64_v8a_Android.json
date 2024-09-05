@@ -3490,7 +3490,7 @@
     "description": "A Software Suite that provides Several Unix Utilities in a single Executable",
     "download_url": "https://bin.ajam.dev/arm64_v8a_Android/Baseutils/busybox/tar",
     "size": "517.95 kB",
-    "b3sum": "4c9f99f5de95ceb497d6efcf1567d600d62c583ebe8160261f7a259554caa715",
+    "b3sum": "0bb687913bfe42e809c8194f6a4c7719da5af7b92345b7573f57ab385a8dc5c4",
     "sha256": "696be73156ee29bc175664d2da9a79a9b2774ed0fc5fade1b8eac69c735163c5",
     "build_date": "2023-05-19T02:35:39",
     "repo_url": "https://git.busybox.net/busybox/",
@@ -9329,7 +9329,7 @@
     "name": "curl",
     "download_url": "https://bin.ajam.dev/arm64_v8a_Android/Baseutils/curl",
     "size": "5.3 MB",
-    "build_date": "2024-09-01T19:05:41"
+    "build_date": "2024-09-03T19:09:30"
   },
   {
     "name": "cut",
@@ -14869,7 +14869,7 @@
     "name": "rsync",
     "download_url": "https://bin.ajam.dev/arm64_v8a_Android/Baseutils/rsync",
     "size": "5.26 MB",
-    "build_date": "2024-09-01T19:17:35"
+    "build_date": "2024-09-03T19:22:41"
   },
   {
     "name": "run-parts",
@@ -15397,7 +15397,7 @@
     "name": "wget",
     "download_url": "https://bin.ajam.dev/arm64_v8a_Android/Baseutils/wget",
     "size": "5.81 MB",
-    "build_date": "2024-09-01T19:25:28"
+    "build_date": "2024-09-03T19:30:33"
   },
   {
     "name": "whereis",
