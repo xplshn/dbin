@@ -1,3 +1,4 @@
+#This has been moved to: https://github.com/xplshn/dbin-metadata/blob/master/.github/workflows/gen_update_metadata.yml
 name: Modify Toolpacks & Baseutils metadata
 
 on:
