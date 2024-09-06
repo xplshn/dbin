@@ -94,8 +94,8 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 
 	getMetadataURLs := func(arch string) []string {
 		return []string{
-			"https://raw.githubusercontent.com/xplshn/dbin/master/misc/cmd/modMetadata/Toolpacks.dbin_" + arch + ".json",
-			"https://raw.githubusercontent.com/xplshn/dbin/master/misc/cmd/modMetadata/Baseutils.dbin_" + arch + ".json",
+			"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Toolpacks.dbin_" + arch + ".json",
+			"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Baseutils.dbin_" + arch + ".json",
 		}
 	}
 
