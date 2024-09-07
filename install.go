@@ -9,15 +9,15 @@ import (
 )
 
 // installBinary fetches and installs the binary, logging based on verbosity levels.
-func installBinary(ctx context.Context, binaryName, installDir, trackerFile string, verbosityLevel Verbosity, repositories []string) error {
-	url, err := findURL(binaryName, trackerFile, repositories)
+func installBinary(ctx context.Context, binaryName, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
+	url, checksum, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
 	if err != nil {
 		// Return the error directly without printing/logging
 		return err
 	}
 
 	destination := filepath.Join(installDir, filepath.Base(binaryName))
-	_, err = fetchBinaryFromURLToDest(ctx, url, destination)
+	_, err = fetchBinaryFromURLToDest(ctx, url, checksum, destination)
 	if err != nil {
 		// Return the error directly without printing/logging
 		return fmt.Errorf("error fetching binary %s: %v", binaryName, err)
@@ -39,7 +39,7 @@ func installBinary(ctx context.Context, binaryName, installDir, trackerFile stri
 }
 
 // multipleInstall installs multiple binaries concurrently, respecting verbosity levels.
-func multipleInstall(ctx context.Context, binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories []string) error {
+func multipleInstall(ctx context.Context, binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(binaries))
 
@@ -47,7 +47,7 @@ func multipleInstall(ctx context.Context, binaries []string, installDir, tracker
 		wg.Add(1)
 		go func(binaryName string) {
 			defer wg.Done()
-			if err := installBinary(ctx, binaryName, installDir, trackerFile, verbosityLevel, repositories); err != nil {
+			if err := installBinary(ctx, binaryName, installDir, trackerFile, verbosityLevel, repositories, metadataURLs); err != nil {
 				errChan <- err
 			}
 		}(binaryName)
@@ -75,13 +75,13 @@ func multipleInstall(ctx context.Context, binaries []string, installDir, tracker
 }
 
 // installCommand installs one or more binaries based on the verbosity level.
-func installCommand(binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories []string) error {
+func installCommand(binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	if len(binaries) == 1 {
-		return installBinary(context.Background(), binaries[0], installDir, trackerFile, verbosityLevel, repositories)
+		return installBinary(context.Background(), binaries[0], installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 	} else if len(binaries) > 1 {
 		// Remove duplicates before processing
 		binaries = removeDuplicates(binaries)
-		return multipleInstall(context.Background(), binaries, installDir, trackerFile, verbosityLevel, repositories)
+		return multipleInstall(context.Background(), binaries, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 	}
 	return nil
 }

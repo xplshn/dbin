@@ -16,7 +16,7 @@ type Verbosity int8
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
-	version                             = "0.4"
+	version                             = "0.5p_exp"
 	indicator                           = "...>"
 	maxCacheSize                        = 10
 	binariesToDelete                    = 5
@@ -229,7 +229,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaryName := args[0]
-		url, err := findURL(binaryName, trackerFile, repositories)
+		url, _, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
@@ -242,7 +242,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := installCommand(binaries, installDir, trackerFile, verbosityLevel, repositories)
+		err := installCommand(binaries, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -377,9 +377,9 @@ dbin run btop`,
 			os.Exit(1)
 		}
 
-		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, runCommandTrackerFile, transparentMode, verbosityLevel, repositories)
+		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, runCommandTrackerFile, transparentMode, verbosityLevel, repositories, metadataURLs)
 	case "tldr":
-		RunFromCache("tlrc", flag.Args()[1:], tempDir, runCommandTrackerFile, true, verbosityLevel, repositories)
+		RunFromCache("tlrc", flag.Args()[1:], tempDir, runCommandTrackerFile, true, verbosityLevel, repositories, metadataURLs)
 	case "update", "u":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {

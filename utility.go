@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/goccy/go-json"
 	"io"
@@ -78,8 +80,8 @@ func (s *Spinner) getSpeed() time.Duration {
 	return s.speed
 }
 
-// fetchBinaryFromURLToDest downloads the file from the given URL to the specified destination
-func fetchBinaryFromURLToDest(ctx context.Context, url string, destination string) (string, error) {
+// fetchBinaryFromURLToDest downloads the file from the given URL to the specified destination and checks the checksum if provided.
+func fetchBinaryFromURLToDest(ctx context.Context, url, checksum string, destination string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -112,7 +114,7 @@ func fetchBinaryFromURLToDest(ctx context.Context, url string, destination strin
 	buf := make([]byte, 4096)
 	startTime := time.Now()
 
-	// Label to break out of the loop
+	hash := sha256.New()
 downloadLoop:
 	for {
 		select {
@@ -126,6 +128,13 @@ downloadLoop:
 					_ = os.Remove(tempFile)
 					return "", err
 				}
+
+				// Write to hash for checksum calculation
+				if _, err := hash.Write(buf[:n]); err != nil {
+					_ = os.Remove(tempFile)
+					return "", err
+				}
+
 				downloaded += int64(n)
 				elapsed := time.Since(startTime).Seconds()
 				speed := float64(downloaded) / elapsed // bytes per second
@@ -150,6 +159,17 @@ downloadLoop:
 				return "", err
 			}
 		}
+	}
+
+	// Final checksum verification
+	if checksum != "" {
+		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
+		if calculatedChecksum != checksum {
+			_ = os.Remove(tempFile)
+			return "", fmt.Errorf("checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
+		}
+	} else {
+		fmt.Println("Warning: No checksum exists for this binary in the metadata files, skipping verification.")
 	}
 
 	// Make a few corrections in case the downloaded binary is a nix object
@@ -492,18 +512,14 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %v", filePath, err)
 	}
-
 	// Regex to match and remove the /nix/store/.../ prefix in the shebang line, preserving the rest of the path
 	nixShebangRegex := regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`)
 	// Regex to match and remove the /nix/store/*/bin/ prefix in other lines
 	nixBinPathRegex := regexp.MustCompile(`/nix/store/[^/]+/bin/`)
-
 	// Split content by lines
 	lines := strings.Split(string(content), "\n")
-
 	// Flag to track if any corrections were made
 	correctionsMade := false
-
 	// Handle the shebang line separately if it exists and matches the nix pattern
 	if len(lines) > 0 && nixShebangRegex.MatchString(lines[0]) {
 		lines[0] = nixShebangRegex.ReplaceAllString(lines[0], "#!/")
@@ -515,7 +531,6 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 		}
 		correctionsMade = true
 	}
-
 	// If any corrections were made, write the modified content back to the file
 	if correctionsMade {
 		if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
@@ -523,6 +538,5 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 		}
 		fmt.Printf("[%s] is a nix object. Corrections have been made.\n", filepath.Base(filePath))
 	}
-
 	return nil
 }
