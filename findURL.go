@@ -13,7 +13,7 @@ func findURL(binaryName, trackerFile string, repositories []string, metadataURLs
 	if err == nil {
 		if binInfo.Source != "" {
 			// If the download_url (Source) is available, return it with SHA256
-			fmt.Printf("\033[2K\rFound \"%s\" via the metadata files\n", binaryName)
+			fmt.Printf("\033[2K\rFound \"%s\" via the metadata files\033[2K\r", binaryName)
 			return binInfo.Source, binInfo.SHA256, nil
 		}
 	}
@@ -23,7 +23,7 @@ func findURL(binaryName, trackerFile string, repositories []string, metadataURLs
 	for _, repository := range repositories {
 		iterations++
 		url := fmt.Sprintf("%s%s", repository, binaryName)
-		fmt.Printf("\033[2K\r<%d/%d> | Working: Checking if \"%s\" is in the repos.", iterations, len(repositories), binaryName)
+		fmt.Printf("\033[2K\r<%d/%d> | Working: Checking if \"%s\" is in the repos", iterations, len(repositories), binaryName)
 		resp, err := http.Head(url)
 
 		if err == nil && resp.StatusCode == http.StatusOK {
