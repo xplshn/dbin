@@ -10,8 +10,9 @@ import (
 )
 
 type labeledString struct {
-	string string
-	label  string
+	mainURL     string
+	fallbackURL string
+	label       string
 }
 
 type Item struct {
@@ -107,25 +108,46 @@ func saveJSON(filename string, items []Item) error {
 	return nil
 }
 
+// downloadWithFallback tries to download from the primary URL and falls back if it fails
+func downloadWithFallback(repo labeledString) ([]Item, error) {
+	// Try main URL first
+	items, err := downloadJSON(repo.mainURL)
+	if err == nil {
+		fmt.Printf("Downloaded JSON from: %s\n", repo.mainURL)
+		return items, nil
+	}
+
+	// If main URL fails, try the fallback URL
+	fmt.Printf("Error downloading from main URL %s: %v. Trying fallback URL...\n", repo.mainURL, err)
+	items, err = downloadJSON(repo.fallbackURL)
+	if err == nil {
+		fmt.Printf("Downloaded JSON from fallback URL: %s\n", repo.fallbackURL)
+		return items, nil
+	}
+
+	// Return the error if both fail
+	fmt.Printf("Error downloading from fallback URL %s: %v\n", repo.fallbackURL, err)
+	return nil, err
+}
+
 func main() {
 	validatedArchs := []string{"x86_64_Linux", "aarch64_arm64_Linux", "arm64_v8a_Android", "x64_Windows"}
 
 	for _, arch := range validatedArchs {
 		repos := []labeledString{
-			/*  ,---- [ NOTICE ]
-				|This "Toolpacks" label won't resolve to true against "Remove the repo's label" section
-				| in processItems() Its okay because Toolpacks is the main repo.                      -
-				| Baseutils needs a Label there because Baseutils is INSIDE of "Toolpacks"
-				`----
-			/*/
-			{"https://bin.ajam.dev/" + arch + "/METADATA.json", "Toolpacks"},
-			{"https://bin.ajam.dev/" + arch + "/Baseutils/METADATA.json", "Baseutils"},
+			// Main URL and fallback URL are added for each repo
+			{"https://bin.ajam.dev/" + arch + "/METADATA.json",
+				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/" + arch + "/METADATA.json?download=true",
+				"Toolpacks"},
+			{"https://bin.ajam.dev/" + arch + "/Baseutils/METADATA.json",
+				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/Baseutils/METADATA.json?download=true",
+				"Baseutils"},
 		}
 
 		for _, repo := range repos {
-			items, err := downloadJSON(repo.string)
+			items, err := downloadWithFallback(repo)
 			if err != nil {
-				fmt.Printf("Error downloading JSON from %s: %v\n", repo, err)
+				fmt.Printf("Error downloading JSON from both main and fallback URLs for repo %s: %v\n", repo.label, err)
 				continue
 			}
 
