@@ -140,3 +140,6 @@ Also, I need help optimizing the cyclomatic complexity of `dbin`.
 
 ## License
 dbin is licensed under the RABRMS License. This allows for the use, modification, and distribution of the software under certain conditions. For more details, please refer to the [LICENSE](LICENSE) file. This license is equivalent to the New or Revised BSD License.
+
+### Its pretty safe to state, that we are, ![cooltext466498248029130](https://github.com/user-attachments/assets/4397b1d3-44f2-4ae9-99c6-7379860bfa73)
+
