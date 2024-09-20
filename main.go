@@ -333,7 +333,7 @@ dbin run btop`,
 		} else {
 			binaryInfo, err := getBinaryInfo(trackerFile, binaryName, metadataURLs)
 			if err != nil {
-				fmt.Printf("error: %v\n", err)
+				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}
 			fmt.Printf("Name: %s\n", binaryInfo.Name)
