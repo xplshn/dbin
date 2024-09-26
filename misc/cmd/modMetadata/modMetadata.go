@@ -143,7 +143,7 @@ func main() {
 				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/Baseutils/METADATA.json?download=true",
 				"Baseutils"},
 			// --- Toolpacks-extra
-				{"https://huggingface.co/datasets/Azathothas/Toolpacks-Extras/resolve/main/" + arch + "/METADATA.json",
+				{"https://huggingface.co/datasets/Azathothas/Toolpacks-Extras/resolve/main/" + arch + "/METADATA.json?download=true",
 				"https://huggingface.co/datasets/Azathothas/Toolpacks-Extras/resolve/main/",
 				"Toolpacks-extras"},
 		}
