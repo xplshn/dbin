@@ -56,7 +56,7 @@ func processItems(items []Item, real_arch string, repo labeledString) []Item {
 			items[i].Shasum = items[i].Sha256 // direct mapping from "shasum"
 			items[i].Bsum = items[i].B3sum    // direct mapping from "bsum"
 		}
-		
+
 		// If resolveToFinalURL is false, skip URL transformation
 		if !repo.resolveToFinalURL {
 			continue

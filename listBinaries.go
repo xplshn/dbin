@@ -9,17 +9,19 @@ import (
 
 // Exclude specified file types and file names, these shall not appear in Lists nor in the Search Results
 var excludedFileTypes = map[string]struct{}{
-	".7z":   {},
-	".bz2":  {},
-	".json": {},
-	".gz":   {},
-	".md":   {},
-	".txt":  {},
-	".tar":  {},
-	".zip":  {},
-	".cfg":  {},
-	".dir":  {},
-	".test": {},
+	".7z":       {},
+	".bz2":      {},
+	".json":     {},
+	".gz":       {},
+	".xz":       {},
+	".md":       {},
+	".txt":      {},
+	".tar":      {},
+	".zip":      {},
+	".cfg":      {},
+	".dir":      {},
+	".test":     {},
+	".AppImage": {}, // Majority doesn't work, NixAppImages do work however.
 }
 
 var excludedFileNames = map[string]struct{}{

@@ -327,7 +327,7 @@ dbin run btop`,
 			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
 		}
-	case "info", "i":
+	case "info", "-i":
 		var binaryName string
 		if len(args) > 0 {
 			binaryName = args[0]
@@ -366,6 +366,9 @@ dbin run btop`,
 			}
 			if binaryInfo.Source != "" {
 				fmt.Printf("Source: %s\n", binaryInfo.Source)
+			}
+			if binaryInfo.Note != "" {
+				fmt.Printf("Note: %s\n", binaryInfo.Note)
 			}
 			if binaryInfo.SHA256 != "" {
 				fmt.Printf("SHA256: %s\n", binaryInfo.SHA256)
