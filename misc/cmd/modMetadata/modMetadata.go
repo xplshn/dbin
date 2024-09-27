@@ -166,7 +166,7 @@ func main() {
 			}
 
 			processedItems := processItems(items, realArch, repo)
-			outputFile := fmt.Sprintf("%s.dbin_%s.json", repo.label, arch)
+			outputFile := fmt.Sprintf("%s.dbin_%s.json", repo.label, realArch)
 
 			if err := saveJSON(outputFile, processedItems); err != nil {
 				fmt.Printf("Error saving JSON to %s: %v\n", outputFile, err)

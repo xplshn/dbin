@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/goccy/go-json"
 	"io"
 	"net/http"
 	"os"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/goccy/go-json"
 )
 
 const (
@@ -82,7 +83,20 @@ func (s *Spinner) getSpeed() time.Duration {
 
 // fetchBinaryFromURLToDest downloads the file from the given URL to the specified destination and checks the checksum if provided.
 func fetchBinaryFromURLToDest(ctx context.Context, url, checksum string, destination string) (string, error) {
-	resp, err := http.Get(url)
+	// Create a new HTTP request with cache-control headers
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request for %s: %v", url, err)
+	}
+
+	// Add headers to disable caching
+	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Expires", "0")
+
+	// Perform the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -215,17 +229,32 @@ func fetchJSON(url string, v interface{}) error {
 	spinner.Start()
 	defer spinner.Stop()
 
-	response, err := http.Get(url)
+	// Create a new HTTP request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request for %s: %v", url, err)
+	}
+
+	// Add headers to disable caching
+	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Expires", "0")
+
+	// Perform the request using http.DefaultClient
+	client := &http.Client{}
+	response, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("error fetching from %s: %v", url, err)
 	}
 	defer response.Body.Close()
 
+	// Read the response body
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return fmt.Errorf("error reading from %s: %v", url, err)
 	}
 
+	// Unmarshal the JSON response
 	if err := json.Unmarshal(body, v); err != nil {
 		return fmt.Errorf("error decoding from %s: %v", url, err)
 	}

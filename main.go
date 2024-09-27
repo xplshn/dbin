@@ -1,4 +1,4 @@
-//usr/bin/env go run findURL.go fsearch.go info.go install.go listBinaries.go main.go remove.go run.go update.go utility.go "$@"; exit $?
+// usr/bin/env go run findURL.go fsearch.go info.go install.go listBinaries.go main.go remove.go run.go update.go utility.go "$@"; exit $?
 // dbin - 📦 Poor man's package manager. The easy to use, easy to get, suckless software distribution system
 package main
 
@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/xplshn/a-utils/pkg/ccmd"
 )
@@ -27,6 +28,15 @@ const (
 	silentVerbosityWithErrors Verbosity = -1
 	extraSilent               Verbosity = -2
 )
+
+// parseColonSeparatedEnv splits a colon-separated string into a slice. If the environment variable is not set or is empty, it returns the provided default slice.
+func parseColonSeparatedEnv(envVar string, defaultValue []string) []string {
+	envValue := os.Getenv(envVar)
+	if envValue == "" {
+		return defaultValue
+	}
+	return strings.Split(envValue, ";")
+}
 
 func getEnvVar(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
@@ -70,36 +80,37 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 		return "", "", "", nil, nil, false, fmt.Errorf("failed to parse DBIN_NOTRUNCATION: %v", err)
 	}
 
-	// The repo, its like this...
 	determineArch := func() (string, error) {
 		arch := runtime.GOARCH + "_" + runtime.GOOS
-		switch arch {
-		case "amd64_linux":
-			return "x86_64_Linux", nil
-		case "arm64_linux":
-			return "aarch64_arm64_Linux", nil
-		case "arm64_android":
-			return "arm64_v8a_Android", nil
-		case "amd64_windows":
-			return "x64_Windows", nil
-		default:
+
+		if arch != "amd64_linux" && arch != "arm64_linux" && arch != "arm64_android" {
 			return "", fmt.Errorf(unsupportedArchMsg + arch)
 		}
+
+		return arch, nil
 	}
 
 	getRepositories := func(arch string) []string {
-		return []string{
+		// Default repository URLs
+		defaultRepos := []string{
 			"https://bin.ajam.dev/" + arch + "/",
 			"https://bin.ajam.dev/" + arch + "/Baseutils/",
 		}
+
+		// Parse DBIN_REPO_URLS environment variable or return defaults
+		return parseColonSeparatedEnv("DBIN_REPO_URLS", defaultRepos)
 	}
 
 	getMetadataURLs := func(arch string) []string {
-		return []string{
+		// Default metadata URLs
+		defaultMetadataURLs := []string{
 			"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Toolpacks.dbin_" + arch + ".json",
 			"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Baseutils.dbin_" + arch + ".json",
 			"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Toolpacks-extras.dbin_" + arch + ".json",
 		}
+
+		// Parse DBIN_METADATA_URLS environment variable or return defaults
+		return parseColonSeparatedEnv("DBIN_METADATA_URLS", defaultMetadataURLs)
 	}
 
 	arch, err := determineArch()

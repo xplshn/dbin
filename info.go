@@ -16,7 +16,7 @@ type BinaryInfo struct {
 	Updated     string `json:"repo_updated"`
 	Size        string `json:"size"`
 	Extras      string `json:"extra_bins"`
-	SHA256      string `json:"sha256"`
+	SHA256      string `json:"sha256sum"`
 	Source      string `json:"download_url"`
 }
 
