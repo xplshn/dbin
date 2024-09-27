@@ -10,9 +10,10 @@ import (
 )
 
 type labeledString struct {
-	mainURL     string
-	fallbackURL string
-	label       string
+	mainURL           string
+	fallbackURL       string
+	label             string
+	resolveToFinalURL bool
 }
 
 type Item struct {
@@ -44,11 +45,16 @@ func urldecode(encoded string) (string, error) {
 	return url.PathUnescape(encoded)
 }
 
-func processItems(items []Item, real_arch string, repo_label string) []Item {
+func processItems(items []Item, real_arch string, repo labeledString) []Item {
 	for i, item := range items {
 		// Map fields from new to old format
 		items[i].Sha256 = item.Shasum    // direct mapping from "shasum"
 		items[i].B3sum = item.Bsum       // direct mapping from "bsum"
+
+		// If resolveToFinalURL is false, skip URL transformation
+		if !repo.resolveToFinalURL {
+			continue
+		}
 
 		// Parse the download URL to get its path
 		parsedURL, err := url.Parse(item.DownloadURL)
@@ -68,8 +74,8 @@ func processItems(items []Item, real_arch string, repo_label string) []Item {
 		}
 
 		// Remove the repo's label
-		if strings.HasPrefix(cleanPath, repo_label+"/") {
-			cleanPath = strings.TrimPrefix(cleanPath, repo_label+"/")
+		if strings.HasPrefix(cleanPath, repo.label+"/") {
+			cleanPath = strings.TrimPrefix(cleanPath, repo.label+"/")
 		}
 
 		// Set the correct `Name` field based on the path
@@ -143,13 +149,13 @@ func main() {
 		repos := []labeledString{
 			{"https://bin.ajam.dev/" + arch + "/METADATA.json",
 				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/" + arch + "/METADATA.json?download=true",
-				"Toolpacks"},
+				"Toolpacks", true},
 			{"https://bin.ajam.dev/" + arch + "/Baseutils/METADATA.json",
 				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/Baseutils/METADATA.json?download=true",
-				"Baseutils"},
+				"Baseutils", true},
 			{"https://pkg.ajam.dev/" + arch + "/METADATA.json?download=true",
 				"https://pkg.ajam.dev/",
-				"Toolpacks-extras"},
+				"Toolpacks-extras", false}, // Skip URL path transformation for Toolpacks-extras
 		}
 
 		for _, repo := range repos {
@@ -159,7 +165,7 @@ func main() {
 				continue
 			}
 
-			processedItems := processItems(items, realArch, repo.label)
+			processedItems := processItems(items, realArch, repo)
 			outputFile := fmt.Sprintf("%s.dbin_%s.json", repo.label, arch)
 
 			if err := saveJSON(outputFile, processedItems); err != nil {
