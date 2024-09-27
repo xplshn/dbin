@@ -23,8 +23,8 @@ type Item struct {
 	Size         string `json:"size,omitempty"`
 	B3sum        string `json:"b3sum,omitempty"`
 	Sha256       string `json:"sha256sum,omitempty"`
-	Bsum         string `json:"bsum,omitempty"`    // For compat with pkg.ajam.dev
-	Shasum       string `json:"shasum,omitempty"`  // For compat with pkg.ajam.dev
+	Bsum         string `json:"bsum,omitempty"`   // For compat with pkg.ajam.dev
+	Shasum       string `json:"shasum,omitempty"` // For compat with pkg.ajam.dev
 	BuildDate    string `json:"build_date,omitempty"`
 	RepoURL      string `json:"repo_url,omitempty"`
 	RepoAuthor   string `json:"repo_author,omitempty"`
@@ -48,8 +48,8 @@ func urldecode(encoded string) (string, error) {
 func processItems(items []Item, real_arch string, repo labeledString) []Item {
 	for i, item := range items {
 		// Map fields from new to old format
-		items[i].Sha256 = item.Shasum    // direct mapping from "shasum"
-		items[i].B3sum = item.Bsum       // direct mapping from "bsum"
+		items[i].Sha256 = item.Shasum // direct mapping from "shasum"
+		items[i].B3sum = item.Bsum    // direct mapping from "bsum"
 
 		// If resolveToFinalURL is false, skip URL transformation
 		if !repo.resolveToFinalURL {
@@ -165,14 +165,22 @@ func main() {
 				continue
 			}
 
-			processedItems := processItems(items, realArch, repo)
-			outputFile := fmt.Sprintf("%s.dbin_%s.json", repo.label, realArch)
-
-			if err := saveJSON(outputFile, processedItems); err != nil {
-				fmt.Printf("Error saving JSON to %s: %v\n", outputFile, err)
-				continue
+			save := func(outputFile string, processedItems []Item) {
+				if err := saveJSON(outputFile, processedItems); err != nil {
+					fmt.Printf("Error saving JSON to %s: %v\n", outputFile, err)
+					return
+				}
+				fmt.Printf("Processed and saved to %s\n", outputFile)
 			}
-			fmt.Printf("Processed and saved to %s\n", outputFile)
+
+			processedItems := processItems(items, realArch, repo)
+
+			// 0.FOURTH compat
+			outputFile := fmt.Sprintf("%s.dbin_%s.json", repo.label, realArch)
+			save(outputFile, processedItems)
+			// New dbin
+			outputFile = fmt.Sprintf("%s.dbin_%s.json", repo.label, arch)
+			save(outputFile, processedItems)
 		}
 	}
 }
