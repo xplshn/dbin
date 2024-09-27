@@ -75,11 +75,11 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 		arch := runtime.GOARCH + "_" + runtime.GOOS
 		switch arch {
 		case "amd64_linux":
-			return "x86_64_Linux", nil
+			return "x86_64-Linux", nil
 		case "arm64_linux":
-			return "aarch64_arm64_Linux", nil
+			return "aarch64_arm64-Linux", nil
 		case "arm64_android":
-			return "arm64_v8a_Android", nil
+			return "arm64_v8a-Android", nil
 		case "amd64_windows":
 			return "x64_Windows", nil
 		default:
