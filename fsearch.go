@@ -38,10 +38,10 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 	// Filter binaries based on the search term and architecture
 	searchResults := make([]string, 0)
 	for _, binary := range binaries {
-		if contains(filteredBinaries, binary.Name) && 
-			(strings.Contains(strings.ToLower(binary.Name), strings.ToLower(searchTerm)) || 
-			strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm))) {
-			
+		if contains(filteredBinaries, binary.Name) &&
+			(strings.Contains(strings.ToLower(binary.Name), strings.ToLower(searchTerm)) ||
+				strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm))) {
+
 			entry := fmt.Sprintf("%s - %s", binary.Name, binary.Description)
 			searchResults = append(searchResults, entry)
 		}

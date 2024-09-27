@@ -9,15 +9,15 @@ import (
 
 // Excluded file types and file names that shall not appear in Lists nor in Search Results
 var excludedFileTypes = []string{
-	".7z", ".bz2", ".json", ".gz", ".xz", ".md", 
-	".txt", ".tar", ".zip", ".cfg", ".dir", 
+	".7z", ".bz2", ".json", ".gz", ".xz", ".md",
+	".txt", ".tar", ".zip", ".cfg", ".dir",
 	".test", ".AppImage",
 }
 
 var excludedFileNames = []string{
-	"TEST", "LICENSE", "experimentalBinaries_dir", "bundles_dir", 
-	"blobs_dir", "robotstxt", "bdl.sh", 
-	"uroot", "uroot-busybox", "gobusybox", 
+	"TEST", "LICENSE", "experimentalBinaries_dir", "bundles_dir",
+	"blobs_dir", "robotstxt", "bdl.sh",
+	"uroot", "uroot-busybox", "gobusybox",
 	"sysinfo-collector", "neofetch", "sh",
 }
 

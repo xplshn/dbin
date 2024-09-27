@@ -10,7 +10,7 @@ import (
 
 // installBinary fetches and installs the binary, logging based on verbosity levels.
 func installBinary(ctx context.Context, binaryName, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
-	url, checksum, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
+	url, checksum, err := findURL(binaryName, trackerFile, repositories, metadataURLs, verbosityLevel)
 	if err != nil {
 		// Return the error directly without printing/logging
 		return err

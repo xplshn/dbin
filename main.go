@@ -1,4 +1,4 @@
-//usr/bin/env go run findURL.go fsearch.go info.go install.go listBinaries.go main.go remove.go run.go update.go utility.go "$@"; exit $?
+//usr/bin/env go run findURL.go fsearch.go info.go install.go listBinaries.go main.go remove.go run.go update.go utility.go utility_progressbar.go "$@"; exit $?
 // dbin - 📦 Poor man's package manager. The easy to use, easy to get, suckless software distribution system
 package main
 
@@ -243,13 +243,15 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaryName := args[0]
-		url, _, err := findURL(binaryName, trackerFile, repositories, metadataURLs)
+		url, _, err := findURL(binaryName, trackerFile, repositories, metadataURLs, verbosityLevel)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
 			}
 		}
-		fmt.Println(url)
+		if verbosityLevel >= normalVerbosity {
+			fmt.Println(url)
+		}
 	case "install", "add", "-i":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for install command.")
