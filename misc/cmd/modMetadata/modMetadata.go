@@ -22,7 +22,7 @@ type Item struct {
 	DownloadURL  string `json:"download_url,omitempty"`
 	Size         string `json:"size,omitempty"`
 	B3sum        string `json:"b3sum,omitempty"`
-	Sha256       string `json:"sha256sum,omitempty"`
+	Sha256       string `json:"sha256,omitempty"`
 	Bsum         string `json:"bsum,omitempty"`   // For compat with pkg.ajam.dev
 	Shasum       string `json:"shasum,omitempty"` // For compat with pkg.ajam.dev
 	BuildDate    string `json:"build_date,omitempty"`
