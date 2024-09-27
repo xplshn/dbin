@@ -131,7 +131,7 @@ func downloadWithFallback(repo labeledString) ([]Item, error) {
 }
 
 func main() {
-	validatedArchs := []string{"x86_64-Linux", "aarch64-Linux", "arm64_v8a_Android", "x64_Windows"}
+	validatedArchs := []string{"x86_64_Linux", "aarch64_Linux", "arm64_v8a_Android", "x64_Windows"}
 
 	for _, arch := range validatedArchs {
 		repos := []labeledString{
