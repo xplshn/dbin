@@ -26,18 +26,22 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 		binaries = append(binaries, tempBinaries...)
 	}
 
+	// Filter binaries based on exclusions
+	var allBinaryNames []string
+	for _, binary := range binaries {
+		if binary.Name != "" {
+			allBinaryNames = append(allBinaryNames, binary.Name)
+		}
+	}
+	filteredBinaries := filterBinaries(allBinaryNames)
+
 	// Filter binaries based on the search term and architecture
 	searchResults := make([]string, 0)
 	for _, binary := range binaries {
-		if strings.Contains(strings.ToLower(binary.Name), strings.ToLower(searchTerm)) || strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm)) {
-			ext := strings.ToLower(filepath.Ext(binary.Name))
-			base := filepath.Base(binary.Name)
-			if _, excluded := excludedFileTypes[ext]; excluded {
-				continue // Skip this binary if its extension is excluded
-			}
-			if _, excludedName := excludedFileNames[base]; excludedName {
-				continue // Skip this binary if its name is excluded
-			}
+		if contains(filteredBinaries, binary.Name) && 
+			(strings.Contains(strings.ToLower(binary.Name), strings.ToLower(searchTerm)) || 
+			strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm))) {
+			
 			entry := fmt.Sprintf("%s - %s", binary.Name, binary.Description)
 			searchResults = append(searchResults, entry)
 		}

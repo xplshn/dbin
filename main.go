@@ -237,7 +237,7 @@ dbin run btop`,
 	runCommandTrackerFile := filepath.Join(tempDir, "dbin.cached.tracker.json")
 
 	switch command {
-	case "findurl", "f":
+	case "findurl":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for findurl command.")
 			os.Exit(1)
@@ -250,7 +250,7 @@ dbin run btop`,
 			}
 		}
 		fmt.Println(url)
-	case "install", "add":
+	case "install", "add", "-i":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for install command.")
 			os.Exit(1)
@@ -262,7 +262,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		// fmt.Println("Installation completed successfully.")
-	case "remove", "del":
+	case "remove", "del", "-r":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for remove command.")
 			os.Exit(1)
@@ -274,7 +274,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		// fmt.Println("Removal completed successfully.")
-	case "list", "l":
+	case "list":
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
 				// Call fSearch with an empty query and a large limit to list all described binaries
@@ -292,7 +292,7 @@ dbin run btop`,
 				fmt.Println(binary)
 			}
 		}
-	case "search", "s":
+	case "search", "-q":
 		limit := 90
 		queryIndex := 0
 
@@ -327,7 +327,7 @@ dbin run btop`,
 			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
 		}
-	case "info", "-i":
+	case "info":
 		var binaryName string
 		if len(args) > 0 {
 			binaryName = args[0]
@@ -374,7 +374,7 @@ dbin run btop`,
 				fmt.Printf("SHA256: %s\n", binaryInfo.SHA256)
 			}
 		}
-	case "run", "r":
+	case "run":
 		if len(args) < 1 {
 			fmt.Println("Usage: dbin run <--transparent> [binary] <args>")
 			os.Exit(1)
@@ -397,7 +397,7 @@ dbin run btop`,
 		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, runCommandTrackerFile, transparentMode, verbosityLevel, repositories, metadataURLs)
 	case "tldr":
 		RunFromCache("tlrc", flag.Args()[1:], tempDir, runCommandTrackerFile, true, verbosityLevel, repositories, metadataURLs)
-	case "update", "u":
+	case "update":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {
 			programsToUpdate = os.Args[2:]
