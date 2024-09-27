@@ -17,28 +17,32 @@ type labeledString struct {
 }
 
 type Item struct {
-	Name         string `json:"name"`
-	Description  string `json:"description,omitempty"`
-	DownloadURL  string `json:"download_url,omitempty"`
-	Size         string `json:"size,omitempty"`
-	B3sum        string `json:"b3sum,omitempty"`
-	Sha256       string `json:"sha256,omitempty"`
-	Bsum         string `json:"bsum,omitempty"`   // For compat with pkg.ajam.dev
-	Shasum       string `json:"shasum,omitempty"` // For compat with pkg.ajam.dev
-	BuildDate    string `json:"build_date,omitempty"`
-	RepoURL      string `json:"repo_url,omitempty"`
-	RepoAuthor   string `json:"repo_author,omitempty"`
-	RepoInfo     string `json:"repo_info,omitempty"`
-	RepoUpdated  string `json:"repo_updated,omitempty"`
-	RepoReleased string `json:"repo_released,omitempty"`
-	RepoVersion  string `json:"repo_version,omitempty"`
-	RepoStars    string `json:"repo_stars,omitempty"`
-	RepoLanguage string `json:"repo_language,omitempty"`
-	RepoLicense  string `json:"repo_license,omitempty"`
-	RepoTopics   string `json:"repo_topics,omitempty"`
-	Category     string `json:"category,omitempty"` // For compat with pkg.ajam.dev
-	WebURL       string `json:"web_url,omitempty"`
-	ExtraBins    string `json:"extra_bins,omitempty"`
+	Name         string `json:"name"`                    // Name of the entry
+	B3sum        string `json:"b3sum,omitempty"`         // BLAKE3 CHECKSUM
+	Sha256       string `json:"sha256,omitempty"`        // SHA256 CHECKSUM
+	Description  string `json:"description,omitempty"`   // Description of the item
+	DownloadURL  string `json:"download_url,omitempty"`  // URL to download the item
+	Size         string `json:"size,omitempty"`          // Size of the item
+	RepoURL      string `json:"repo_url,omitempty"`      // URL of the repository
+	RepoAuthor   string `json:"repo_author,omitempty"`   // Author of the repository
+	RepoInfo     string `json:"repo_info,omitempty"`     // Info about the repository
+	RepoUpdated  string `json:"repo_updated,omitempty"`  // Last update date of the repo
+	RepoReleased string `json:"repo_released,omitempty"` // Release date of the repo
+	RepoVersion  string `json:"repo_version,omitempty"`  // Version of the item
+	RepoStars    string `json:"repo_stars,omitempty"`    // Stars on the repo
+	RepoLanguage string `json:"repo_language,omitempty"` // Language used in the repo
+	RepoLicense  string `json:"repo_license,omitempty"`  // License of the repo
+	RepoTopics   string `json:"repo_topics,omitempty"`   // Topics of the repo
+	WebURL       string `json:"web_url,omitempty"`       // Website URL of the item
+	BuildScript  string `json:"build_script,omitempty"`  // URL to the build script
+	ExtraBins    string `json:"extra_bins,omitempty"`    // Extra binaries, if any
+	BuildDate    string `json:"build_date,omitempty"`    // Build date of the item
+	Note         string `json:"note,omitempty"`          // Additional notes
+	// --- For compat with pkg.ajam.dev ---
+	Bsum     string `json:"bsum,omitempty"`
+	Shasum   string `json:"shasum,omitempty"`
+	Category string `json:"category,omitempty"`
+	// --- = ---
 }
 
 func urldecode(encoded string) (string, error) {
@@ -48,9 +52,11 @@ func urldecode(encoded string) (string, error) {
 func processItems(items []Item, real_arch string, repo labeledString) []Item {
 	for i, item := range items {
 		// Map fields from new to old format
-		items[i].Sha256 = item.Shasum // direct mapping from "shasum"
-		items[i].B3sum = item.Bsum    // direct mapping from "bsum"
-
+		if items[i].Shasum != "" || items[i].Bsum != "" {
+			items[i].Shasum = items[i].Sha256 // direct mapping from "shasum"
+			items[i].Bsum = items[i].B3sum    // direct mapping from "bsum"
+		}
+		
 		// If resolveToFinalURL is false, skip URL transformation
 		if !repo.resolveToFinalURL {
 			continue
