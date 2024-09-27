@@ -18,14 +18,14 @@ type Verbosity int8
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
-	version                             = "0.5p_exp"
+	version                             = "0.6p_exp"
 	indicator                           = "...>"
 	maxCacheSize                        = 10
 	binariesToDelete                    = 5
-	normalVerbosity           Verbosity = 1  // 0
-	extraVerbose              Verbosity = 2  // 1
-	silentVerbosityWithErrors Verbosity = -1 //-1
-	extraSilent               Verbosity = -2 //-2
+	normalVerbosity           Verbosity = 1
+	extraVerbose              Verbosity = 2
+	silentVerbosityWithErrors Verbosity = -1
+	extraSilent               Verbosity = -2
 )
 
 func getEnvVar(key, defaultValue string) string {
@@ -98,6 +98,7 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 		return []string{
 			"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Toolpacks.dbin_" + arch + ".json",
 			"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Baseutils.dbin_" + arch + ".json",
+			"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Toolpacks-extras.dbin_" + arch + ".json",
 		}
 	}
 
