@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/goccy/go-json"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -16,13 +16,14 @@ type labeledString struct {
 }
 
 type Item struct {
-	Name string `json:"name"`
-	//	RealName     *string `json:"real_name,omitempty"`
+	Name         string `json:"name"`
 	Description  string `json:"description,omitempty"`
 	DownloadURL  string `json:"download_url,omitempty"`
 	Size         string `json:"size,omitempty"`
 	B3sum        string `json:"b3sum,omitempty"`
-	Sha256       string `json:"sha256,omitempty"`
+	Sha256       string `json:"sha256sum,omitempty"`
+	Bsum         string `json:"bsum,omitempty"`    // For compat with pkg.ajam.dev
+	Shasum       string `json:"shasum,omitempty"`  // For compat with pkg.ajam.dev
 	BuildDate    string `json:"build_date,omitempty"`
 	RepoURL      string `json:"repo_url,omitempty"`
 	RepoAuthor   string `json:"repo_author,omitempty"`
@@ -34,6 +35,7 @@ type Item struct {
 	RepoLanguage string `json:"repo_language,omitempty"`
 	RepoLicense  string `json:"repo_license,omitempty"`
 	RepoTopics   string `json:"repo_topics,omitempty"`
+	Category     string `json:"category,omitempty"` // For compat with pkg.ajam.dev
 	WebURL       string `json:"web_url,omitempty"`
 	ExtraBins    string `json:"extra_bins,omitempty"`
 }
@@ -42,12 +44,15 @@ func urldecode(encoded string) (string, error) {
 	return url.PathUnescape(encoded)
 }
 
-func processItems(items []Item, arch string, repo_label string) []Item {
+func processItems(items []Item, real_arch string, repo_label string) []Item {
 	for i, item := range items {
+		// Map fields from new to old format
+		items[i].Sha256 = item.Shasum    // direct mapping from "shasum"
+		items[i].B3sum = item.Bsum       // direct mapping from "bsum"
+
 		// Parse the download URL to get its path
 		parsedURL, err := url.Parse(item.DownloadURL)
 		if err != nil {
-			// Handle the error appropriately
 			continue
 		}
 
@@ -58,8 +63,8 @@ func processItems(items []Item, arch string, repo_label string) []Item {
 		}
 
 		// Remove the architecture-specific path from the download URL path
-		if strings.HasPrefix(cleanPath, arch+"/") {
-			cleanPath = strings.TrimPrefix(cleanPath, arch+"/")
+		if strings.HasPrefix(cleanPath, real_arch+"/") {
+			cleanPath = strings.TrimPrefix(cleanPath, real_arch+"/")
 		}
 
 		// Remove the repo's label
@@ -67,7 +72,7 @@ func processItems(items []Item, arch string, repo_label string) []Item {
 			cleanPath = strings.TrimPrefix(cleanPath, repo_label+"/")
 		}
 
-		// Ensure real_name is always set
+		// Set the correct `Name` field based on the path
 		items[i].Name = cleanPath
 	}
 	return items
@@ -108,16 +113,13 @@ func saveJSON(filename string, items []Item) error {
 	return nil
 }
 
-// downloadWithFallback tries to download from the primary URL and falls back if it fails
 func downloadWithFallback(repo labeledString) ([]Item, error) {
-	// Try main URL first
 	items, err := downloadJSON(repo.mainURL)
 	if err == nil {
 		fmt.Printf("Downloaded JSON from: %s\n", repo.mainURL)
 		return items, nil
 	}
 
-	// If main URL fails, try the fallback URL
 	fmt.Printf("Error downloading from main URL %s: %v. Trying fallback URL...\n", repo.mainURL, err)
 	items, err = downloadJSON(repo.fallbackURL)
 	if err == nil {
@@ -125,26 +127,28 @@ func downloadWithFallback(repo labeledString) ([]Item, error) {
 		return items, nil
 	}
 
-	// Return the error if both fail
 	fmt.Printf("Error downloading from fallback URL %s: %v\n", repo.fallbackURL, err)
 	return nil, err
 }
 
 func main() {
-	validatedArchs := []string{"x86_64_Linux", "aarch64_Linux", "arm64_v8a_Android", "x64_Windows"}
+	validatedArchs := []string{"amd64_linux", "arm64_linux", "arm64_android"}
+	realArchs := []string{"x86_64_Linux", "aarch64_Linux", "arm64_v8a_Android", "x64_Windows"}
 
-	for _, arch := range validatedArchs {
+	// Loop over the indices to access both validatedArchs and realArchs
+	for i := range validatedArchs {
+		arch := validatedArchs[i]
+		realArch := realArchs[i]
+
 		repos := []labeledString{
-			// Main URL and fallback URL are added for each repo
 			{"https://bin.ajam.dev/" + arch + "/METADATA.json",
 				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/" + arch + "/METADATA.json?download=true",
 				"Toolpacks"},
 			{"https://bin.ajam.dev/" + arch + "/Baseutils/METADATA.json",
 				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/Baseutils/METADATA.json?download=true",
 				"Baseutils"},
-			// --- Toolpacks-extra
-				{"https://huggingface.co/datasets/Azathothas/Toolpacks-Extras/resolve/main/" + arch + "/METADATA.json?download=true",
-				"https://huggingface.co/datasets/Azathothas/Toolpacks-Extras/resolve/main/",
+			{"https://pkg.ajam.dev/" + arch + "/METADATA.json?download=true",
+				"https://pkg.ajam.dev/",
 				"Toolpacks-extras"},
 		}
 
@@ -155,8 +159,7 @@ func main() {
 				continue
 			}
 
-			processedItems := processItems(items, arch, repo.label)
-
+			processedItems := processItems(items, realArch, repo.label)
 			outputFile := fmt.Sprintf("%s.dbin_%s.json", repo.label, arch)
 
 			if err := saveJSON(outputFile, processedItems); err != nil {
