@@ -252,7 +252,7 @@ dbin run btop`,
 		if verbosityLevel >= normalVerbosity {
 			fmt.Println(url)
 		}
-	case "install", "add", "-i":
+	case "install", "add":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for install command.")
 			os.Exit(1)
@@ -264,7 +264,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		// fmt.Println("Installation completed successfully.")
-	case "remove", "del", "-r":
+	case "remove", "del":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for remove command.")
 			os.Exit(1)
@@ -294,7 +294,7 @@ dbin run btop`,
 				fmt.Println(binary)
 			}
 		}
-	case "search", "-q":
+	case "search":
 		limit := 90
 		queryIndex := 0
 
