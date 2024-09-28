@@ -1,6 +1,4 @@
 //go:build !spinner
-// +build !spinner
-
 package main
 
 import (
@@ -24,7 +22,7 @@ func spawnProgressBar(contentLength int64, useSpinnerType bool) *progressbar.Pro
 			progressbar.OptionClearOnFinish(),
 			progressbar.OptionFullWidth(),
 			progressbar.OptionShowBytes(true),
-			progressbar.OptionSpinnerType(39),
+			progressbar.OptionSpinnerType(68),
 		)
 	}
 
