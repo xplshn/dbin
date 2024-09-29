@@ -1,6 +1,4 @@
-//go:build spinner
-// +build spinner
-
+//go:build !progressbar
 package main
 
 import (

@@ -11,7 +11,7 @@ import (
 var excludedFileTypes = []string{
 	".7z", ".bz2", ".json", ".gz", ".xz", ".md",
 	".txt", ".tar", ".zip", ".cfg", ".dir",
-	".test", ".AppImage",
+	".test", ".appimage",
 }
 
 var excludedFileNames = []string{
