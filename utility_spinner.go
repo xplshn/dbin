@@ -176,7 +176,6 @@ downloadLoop:
 	if checksum != "" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
 		if calculatedChecksum != checksum {
-			_ = os.Remove(tempFile)
 			//_ = os.Remove(tempFile)
 			//return "", fmt.Errorf("checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
 			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s\n", checksum, calculatedChecksum)
