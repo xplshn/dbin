@@ -49,7 +49,7 @@ func urldecode(encoded string) (string, error) {
 	return url.PathUnescape(encoded)
 }
 
-func processItems(items []Item, real_arch string, repo labeledString) []Item {
+func processItems(items []Item, realArchs, validatedArchs []string, repo labeledString) []Item {
 	for i, item := range items {
 		// Map fields from new to old format
 		if items[i].Shasum != "" || items[i].Bsum != "" {
@@ -75,8 +75,11 @@ func processItems(items []Item, real_arch string, repo labeledString) []Item {
 		}
 
 		// Remove the architecture-specific path from the download URL path
-		if strings.HasPrefix(cleanPath, real_arch+"/") {
-			cleanPath = strings.TrimPrefix(cleanPath, real_arch+"/")
+		for _, prefix := range append(realArchs, validatedArchs...) {
+			if strings.HasPrefix(cleanPath, prefix) {
+				cleanPath = strings.TrimPrefix(cleanPath, prefix+"/")
+				break
+			}
 		}
 
 		// Remove the repo's label
@@ -145,7 +148,7 @@ func downloadWithFallback(repo labeledString) ([]Item, error) {
 
 func main() {
 	validatedArchs := []string{"amd64_linux", "arm64_linux", "arm64_android"}
-	realArchs := []string{"x86_64_Linux", "aarch64_Linux", "arm64_v8a_Android", "x64_Windows"}
+	realArchs := []string{"x86_64_Linux", "aarch64_Linux", "aarch64_arm64_Linux", "arm64_v8a_Android", "x64_Windows"}
 
 	// Loop over the indices to access both validatedArchs and realArchs
 	for i := range validatedArchs {
@@ -179,7 +182,7 @@ func main() {
 				fmt.Printf("Processed and saved to %s\n", outputFile)
 			}
 
-			processedItems := processItems(items, realArch, repo)
+			processedItems := processItems(items, realArchs, validatedArchs, repo)
 
 			// 0.FOURTH compat
 			outputFile := fmt.Sprintf("%s.dbin_%s.json", repo.label, realArch)
