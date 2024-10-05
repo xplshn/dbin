@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-json"
+	"github.com/pkg/xattr"
 )
 
 // removeDuplicates removes duplicate binaries from the list (used in ./install.go)
@@ -100,6 +101,13 @@ func validateProgramsFrom(installDir, trackerFile string, metadataURLs, programs
 		if isSymlink(file) {
 			return false
 		}
+
+		// Check for the user.ManagedBy attribute
+		managedBy, err := xattr.Get(file, "user.ManagedBy")
+		if err != nil || string(managedBy) != "dbin" {
+			return false
+		}
+
 		binaryName := getBinaryName(filepath.Base(file))
 		return contains(remotePrograms, binaryName)
 	}

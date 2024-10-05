@@ -18,7 +18,8 @@ type BinaryInfo struct {
 	Extras      string `json:"extra_bins"`
 	Note        string `json:"note"`
 	Source      string `json:"download_url"`
-	SHA256      string `json:"sha256"`
+	B3sum       string `json:"b3sum"`
+	Sha256      string `json:"sha256"`
 }
 
 // findBinaryInfo searches for binary metadata in the provided metadata slice.
@@ -35,6 +36,7 @@ func findBinaryInfo(metadata []map[string]interface{}, binaryName string) (Binar
 			extras, _ := binMap["extra_bins"].(string)
 			note, _ := binMap["note"].(string)
 			source, _ := binMap["download_url"].(string)
+			b3s, _ := binMap["b3sum"].(string)
 			sha256, _ := binMap["sha256"].(string)
 
 			return BinaryInfo{
@@ -48,7 +50,8 @@ func findBinaryInfo(metadata []map[string]interface{}, binaryName string) (Binar
 				Extras:      extras,
 				Note:        note,
 				Source:      source,
-				SHA256:      sha256,
+				B3sum:       b3s,
+				Sha256:      sha256,
 			}, true
 		}
 	}

@@ -1,10 +1,8 @@
-//go:build progressbar
 package main
 
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -13,7 +11,9 @@ import (
 	"path/filepath"
 
 	"github.com/goccy/go-json"
+	"github.com/pkg/xattr"
 	"github.com/schollz/progressbar/v3"
+	"github.com/zeebo/blake3"
 )
 
 func spawnProgressBar(contentLength int64, useSpinnerType bool) *progressbar.ProgressBar {
@@ -82,7 +82,7 @@ func fetchBinaryFromURLToDest(ctx context.Context, url, checksum, destination st
 	var downloaded int64
 	buf := make([]byte, 4096)
 
-	hash := sha256.New()
+	hash := blake3.New()
 
 downloadLoop:
 	for {
@@ -144,6 +144,11 @@ downloadLoop:
 	if err := os.Chmod(destination, 0755); err != nil {
 		_ = os.Remove(destination)
 		return "", fmt.Errorf("failed to set executable bit for %s: %v", destination, err)
+	}
+
+	// Mark the binary as ours
+	if err := xattr.Set(destination, "user.ManagedBy", []byte("dbin")); err != nil {
+		return "", fmt.Errorf("failed to set xattr for %s: %v", destination, err)
 	}
 
 	return destination, nil

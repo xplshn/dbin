@@ -372,8 +372,11 @@ dbin run btop`,
 			if binaryInfo.Note != "" {
 				fmt.Printf("Note: %s\n", binaryInfo.Note)
 			}
-			if binaryInfo.SHA256 != "" {
-				fmt.Printf("SHA256: %s\n", binaryInfo.SHA256)
+			if binaryInfo.B3sum != "" {
+				fmt.Printf("B3SUM: %s\n", binaryInfo.B3sum)
+			}
+			if binaryInfo.Sha256 != "" {
+				fmt.Printf("SHA256: %s\n", binaryInfo.B3sum)
 			}
 		}
 	case "run":

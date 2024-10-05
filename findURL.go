@@ -7,16 +7,16 @@ import (
 	"net/http"
 )
 
-// findURL fetches the URL and SHA256 for the specified binary
+// findURL fetches the URL and BLAKE3sum for the specified binary
 func findURL(binaryName, trackerFile string, repositories []string, metadataURLs []string, verbosityLevel Verbosity) (string, string, error) {
 	// Try to get binary info from info.go logic
 	binInfo, err := getBinaryInfo(trackerFile, binaryName, metadataURLs)
 	if err == nil && binInfo.Source != "" {
-		// If the download_url (Source) is available, return it with SHA256
+		// If the download_url (Source) is available, return it with BLAKE3sum
 		if verbosityLevel >= extraVerbose {
 			fmt.Printf("\033[2K\rFound \"%s\" via the metadata files\n", binaryName)
 		}
-		return binInfo.Source, binInfo.SHA256, nil
+		return binInfo.Source, binInfo.B3sum, nil
 	}
 
 	// If no valid download_url found, proceed with HEAD requests on repositories

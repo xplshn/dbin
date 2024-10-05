@@ -2,7 +2,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/zeebo/blake3"
 )
 
 // update checks for updates to the valid programs and installs any that have changed.
@@ -58,13 +59,13 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 				progressMutex.Unlock()
 				return
 			}
-			localSHA256, err := getLocalSHA256(installPath)
+			localB3sum, err := getLocalB3sum(installPath)
 			if err != nil {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get SHA256 for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get B3sum for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
 				}
 				progressMutex.Unlock()
 				return
@@ -82,18 +83,18 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 				return
 			}
 
-			if binaryInfo.SHA256 == "" {
+			if binaryInfo.B3sum == "" {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Skipping %s because the SHA256 field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Skipping %s because the B3sum field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
 				}
 				progressMutex.Unlock()
 				return
 			}
 
-			if checkDifferences(localSHA256, binaryInfo.SHA256) == 1 {
+			if checkDifferences(localB3sum, binaryInfo.B3sum) == 1 {
 				err := installCommand([]string{program}, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 				if err != nil {
 					progressMutex.Lock()
@@ -141,28 +142,34 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 	return nil
 }
 
-// getLocalSHA256 calculates the SHA256 checksum of the local file.
-func getLocalSHA256(filePath string) (string, error) {
+// getLocalB3sum calculates the B3sum checksum of the local file.
+func getLocalB3sum(filePath string) (checksum string, err error) {
 	// Open the file for reading
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open file: %v", err)
+		return "", fmt.Errorf("failed to open file %s: %v", filePath, err)
 	}
-	defer file.Close()
+	// Ensure the file is closed when the function returns
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close file %s: %v", filePath, cerr)
+		}
+	}()
 
-	// Calculate SHA256 checksum
-	hasher := sha256.New()
+	// Calculate B3sum checksum
+	hasher := blake3.New()
 	if _, err := io.Copy(hasher, file); err != nil {
-		return "", fmt.Errorf("failed to calculate SHA256: %v", err)
+		return "", fmt.Errorf("failed to compute B3SUM of %s: %v", filePath, err)
 	}
-	sha256Checksum := hex.EncodeToString(hasher.Sum(nil))
 
-	return sha256Checksum, nil
+	// Return checksum as a hex string
+	checksum = hex.EncodeToString(hasher.Sum(nil))
+	return checksum, nil
 }
 
-// checkDifferences compares local and remote SHA256 checksums.
-func checkDifferences(localSHA256, remoteSHA256 string) int {
-	if localSHA256 != remoteSHA256 {
+// checkDifferences compares local and remote B3sum checksums.
+func checkDifferences(localB3sum, remoteB3sum string) int {
+	if localB3sum != remoteB3sum {
 		return 1
 	}
 	return 0
