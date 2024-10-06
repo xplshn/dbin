@@ -9,7 +9,6 @@ require (
 	github.com/schollz/progressbar/v3 v3.16.1
 	github.com/tdewolff/minify/v2 v2.20.37
 	github.com/xplshn/a-utils v0.0.0-20241004032830-01dbeda948ae
-	github.com/xplshn/mpb-schollz v0.0.0-20241006073325-4293a4429c52
 	github.com/zeebo/blake3 v0.2.4
 )
 
