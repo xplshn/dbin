@@ -1,0 +1,226 @@
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/goccy/go-json"
+	minify "github.com/tdewolff/minify/v2"
+	mjson "github.com/tdewolff/minify/v2/json"
+)
+
+type labeledString struct {
+	mainURL           string
+	fallbackURL       string
+	resolveToFinalURL bool
+}
+
+type Item struct {
+	Name         string `json:"name"`
+	BinName      string `json:"bin_name,omitempty"`
+	Description  string `json:"description,omitempty"`
+	Note         string `json:"note,omitempty"`
+	Version      string `json:"version,omitempty"`
+	DownloadURL  string `json:"download_url,omitempty"`
+	Size         string `json:"size,omitempty"`
+	Bsum         string `json:"bsum,omitempty"`
+	Shasum       string `json:"shasum,omitempty"`
+	BuildDate    string `json:"build_date,omitempty"`
+	SrcURL       string `json:"src_url,omitempty"`
+	WebURL       string `json:"web_url,omitempty"`
+	BuildScript  string `json:"build_script,omitempty"`
+	BuildLog     string `json:"build_log,omitempty"`
+	Category     string `json:"category,omitempty"`
+	ExtraBins    string `json:"extra_bins,omitempty"`
+}
+
+type Metadata struct {
+	Bin  map[string][]Item `json:"bin"`
+	Pkg  map[string][]Item `json:"pkg"`
+	Base map[string][]Item `json:"base"`
+}
+
+var repoLabels = map[string]string{
+	"bin":   "Toolpacks",
+	"pkg":   "Toolpacks-extras",
+	"base":  "Baseutils",
+}
+
+func urldecode(encoded string) (string, error) {
+	return url.PathUnescape(encoded)
+}
+
+func processItems(items []Item, realArchs, validatedArchs []string, repo labeledString, section string) []Item {
+	for i, item := range items {
+		// If resolveToFinalURL is false, skip URL transformation
+		if !repo.resolveToFinalURL {
+			continue
+		}
+
+		// Parse the download URL to get its path
+		parsedURL, err := url.Parse(item.DownloadURL)
+		if err != nil {
+			continue
+		}
+
+		// Extract the path from the URL and remove leading slashes
+		cleanPath := parsedURL.Path
+		if strings.HasPrefix(cleanPath, "/") {
+			cleanPath = cleanPath[1:]
+		}
+
+		// Remove the architecture-specific path from the download URL path
+		for _, prefix := range append(realArchs, validatedArchs...) {
+			if strings.HasPrefix(cleanPath, prefix) {
+				cleanPath = strings.TrimPrefix(cleanPath, prefix+"/")
+				break
+			}
+		}
+
+		// Remove the repo's label based on the section
+		if label, ok := repoLabels[section]; ok {
+			if strings.HasPrefix(cleanPath, label+"/") {
+				cleanPath = strings.TrimPrefix(cleanPath, label+"/")
+			}
+		}
+
+		// Set the correct `Name` field based on the path
+		items[i].Name = cleanPath
+	}
+	return items
+}
+
+func downloadJSON(url string) (Metadata, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return Metadata{}, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return Metadata{}, err
+	}
+
+	var metadata Metadata
+	err = json.Unmarshal(body, &metadata)
+	if err != nil {
+		return Metadata{}, err
+	}
+
+	return metadata, nil
+}
+
+func saveJSON(filename string, metadata Metadata) error {
+	// Marshal JSON with indentation
+	jsonData, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// Write the pretty-printed JSON to the file
+	err = ioutil.WriteFile(filename, jsonData, 0644)
+	if err != nil {
+		return err
+	}
+
+	// Minify and save the file
+	return minifyJSON(filename, jsonData)
+}
+
+func minifyJSON(filename string, jsonData []byte) error {
+	// Create a new minifier
+	m := minify.New()
+	m.AddFunc("application/json", mjson.Minify)
+
+	// Minify the JSON data
+	minifiedData, err := m.Bytes("application/json", jsonData)
+	if err != nil {
+		return err
+	}
+
+	// Create the minified file name
+	minFilename := strings.TrimSuffix(filename, ".json") + ".min.json"
+
+	// Write the minified data to a new file
+	err = ioutil.WriteFile(minFilename, minifiedData, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func downloadWithFallback(repo labeledString) (Metadata, error) {
+	metadata, err := downloadJSON(repo.mainURL)
+	if err == nil {
+		fmt.Printf("Downloaded JSON from: %s\n", repo.mainURL)
+		return metadata, nil
+	}
+
+	fmt.Printf("Error downloading from main URL %s: %v. Trying fallback URL...\n", repo.mainURL, err)
+	metadata, err = downloadJSON(repo.fallbackURL)
+	if err == nil {
+		fmt.Printf("Downloaded JSON from fallback URL: %s\n", repo.fallbackURL)
+		return metadata, nil
+	}
+
+	fmt.Printf("Error downloading from fallback URL %s: %v\n", repo.fallbackURL, err)
+	return Metadata{}, err
+}
+
+func main() {
+	validatedArchs := []string{"amd64_linux", "arm64_linux"}
+	realArchs := []string{"x86_64_Linux", "x86_64-Linux", "aarch64_Linux", "aarch64-Linux", "aarch64_arm64_Linux", "aarch64_arm64-Linux", "x86_64", "x64_Windows"}
+
+	// Loop over the indices to access both validatedArchs and realArchs
+	for i := range validatedArchs {
+		arch := validatedArchs[i]
+
+		repos := []labeledString{
+			{"https://pkg.ajam.dev/" + arch + "/METADATA.AIO.json",
+				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/" + arch + "/METADATA.AIO.json?download=true",
+				true},
+		}
+
+		for _, repo := range repos {
+			metadata, err := downloadWithFallback(repo)
+			if err != nil {
+				fmt.Printf("Error downloading JSON from both main and fallback URLs for repo: %v\n", err)
+				continue
+			}
+
+			save := func(outputFile string, processedMetadata Metadata) {
+				if err := saveJSON(outputFile, processedMetadata); err != nil {
+					fmt.Printf("Error saving JSON to %s: %v\n", outputFile, err)
+					return
+				}
+				fmt.Printf("Processed and saved to %s\n", outputFile)
+			}
+
+			// Process bin items
+			for arch, items := range metadata.Bin {
+				processedItems := processItems(items, realArchs, validatedArchs, repo, "bin")
+				metadata.Bin[arch] = processedItems
+			}
+
+			// Process pkg items
+			for arch, items := range metadata.Pkg {
+				processedItems := processItems(items, realArchs, validatedArchs, repo, "pkg")
+				metadata.Pkg[arch] = processedItems
+			}
+
+			// Process base items
+			for arch, items := range metadata.Base {
+				processedItems := processItems(items, realArchs, validatedArchs, repo, "base")
+				metadata.Base[arch] = processedItems
+			}
+
+			outputFile := fmt.Sprintf("dbin_%s.json", arch)
+			save(outputFile, metadata)
+		}
+	}
+}

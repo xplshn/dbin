@@ -239,18 +239,21 @@ dbin run btop`,
 	switch command {
 	case "findurl":
 		if len(args) < 1 {
-			fmt.Println("No binary name provided for findurl command.")
+			fmt.Println("No binary names provided for findurl command.")
 			os.Exit(1)
 		}
-		binaryName := args[0]
-		url, _, err := findURL(binaryName, trackerFile, repositories, metadataURLs, verbosityLevel)
+		binaryNames := args
+		urls, _, err := findURL(binaryNames, trackerFile, repositories, metadataURLs, verbosityLevel)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
 			}
+			os.Exit(1)
 		}
 		if verbosityLevel >= normalVerbosity {
-			fmt.Println(url)
+			for i, url := range urls {
+				fmt.Printf("URL for %s: %s\n", binaryNames[i], url)
+			}
 		}
 	case "install", "add":
 		if len(args) < 1 {

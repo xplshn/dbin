@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/goccy/go-json"
 	"github.com/pkg/xattr"
 	"github.com/schollz/progressbar/v3"
 	"github.com/zeebo/blake3"
@@ -152,46 +150,4 @@ downloadLoop:
 	}
 
 	return destination, nil
-}
-
-func fetchJSON(url string, v interface{}) error {
-	// Create a new HTTP request
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return fmt.Errorf("error creating request for %s: %v", url, err)
-	}
-
-	// Add headers to disable caching
-	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("Expires", "0")
-
-	// Perform the request using http.DefaultClient
-	client := &http.Client{}
-	response, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("error fetching from %s: %v", url, err)
-	}
-	defer response.Body.Close()
-
-	// Set up progress bar based on Content-Length if available
-	contentLength := response.ContentLength
-	bar := spawnProgressBar(contentLength, true)
-
-	defer bar.Close()
-
-	// Read the response body with progress tracking
-	body := &bytes.Buffer{}
-	reader := io.TeeReader(response.Body, bar)
-
-	if _, err := io.Copy(body, reader); err != nil {
-		return fmt.Errorf("error reading from %s: %v", url, err)
-	}
-
-	// Unmarshal the JSON response
-	if err := json.Unmarshal(body.Bytes(), v); err != nil {
-		return fmt.Errorf("error decoding from %s: %v", url, err)
-	}
-
-	return nil
 }

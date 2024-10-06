@@ -1,16 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall" // We manually check if the file is busy. This means that `dbin` only runs on Unix-like operating systems for now.
 
 	"github.com/goccy/go-json"
 	"github.com/pkg/xattr"
+	"github.com/zeebo/blake3"
 )
 
 // removeDuplicates removes duplicate binaries from the list (used in ./install.go)
@@ -209,15 +214,18 @@ func truncatePrintf(disableTruncation, addNewLine bool, format string, a ...inte
 	return fmt.Print(truncateSprintf(indicator, format, a...))
 }
 
-// addToTrackerFile appends a binary name to the tracker file or updates an existing entry.
-func addToTrackerFile(trackerFile, binaryName, installDir string) error {
+// addToTrackerFile appends one or more binary names to the tracker file or updates existing entries.
+func addToTrackerFile(trackerFile string, binaryNames []string, installDir string) error {
 	tracker, err := readTrackerFile(trackerFile)
 	if err != nil {
 		return err
 	}
 
-	baseName := filepath.Base(binaryName)
-	tracker[baseName] = binaryName // Always update or add the entry
+	// Loop through the binary names slice
+	for _, binaryName := range binaryNames {
+		baseName := filepath.Base(binaryName)
+		tracker[baseName] = binaryName // Always update or add the entry
+	}
 
 	err = writeTrackerFile(trackerFile, tracker)
 	if err != nil {
@@ -339,4 +347,62 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 		fmt.Printf("[%s] is a nix object. Corrections have been made.\n", filepath.Base(filePath))
 	}
 	return nil
+}
+
+func isFileBusy(filePath string) bool {
+	file, err := os.OpenFile(filePath, os.O_RDWR, 0755)
+	if err != nil {
+		if pathErr, ok := err.(*os.PathError); ok && pathErr.Err == syscall.ETXTBSY {
+			return true
+		}
+	}
+	if file != nil {
+		file.Close()
+	}
+	return false
+}
+
+func fetchJSON(url string, v interface{}) error {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request for %s: %v", url, err)
+	}
+
+	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Expires", "0")
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error fetching from %s: %v", url, err)
+	}
+	defer response.Body.Close()
+
+	body := &bytes.Buffer{}
+	if _, err := io.Copy(body, response.Body); err != nil {
+		return fmt.Errorf("error reading from %s: %v", url, err)
+	}
+
+	if err := json.Unmarshal(body.Bytes(), v); err != nil {
+		return fmt.Errorf("error decoding from %s: %v", url, err)
+	}
+
+	return nil
+}
+
+// calculateChecksum calculates the checksum of a file
+func calculateChecksum(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hasher := blake3.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
 }
