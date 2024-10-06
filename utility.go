@@ -86,12 +86,6 @@ func validateProgramsFrom(installDir, trackerFile string, metadataURLs, programs
 	programsToValidate = removeDuplicates(programsToValidate)
 	validPrograms := make([]string, 0, len(programsToValidate))
 
-	// Inline function to check if a file is a symlink
-	isSymlink := func(filePath string) bool {
-		fileInfo, err := os.Lstat(filePath)
-		return err == nil && fileInfo.Mode()&os.ModeSymlink != 0
-	}
-
 	// Inline function to get the binary name or fall back to the original name
 	getBinaryName := func(file string) string {
 		binaryName, err := getBinaryNameFromTrackerFile(trackerFile, file)
@@ -405,4 +399,9 @@ func calculateChecksum(filePath string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
+}
+
+func isSymlink(filePath string) bool {
+	fileInfo, err := os.Lstat(filePath)
+	return err == nil && fileInfo.Mode()&os.ModeSymlink != 0
 }
