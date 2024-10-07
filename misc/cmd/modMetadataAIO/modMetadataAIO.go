@@ -20,15 +20,15 @@ type labeledString struct {
 }
 
 type Item struct {
+	RealName     string `json:"bin_name"`
 	Name         string `json:"name"`
-	BinName      string `json:"bin_name,omitempty"`
 	Description  string `json:"description,omitempty"`
 	Note         string `json:"note,omitempty"`
 	Version      string `json:"version,omitempty"`
 	DownloadURL  string `json:"download_url,omitempty"`
 	Size         string `json:"size,omitempty"`
-	Bsum         string `json:"bsum,omitempty"`
-	Shasum       string `json:"shasum,omitempty"`
+	Bsum         string `json:"bsum,omitempty"`   // BLAKE3
+	Shasum       string `json:"shasum,omitempty"` // SHA256
 	BuildDate    string `json:"build_date,omitempty"`
 	SrcURL       string `json:"src_url,omitempty"`
 	WebURL       string `json:"web_url,omitempty"`
@@ -88,8 +88,8 @@ func processItems(items []Item, realArchs, validatedArchs []string, repo labeled
 			}
 		}
 
-		// Set the correct `Name` field based on the path
-		items[i].Name = cleanPath
+		// Set the correct `RealName` field based on the path
+		items[i].RealName = cleanPath
 	}
 	return items
 }
@@ -174,16 +174,18 @@ func downloadWithFallback(repo labeledString) (Metadata, error) {
 }
 
 func main() {
+	//validatedArchs := []string{"amd64_linux", "arm64_linux"}
+	//realArchs := []string{"x86_64_Linux", "x86_64-Linux", "aarch64_Linux", "aarch64-Linux", "aarch64_arm64_Linux", "aarch64_arm64-Linux", "x86_64", "x64_Windows"}
 	validatedArchs := []string{"amd64_linux", "arm64_linux"}
-	realArchs := []string{"x86_64_Linux", "x86_64-Linux", "aarch64_Linux", "aarch64-Linux", "aarch64_arm64_Linux", "aarch64_arm64-Linux", "x86_64", "x64_Windows"}
+	realArchs := []string{"x86_64_Linux", "aarch64_Linux", "aarch64_arm64_Linux"}
 
 	// Loop over the indices to access both validatedArchs and realArchs
 	for i := range validatedArchs {
 		arch := validatedArchs[i]
 
 		repos := []labeledString{
-			{"https://bin.ajam.dev/" + arch + "/METADATA.AIO.json",
-				"https://huggingface.co/datasets/Azathothas/Toolpacks-Snapshots/resolve/main/" + arch + "/METADATA.AIO.json?download=true",
+			{"https://bin.ajam.dev/" + arch + "/METADATA.AIO.min.json",
+				"https://pkg.ajam.dev/" + arch + "/METADATA.AIO.min.json",
 				true},
 		}
 

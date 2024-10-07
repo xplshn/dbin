@@ -83,7 +83,7 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 				return
 			}
 
-			if binaryInfo.B3sum == "" {
+			if binaryInfo.Bsum == "" {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
@@ -94,7 +94,7 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 				return
 			}
 
-			if checkDifferences(localB3sum, binaryInfo.B3sum) == 1 {
+			if checkDifferences(localB3sum, binaryInfo.Bsum) == 1 {
 				err := installCommand([]string{program}, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
 				if err != nil {
 					progressMutex.Lock()

@@ -8,50 +8,63 @@ import (
 
 // BinaryInfo struct holds binary metadata used in main.go for the `info`, `update`, `list` functionality
 type BinaryInfo struct {
+	RealName    string `json:"bin_name"`
 	Name        string `json:"name"`
-	Description string `json:"description"`
-	Repo        string `json:"repo_url"`
-	ModTime     string `json:"build_date"`
-	Version     string `json:"repo_version"`
-	Updated     string `json:"repo_updated"`
-	Size        string `json:"size"`
-	Extras      string `json:"extra_bins"`
-	Note        string `json:"note"`
-	Source      string `json:"download_url"`
-	B3sum       string `json:"b3sum"`
-	Sha256      string `json:"sha256"`
+	Description string `json:"description,omitempty"`
+	Note        string `json:"note,omitempty"`
+	Version     string `json:"version,omitempty"`
+	DownloadURL string `json:"download_url,omitempty"`
+	Size        string `json:"size,omitempty"`
+	Bsum        string `json:"bsum,omitempty"`   // BLAKE3
+	Shasum      string `json:"shasum,omitempty"` // SHA256
+	BuildDate   string `json:"build_date,omitempty"`
+	SrcURL      string `json:"src_url,omitempty"`
+	WebURL      string `json:"web_url,omitempty"`
+	BuildScript string `json:"build_script,omitempty"`
+	BuildLog    string `json:"build_log,omitempty"`
+	Category    string `json:"category,omitempty"`
+	ExtraBins   string `json:"extra_bins,omitempty"`
 }
 
 // findBinaryInfo searches for binary metadata in the provided metadata slice.
 func findBinaryInfo(metadata []map[string]interface{}, binaryName string) (BinaryInfo, bool) {
 	for _, binMap := range metadata {
 		name, nameOk := binMap["name"].(string)
-		if nameOk && name == binaryName {
+		realName, realNameOk := binMap["bin_name"].(string)
+
+		if (nameOk && name == binaryName) || (realNameOk && realName == binaryName) {
 			description, _ := binMap["description"].(string)
-			repo, _ := binMap["repo_url"].(string)
-			buildDate, _ := binMap["build_date"].(string)
-			version, _ := binMap["repo_version"].(string)
-			updated, _ := binMap["repo_updated"].(string)
-			size, _ := binMap["size"].(string)
-			extras, _ := binMap["extra_bins"].(string)
 			note, _ := binMap["note"].(string)
-			source, _ := binMap["download_url"].(string)
-			b3s, _ := binMap["b3sum"].(string)
-			sha256, _ := binMap["sha256"].(string)
+			version, _ := binMap["version"].(string)
+			downloadURL, _ := binMap["download_url"].(string)
+			size, _ := binMap["size"].(string)
+			bsum, _ := binMap["bsum"].(string)
+			shasum, _ := binMap["shasum"].(string)
+			buildDate, _ := binMap["build_date"].(string)
+			srcURL, _ := binMap["src_url"].(string)
+			webURL, _ := binMap["web_url"].(string)
+			buildScript, _ := binMap["build_script"].(string)
+			buildLog, _ := binMap["build_log"].(string)
+			category, _ := binMap["category"].(string)
+			extraBins, _ := binMap["extra_bins"].(string)
 
 			return BinaryInfo{
+				RealName:    realName,
 				Name:        name,
 				Description: description,
-				Repo:        repo,
-				ModTime:     buildDate,
-				Version:     version,
-				Updated:     updated,
-				Size:        size,
-				Extras:      extras,
 				Note:        note,
-				Source:      source,
-				B3sum:       b3s,
-				Sha256:      sha256,
+				Version:     version,
+				DownloadURL: downloadURL,
+				Size:        size,
+				Bsum:        bsum,
+				Shasum:      shasum,
+				BuildDate:   buildDate,
+				SrcURL:      srcURL,
+				WebURL:      webURL,
+				BuildScript: buildScript,
+				BuildLog:    buildLog,
+				Category:    category,
+				ExtraBins:   extraBins,
 			}, true
 		}
 	}
