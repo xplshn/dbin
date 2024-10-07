@@ -26,11 +26,11 @@ dbin is a simple, Golang-based rewrite of the original [BDL](https://github.com/
 ```
 $ dbin --help
 
- Copyright (c) 2024: xplshn and contributors
+  Copyright (c) 2024: xplshn and contributors
  For more details refer to https://github.com/xplshn/dbin
 
   Synopsis
-    dbin [-v|-h] [list|install|remove|update|run|info|search|tldr] <-args->
+    dbin [-v|-h] [list|install|remove|update|run|info|search|tldr|eget2] <-args->
   Description:
     The easy to use, easy to get, software distribution system
   Options:
@@ -44,12 +44,15 @@ $ dbin --help
     run               Run a specified binary from cache
     info              Show information about a specific binary OR display installed binaries
     search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
-    tldr              Equivalent to "run --transparent tlrc"
+    tldr              Equivalent to "run --transparent --silent tlrc"
+    eget2             Equivalent to "run --transparent --silent eget2"
   Variables:
     DBIN_CACHEDIR     If present, it must contain a valid directory path
-    DBIN_INSTALL_DIR  If present, it must contain a valid directory path
-    DBIN_NOTRUNCATION If present, and set to ONE (1), string truncation will be disabled
-    DBIN_TRACKERFILE  If present, it must point to a valid file path, in an existing directory
+    DBIN_INSTALL_DIR   If present, it must contain a valid directory path
+    DBIN_NOTRUNCATION  If present, and set to ONE (1), string truncation will be disabled
+    DBIN_TRACKERFILE   If present, it must point to a valid file path, in an existing directory
+    DBIN_REPO_URLS     If present, it must contain one or more repository URLS ended in / separated by ;
+    DBIN_METADATA_URLS If present, it must contain one or more repository's metadata url separated by ;
 
 ```
 
@@ -58,10 +61,12 @@ $ dbin --help
     dbin search editor
     dbin install micro.upx
     dbin install lux kakoune aretext shfmt
+    dbin add https://github.com/xplshn/a-utils/releases/download/0.0.5/a-utils-arm64-linux.upx # Add an external binary to your installDir
     dbin --silent install bed && echo "[bed] was installed to $INSTALL_DIR/bed"
     dbin del bed
     dbin del orbiton tgpt lux
     dbin info
+    dbin info | grep a-utils | xargs dbin add # install the entire a-utils suite
     dbin info jq
     dbin list --described
     dbin tldr gum
@@ -86,12 +91,17 @@ When `info` is called with no arguments, it displays binaries which are part of 
 $ dbin info micro
 Name: micro
 Description: A modern and intuitive terminal-based text editor
-Repo: https://github.com/zyedidia/micro
-Updated: 2024-05-22T20:21:10Z
-Version: v2.0.13
-Size: 11.81 MB
-Source: https://bin.ajam.dev/x86_64_Linux/micro
-SHA256: 697fb918c800071c4d1a853d515331a9a3f245bb8a7da1c6d3653737d17ce3c4
+Version: v2.0.14
+Download URL: https://bin.ajam.dev/x86_64/micro
+Size: 11.67 MB
+B3SUM: 2455db4db6e117717b33f6fb4a85d6630268442b111e1012e790feae6255484a
+SHA256: 6be82c65571f6aac935e7ef723932322ed5d665028a2179d66211b5629d4b665
+Build Date: 2024-08-31T01:08:46
+Source URL: https://github.com/zyedidia/micro
+Web URL: https://github.com/zyedidia/micro
+Build Script: https://github.com/Azathothas/Toolpacks/tree/main/.github/scripts/x86_64_Linux/bins/micro.sh
+Build Log: https://bin.ajam.dev/x86_64/micro.log.txt
+Category: command-line, cross-platform, editor, go, golang, micro, terminal, text-editor
 ```
 ##### Arguments of `list`
 `list` can receive the optional argument `--described`/`-d`. It will display all binaries that have a description in their metadata.
@@ -144,4 +154,3 @@ Also, I need help optimizing the cyclomatic complexity of `dbin`.
 dbin is licensed under the RABRMS License. This allows for the use, modification, and distribution of the software under certain conditions. For more details, please refer to the [LICENSE](LICENSE) file. This license is equivalent to the New or Revised BSD License.
 
 ## Its pretty safe to state that we are ![cooltext466498248029130](https://github.com/user-attachments/assets/4397b1d3-44f2-4ae9-99c6-7379860bfa73)
-

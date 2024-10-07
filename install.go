@@ -8,17 +8,30 @@ import (
 	"sync"
 )
 
-// installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
+// installBinaries fetches multiple binaries or binaries from URLs concurrently, logging based on verbosity levels.
 func installBinaries(ctx context.Context, binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(binaries))
-	urls, checksums, err := findURL(binaries, trackerFile, repositories, metadataURLs, verbosityLevel)
-	if err != nil {
-		return err
-	}
+	urls := make([]string, len(binaries))
+	checksums := make([]string, len(binaries))
 
+	// Initialize variables to track installed binaries and errors
 	var installedBinaries []string
 	var errors []string
+
+	// Check if input is NOT a URL (i.e., it's a binary name)
+	for i, binary := range binaries {
+		if !strings.HasPrefix(binary, "http://") && !strings.HasPrefix(binary, "https://") {
+			// If it's a binary name, use findURL to resolve it
+			var err error
+			urls, checksums, err = findURL(binaries, trackerFile, repositories, metadataURLs, verbosityLevel)
+			if err != nil {
+				return err
+			}
+		} else {
+			urls[i] = binary // If it's a URL, directly assign it
+		}
+	}
 
 	for i, binaryName := range binaries {
 		wg.Add(1)
@@ -34,7 +47,7 @@ func installBinaries(ctx context.Context, binaries []string, installDir, tracker
 				return
 			}
 
-			// Fetch binary and put it at destination
+			// Fetch binary from URL and put it at destination
 			_, err := fetchBinaryFromURLToDest(ctx, url, checksum, destination)
 			if err != nil {
 				errChan <- fmt.Errorf("error fetching binary %s: %v", binaryName, err)
@@ -62,7 +75,7 @@ func installBinaries(ctx context.Context, binaries []string, installDir, tracker
 		}
 	}
 
-	// Update tracker file
+	// Update tracker file if needed
 	if trackerFile != "" {
 		err := addToTrackerFile(trackerFile, installedBinaries, installDir)
 		if err != nil {

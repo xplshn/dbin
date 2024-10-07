@@ -47,6 +47,18 @@ func fileExists(filePath string) bool {
 	return !os.IsNotExist(err)
 }
 
+// isDirectory checks if the given path is a directory.
+func isDirectory(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil // Path does not exist
+		}
+		return false, err
+	}
+	return info.IsDir(), nil
+}
+
 // isExecutable checks if the file at the specified path is executable.
 func isExecutable(filePath string) bool {
 	info, err := os.Stat(filePath)

@@ -130,7 +130,7 @@ func main() {
 		Authors:     []string{"xplshn"},
 		Repository:  "https://github.com/xplshn/dbin",
 		Name:        "dbin",
-		Synopsis:    "[-v|-h] [list|install|remove|update|run|info|search|tldr] <-args->",
+		Synopsis:    "[-v|-h] [list|install|remove|update|run|info|search|tldr|eget2] <-args->",
 		Description: "The easy to use, easy to get, software distribution system",
 		CustomFields: map[string]interface{}{
 			"1_Options": `-h, --help        Show this help message
@@ -142,7 +142,8 @@ update            Update binaries, by checking their SHA against the repo's SHA
 run               Run a specified binary from cache
 info              Show information about a specific binary OR display installed binaries
 search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
-tldr              Equivalent to "run --transparent --silent tlrc"`,
+tldr              Equivalent to "run --transparent --silent tlrc"
+eget2             Equivalent to "run --transparent --silent eget2"`,
 			"3_Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory path
 DBIN_INSTALL_DIR   If present, it must contain a valid directory path
 DBIN_NOTRUNCATION  If present, and set to ONE (1), string truncation will be disabled
@@ -424,6 +425,8 @@ dbin run btop`,
 		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, runCommandTrackerFile, transparentMode, verbosityLevel, repositories, metadataURLs)
 	case "tldr":
 		RunFromCache("tlrc", flag.Args()[1:], tempDir, runCommandTrackerFile, true, verbosityLevel, repositories, metadataURLs)
+	case "eget2":
+		RunFromCache("eget2", flag.Args()[1:], tempDir, runCommandTrackerFile, true, verbosityLevel, repositories, metadataURLs)
 	case "update":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {
