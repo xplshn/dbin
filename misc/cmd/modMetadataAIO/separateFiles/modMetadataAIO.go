@@ -209,11 +209,10 @@ func main() {
 			// Process base items
 			processedBaseItems := processItems(metadata.Base, realArchs, validatedArchs, repo, "base")
 
-			// Merge all items into a single slice
-			allItems := append(append(processedBinItems, processedPkgItems...), processedBaseItems...)
-
-			// Save the unified items to a single file
-			save(fmt.Sprintf("dbin_unifiedAIO_%s.json", arch), allItems)
+			// Save each section to separate files
+			save(fmt.Sprintf("bin_%s.json", arch), processedBinItems)
+			save(fmt.Sprintf("pkg_%s.json", arch), processedPkgItems)
+			save(fmt.Sprintf("base_%s.json", arch), processedBaseItems)
 		}
 	}
 }
