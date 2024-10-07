@@ -213,7 +213,7 @@ func main() {
 			allItems := append(append(processedBinItems, processedPkgItems...), processedBaseItems...)
 
 			// Save the unified items to a single file
-			save(fmt.Sprintf("dbin_unifiedAIO_%s.json", arch), allItems)
+			save(fmt.Sprintf("unifiedAIO_%s.dbin.json", arch), allItems)
 		}
 	}
 }
