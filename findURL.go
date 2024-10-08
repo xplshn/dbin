@@ -15,7 +15,7 @@ func findURL(binaryNames []string, trackerFile string, repositories []string, me
 	for _, binaryName := range binaryNames {
 		// Try to get binary info from info.go logic
 		binInfo, err := getBinaryInfo(trackerFile, binaryName, metadataURLs)
-		if err == nil && binInfo.SrcURL != "" {
+		if err == nil && binInfo.DownloadURL != "" {
 			// If the download_url (Source) is available, return it with BLAKE3sum
 			if verbosityLevel >= extraVerbose {
 				fmt.Printf("\033[2K\rFound \"%s\" via the metadata files\n", binaryName)

@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/goccy/go-json v0.10.3
-	github.com/hedzr/progressbar v1.1.9
+	github.com/hedzr/progressbar v1.1.10-0.20241008165658-538c759027e7
 	github.com/pkg/xattr v0.4.10
 	github.com/schollz/progressbar/v3 v3.16.1
 	github.com/tdewolff/minify/v2 v2.20.37
