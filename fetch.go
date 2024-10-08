@@ -117,14 +117,12 @@ downloadLoop:
 	}
 
 	// Final checksum verification
-	if checksum != "" {
+	if checksum != "" && checksum != "!no_warn" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
 		if calculatedChecksum != checksum {
-			//_ = os.Remove(tempFile)
-			//return "", fmt.Errorf("checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
 			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s\n", checksum, calculatedChecksum)
 		}
-	} else {
+	} else if checksum == "" {
 		fmt.Println("Warning: No checksum exists for this binary in the metadata files, skipping verification.")
 	}
 
