@@ -20,7 +20,7 @@ func findURL(binaryNames []string, trackerFile string, repositories []string, me
 			if verbosityLevel >= extraVerbose {
 				fmt.Printf("\033[2K\rFound \"%s\" via the metadata files\n", binaryName)
 			}
-			foundURLs = append(foundURLs, binInfo.SrcURL)
+			foundURLs = append(foundURLs, binInfo.DownloadURL)
 			foundB3sums = append(foundB3sums, binInfo.Bsum)
 			continue
 		}
@@ -53,7 +53,7 @@ func findURL(binaryNames []string, trackerFile string, repositories []string, me
 
 		// Handle verbosity for error output
 		if verbosityLevel >= silentVerbosityWithErrors {
-			return nil, nil, fmt.Errorf("error: didn't find the SOURCE_URL for [%s]", binaryName)
+			return nil, nil, fmt.Errorf("error: didn't find the DOWNLOAD_URL for [%s]", binaryName)
 		}
 	}
 
