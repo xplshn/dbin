@@ -26,6 +26,7 @@ func findURL(binaryNames []string, trackerFile string, repositories []string, me
 		}
 
 		// If no valid download_url found, proceed with HEAD requests on repositories
+		found := false
 		for i, repository := range repositories {
 			url := fmt.Sprintf("%s%s", repository, binaryName)
 
@@ -42,6 +43,7 @@ func findURL(binaryNames []string, trackerFile string, repositories []string, me
 				}
 				foundURLs = append(foundURLs, url)
 				foundB3sums = append(foundB3sums, "") // No SHA256 if found this way
+				found = true
 				break
 			}
 		}
@@ -52,7 +54,7 @@ func findURL(binaryNames []string, trackerFile string, repositories []string, me
 		}
 
 		// Handle verbosity for error output
-		if verbosityLevel >= silentVerbosityWithErrors {
+		if !found && verbosityLevel >= silentVerbosityWithErrors {
 			return nil, nil, fmt.Errorf("error: didn't find the DOWNLOAD_URL for [%s]", binaryName)
 		}
 	}
