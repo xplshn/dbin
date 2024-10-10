@@ -11,7 +11,7 @@ import (
 func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disableTruncation bool, limit int, runCommandTrackerFile string) error {
 	type tBinary struct {
 		Architecture string `json:"architecture"`
-		Name         string `json:"name"`
+		RealName         string `json:"bin_name"`
 		Description  string `json:"description"`
 	}
 
@@ -27,22 +27,22 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 	}
 
 	// Filter binaries based on exclusions
-	var allBinaryNames []string
+	var allBinaryRealNames []string
 	for _, binary := range binaries {
-		if binary.Name != "" {
-			allBinaryNames = append(allBinaryNames, binary.Name)
+		if binary.RealName != "" {
+			allBinaryRealNames = append(allBinaryRealNames, binary.RealName)
 		}
 	}
-	filteredBinaries := filterBinaries(allBinaryNames)
+	filteredBinaries := filterBinaries(allBinaryRealNames)
 
 	// Filter binaries based on the search term and architecture
 	searchResults := make([]string, 0)
 	for _, binary := range binaries {
-		if contains(filteredBinaries, binary.Name) &&
-			(strings.Contains(strings.ToLower(binary.Name), strings.ToLower(searchTerm)) ||
+		if contains(filteredBinaries, binary.RealName) &&
+			(strings.Contains(strings.ToLower(binary.RealName), strings.ToLower(searchTerm)) ||
 				strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm))) {
 
-			entry := fmt.Sprintf("%s - %s", binary.Name, binary.Description)
+			entry := fmt.Sprintf("%s - %s", binary.RealName, binary.Description)
 			searchResults = append(searchResults, entry)
 		}
 	}
@@ -63,22 +63,22 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 		if len(parts) < 2 {
 			return fmt.Errorf("invalid search result format: %s", line)
 		}
-		name := parts[0]
+		RealName := parts[0]
 		description := parts[1]
-		baseName := filepath.Base(name)
+		baseRealName := filepath.Base(RealName)
 
 		// Determine the prefix based on conditions
 		prefix := "[-]"
-		cachedLocation, trackedBinaryName := ReturnCachedFile(tempDir, name, runCommandTrackerFile)
+		cachedLocation, trackedBinaryRealName := ReturnCachedFile(tempDir, RealName, runCommandTrackerFile)
 
-		if installPath := filepath.Join(installDir, baseName); fileExists(installPath) && !installedBinaries[baseName] {
+		if installPath := filepath.Join(installDir, baseRealName); fileExists(installPath) && !installedBinaries[baseRealName] {
 			prefix = "[i]"
-			installedBinaries[baseName] = true
-		} else if trackedBinaryName == name && fileExists(cachedLocation) {
+			installedBinaries[baseRealName] = true
+		} else if trackedBinaryRealName == RealName && fileExists(cachedLocation) {
 			prefix = "[c]"
 		}
 
-		truncatePrintf(disableTruncation, true, "%s %s - %s ", prefix, name, description)
+		truncatePrintf(disableTruncation, true, "%s %s - %s ", prefix, RealName, description)
 	}
 
 	return nil

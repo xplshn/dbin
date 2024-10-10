@@ -25,7 +25,7 @@ var excludedFileNames = []string{
 func listBinaries(metadataURLs []string) ([]string, error) {
 	var allBinaries []string
 	var metadata []struct {
-		Name string `json:"name"`
+		RealName string `json:"bin_name"`
 	}
 
 	// Fetch binaries from each metadata URL
@@ -34,15 +34,15 @@ func listBinaries(metadataURLs []string) ([]string, error) {
 			return nil, fmt.Errorf("failed to fetch metadata from %s: %v", url, err)
 		}
 
-		// Extract binary names
+		// Extract binary RealNames
 		for _, item := range metadata {
-			if item.Name != "" {
-				allBinaries = append(allBinaries, item.Name)
+			if item.RealName != "" {
+				allBinaries = append(allBinaries, item.RealName)
 			}
 		}
 	}
 
-	// Filter out excluded file types and file names
+	// Filter out excluded file types and file RealNames
 	filteredBinaries := filterBinaries(allBinaries)
 
 	// Return unique binaries
