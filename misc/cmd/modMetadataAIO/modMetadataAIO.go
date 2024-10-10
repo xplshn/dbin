@@ -36,6 +36,7 @@ type Item struct {
 	BuildLog     string `json:"build_log,omitempty"`
 	Category     string `json:"category,omitempty"`
 	ExtraBins    string `json:"extra_bins,omitempty"`
+	Icon		 string `json:"icon"`
 }
 
 type Metadata struct {
@@ -174,10 +175,9 @@ func downloadWithFallback(repo labeledString) (Metadata, error) {
 }
 
 func main() {
-	//validatedArchs := []string{"amd64_linux", "arm64_linux"}
-	//realArchs := []string{"x86_64_Linux", "x86_64-Linux", "aarch64_Linux", "aarch64-Linux", "aarch64_arm64_Linux", "aarch64_arm64-Linux", "x86_64", "x64_Windows"}
 	validatedArchs := []string{"amd64_linux", "arm64_linux"}
-	realArchs := []string{"x86_64_Linux", "aarch64_Linux", "aarch64_arm64_Linux"}
+	realArchs := []string{"x86_64_Linux", "x86_64-Linux", "aarch64_Linux", "aarch64-Linux", "aarch64_arm64_Linux", "aarch64_arm64-Linux", "x86_64", "x64_Windows"}
+	//realArchs := []string{"x86_64", "x86_64_Linux", "aarch64_Linux", "aarch64_arm64_Linux"}
 
 	// Loop over the indices to access both validatedArchs and realArchs
 	for i := range validatedArchs {
