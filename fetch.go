@@ -119,9 +119,7 @@ downloadLoop:
 	// Final checksum verification
 	if checksum != "" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
-		if calculatedChecksum != checksum {
-			//_ = os.Remove(tempFile)
-			//return "", fmt.Errorf("checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
+		if calculatedChecksum != checksum && checksum != "!no_warn" {
 			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s\n", checksum, calculatedChecksum)
 		}
 	} else {
