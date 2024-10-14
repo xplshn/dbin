@@ -60,7 +60,8 @@ func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension strin
 	// Split command into command name and arguments
 	commandParts := strings.Fields(cmd)
 	if len(commandParts) == 0 {
-		return fmt.Errorf("no command to execute for extension: %s", extension)
+		//return fmt.Errorf("no command to execute for extension: %s", extension)
+		return nil
 	}
 
 	command := commandParts[0] // First part is the command
@@ -119,6 +120,10 @@ func LoadConfig() (*Config, error) {
 		// Create a default config file if it does not exist
 		if err := CreateDefaultConfig(); err != nil {
 			return nil, fmt.Errorf("failed to create default config file: %v", err)
+		}
+		// Reload the configuration after creating the default file
+		if err := loadJSON(configFilePath, cfg); err != nil {
+			return nil, fmt.Errorf("failed to load JSON file: %v", err)
 		}
 	}
 
@@ -181,7 +186,7 @@ func parseBool(s string) (bool, error) {
 	return strconv.ParseBool(s)
 }
 
-// setDefaultValues sets default values for specific configuration entries.
+// setDefaultValues sets default values for specific configuration entries only if they are not already set.
 func setDefaultValues(config *Config) {
 	// Setting default InstallDir if not defined
 	if config.InstallDir == "" {
@@ -228,9 +233,16 @@ func setDefaultValues(config *Config) {
 	if !config.IntegrateWithSystem {
 		config.IntegrateWithSystem = true
 	}
+}
+
+// CreateDefaultConfig creates a default configuration file.
+func CreateDefaultConfig() error {
+	// Create a new config instance with default values
+	cfg := &Config{}
+	setDefaultValues(cfg)
 
 	// Set default hooks
-	config.Hooks = Hooks{
+	cfg.Hooks = Hooks{
 		Commands: map[string]HookCommands{
 			".AppBundle": {
 				IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
@@ -254,17 +266,14 @@ func setDefaultValues(config *Config) {
 				UseRunFromCache:       true,
 			},
 			"": { // Normal static binaries don't need a handler, so we're just using a NoOp
-				NoOp: true,
+				IntegrationCommands:   []string{"upx {{binary}}"},
+				DeintegrationCommands: []string{""},
+				IntegrationErrorMsg:   "[%s] Could not be UPXed; Error: %v",
+				UseRunFromCache:       true,
+				NoOp:                  true,
 			},
 		},
 	}
-}
-
-// CreateDefaultConfig creates a default configuration file.
-func CreateDefaultConfig() error {
-	// Create a new config instance with default values
-	cfg := &Config{}
-	setDefaultValues(cfg)
 
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {

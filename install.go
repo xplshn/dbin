@@ -108,8 +108,6 @@ func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbo
 					return err
 				}
 			}
-		} else {
-			return fmt.Errorf("no integration commands found for extension: %s", ext)
 		}
 	}
 	return nil

@@ -106,8 +106,6 @@ func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Ver
 					return err
 				}
 			}
-		} else {
-			return fmt.Errorf("no deintegration commands found for extension: %s", ext)
 		}
 	}
 	return nil
