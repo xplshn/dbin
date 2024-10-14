@@ -56,13 +56,13 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 			}
 
 			// Run deintegration hooks before removing the binary
-			if err := runDeintegrationHooks(config, installPath, verbosityLevel); err != "" {
+			if err := runDeintegrationHooks(config, installPath, verbosityLevel); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
 					fmt.Fprintf(os.Stderr, "error: %s\n", err)
 				}
 				// Add error to the list in a thread-safe way
 				mutex.Lock()
-				removeErrors = append(removeErrors, err)
+				removeErrors = append(removeErrors, err.Error())
 				mutex.Unlock()
 				return
 			}
@@ -94,21 +94,21 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 	return nil
 }
 
-// runDeintegrationHooks runs the deintegration hooks for binaries which need to be deintegrated // TODO: Let users implement their own hooks and put them in the config, leverage a few variables and logic operators
-func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) string {
+// runDeintegrationHooks runs the deintegration hooks for binaries which need to be deintegrated
+func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) error {
 	if config.IntegrateWithSystem {
-		suffixes := []string{".AppBundle", ".AppImage", ".NixAppImage"}
-		for _, suffix := range suffixes {
-			if strings.HasSuffix(binaryPath, suffix) {
-				args := []string{"--deintegrate", binaryPath}
-				err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
-				if err != nil {
-					return fmt.Sprintf("error deintegrating %s from the system: via the %s hook: %s", binaryPath, suffix, err.Error())
+		// Infer the file extension from the binaryPath
+		ext := filepath.Ext(binaryPath)
+		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
+			// Execute user-defined deintegration hooks
+			for _, cmd := range hookCommands.DeintegrationCommands {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, config.IntegrateWithSystem, verbosityLevel); err != nil {
+					return err
 				}
-				break
 			}
+		} else {
+			return fmt.Errorf("no deintegration commands found for extension: %s", ext)
 		}
 	}
-
-	return ""
+	return nil
 }

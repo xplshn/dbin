@@ -21,12 +21,12 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 	var errors []string
 
 	// Nested performCorrections function
-	performCorrections := func(binaryPath string) (string, string) {
+	performCorrections := func(binaryPath string) (string, error) {
 		if strings.HasSuffix(binaryPath, ".no_strip") {
-			return strings.TrimSuffix(binaryPath, ".no_strip"), ""
+			return strings.TrimSuffix(binaryPath, ".no_strip"), nil
 		}
 
-		return binaryPath, ""
+		return binaryPath, nil
 	}
 
 	for i, binaryName := range binaries {
@@ -38,8 +38,8 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 			destination := filepath.Join(config.InstallDir, filepath.Base(binaryName))
 
 			destination, err := performCorrections(destination)
-			if err != "" {
-				errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %s", destination, err)
+			if err != nil {
+				errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", binaryName, err)
 				return
 			}
 
@@ -63,8 +63,8 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 			}
 
 			// Run hooks after the file is downloaded and chmod +x
-			if err := runIntegrationHooks(config, destination, verbosityLevel); err != "" {
-				errChan <- fmt.Errorf("[%s] could not be handled by its hooks: %s", destination, err)
+			if err := runIntegrationHooks(config, destination, verbosityLevel); err != nil {
+				errChan <- err
 				return
 			}
 
@@ -96,23 +96,23 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 	return nil
 }
 
-// runIntegrationHooks runs the integration hooks for binaries which need to be integrated // TODO: Let users implement their own hooks and put them in the config, leverage a few variables and logic operators
-func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) string {
+// runIntegrationHooks runs the integration hooks for binaries which need to be integrated
+func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) error {
 	if config.IntegrateWithSystem {
-		suffixes := []string{".AppBundle", ".AppImage", ".NixAppImage"}
-		for _, suffix := range suffixes {
-			if strings.HasSuffix(binaryPath, suffix) {
-				args := []string{"--integrate", binaryPath}
-				err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
-				if err != nil {
-					return fmt.Sprintf("error integrating %s with the system: via the %s hook: %s", binaryPath, suffix, err.Error())
+		// Infer the file extension from the binaryPath
+		ext := filepath.Ext(binaryPath)
+		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
+			// Execute user-defined integration hooks
+			for _, cmd := range hookCommands.IntegrationCommands {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, config.IntegrateWithSystem, verbosityLevel); err != nil {
+					return err
 				}
-				break
 			}
+		} else {
+			return fmt.Errorf("no integration commands found for extension: %s", ext)
 		}
 	}
-
-	return ""
+	return nil
 }
 
 // installCommand installs one or more binaries based on the verbosity level.

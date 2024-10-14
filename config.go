@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -21,6 +22,76 @@ type Config struct {
 	DisableTruncation   bool     `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
 	IntegrateWithSystem bool     `json:"integrate_with_system" env:"DBIN_INTEGRATE"`
 	Limit               int      `json:"fsearch_limit"`
+	Hooks               Hooks    `json:"hooks"`
+}
+
+// Hooks structure holding user-defined commands per extension
+type Hooks struct {
+	Commands map[string]HookCommands `json:"commands"`
+}
+
+// HookCommands structure for integration and deintegration commands
+type HookCommands struct {
+	IntegrationCommands   []string `json:"integration_commands"`
+	DeintegrationCommands []string `json:"deintegration_commands"`
+	IntegrationErrorMsg   string   `json:"integration_error_msg"`
+	DeintegrationErrorMsg string   `json:"deintegration_error_msg"`
+	UseRunFromCache       bool     `json:"use_run_from_cache"`
+	NoOp                  bool     `json:"nop"`
+}
+
+func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension string, isIntegration bool, verbosityLevel Verbosity) error {
+	hookCommands, exists := config.Hooks.Commands[extension]
+	if !exists {
+		return fmt.Errorf("no commands found for extension: %s", extension)
+	}
+
+	// Check for the NoOp flag
+	if hookCommands.NoOp {
+		return nil
+	}
+
+	// Replace {{binary}} with the actual binary path in the command template
+	cmd := strings.ReplaceAll(cmdTemplate, "{{binary}}", binaryPath)
+
+	// Determine whether to use RunFromCache based on the config
+	useRunFromCache := hookCommands.UseRunFromCache
+
+	// Split command into command name and arguments
+	commandParts := strings.Fields(cmd)
+	if len(commandParts) == 0 {
+		return fmt.Errorf("no command to execute for extension: %s", extension)
+	}
+
+	command := commandParts[0] // First part is the command
+	args := commandParts[1:]   // Remaining parts are arguments
+
+	if useRunFromCache {
+		// Directly call RunFromCache with the full command string
+		return RunFromCache(config, command, args, true, verbosityLevel)
+	} else {
+		// Create a new command
+		cmdExec := exec.Command(command, args...)
+
+		// Set the command's output to the same as the current process' output
+		cmdExec.Stdout = os.Stdout
+		cmdExec.Stderr = os.Stderr
+
+		// Execute the command
+		if err := cmdExec.Run(); err != nil {
+			// Use the appropriate error message based on integration or deintegration
+			var errorMsg string
+			if isIntegration {
+				errorMsg = hookCommands.IntegrationErrorMsg
+			} else {
+				errorMsg = hookCommands.DeintegrationErrorMsg
+			}
+			// Format the error message with the provided error message template
+			return fmt.Errorf(errorMsg, binaryPath, err)
+		}
+	}
+
+	return nil
 }
 
 // LoadConfig loads the configuration from the JSON file and handles environment variables automatically.
@@ -157,6 +228,29 @@ func setDefaultValues(config *Config) {
 	if !config.IntegrateWithSystem {
 		config.IntegrateWithSystem = true
 	}
+
+	// Set default hooks
+	config.Hooks = Hooks{
+		Commands: map[string]HookCommands{
+			".AppBundle": {
+				IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
+				DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
+				IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
+				DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
+				UseRunFromCache:       true,
+			},
+			".AppImage": {
+				IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
+				DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
+				IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
+				DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
+				UseRunFromCache:       true,
+			},
+			"": {
+				NoOp: true,
+			},
+		},
+	}
 }
 
 // CreateDefaultConfig creates a default configuration file.
@@ -165,14 +259,12 @@ func CreateDefaultConfig() error {
 	cfg := &Config{}
 	setDefaultValues(cfg)
 
-	// Get the user config directory
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
 		return fmt.Errorf("failed to get user config directory: %v", err)
 	}
 	configFilePath := filepath.Join(userConfigDir, "dbin.json")
 
-	// Ensure the directory exists
 	if err := os.MkdirAll(userConfigDir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %v", err)
 	}
