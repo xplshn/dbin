@@ -24,8 +24,22 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 
 			installPath := filepath.Join(installDir, filepath.Base(binaryName))
 
-			// Validate using the listInstalled function
-			fullBinaryName := listInstalled(installPath)
+			// Get the full name of the binary installed
+			fullBinaryName, err := getFullName(installPath)
+			if err != nil {
+				if verbosityLevel >= normalVerbosity {
+					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s'. Skipping removal.\n", binaryName)
+				}
+				return
+			}
+
+			// Compare the base name of the given binary and the full binary name
+			if filepath.Base(binaryName) != filepath.Base(fullBinaryName) {
+				// Use the base name of fullBinaryName for removal
+				installPath = filepath.Join(installDir, filepath.Base(fullBinaryName))
+			}
+
+			// Validate if the binary was installed by checking the full binary name
 			if fullBinaryName == "" {
 				if verbosityLevel >= normalVerbosity {
 					fmt.Fprintf(os.Stderr, "Skipping '%s': it was not installed by dbin\n", binaryName)
@@ -33,7 +47,20 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 				return
 			}
 
-			err := os.Remove(installPath)
+			// Run deintegration hooks before removing the binary
+			if err := runDeintegrationHooks(config, installPath, verbosityLevel); err != "" {
+				if verbosityLevel >= silentVerbosityWithErrors {
+					fmt.Fprintf(os.Stderr, "error: %s\n", err)
+				}
+				// Add error to the list in a thread-safe way
+				mutex.Lock()
+				removeErrors = append(removeErrors, err)
+				mutex.Unlock()
+				return
+			}
+
+			// Remove the binary
+			err = os.Remove(installPath)
 			if err != nil {
 				if os.IsNotExist(err) {
 					if verbosityLevel >= normalVerbosity {
@@ -63,4 +90,28 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 	}
 
 	return nil
+}
+
+// runDeintegrationHooks runs the deintegration hooks before removing the binary
+func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) string {
+	if config.IntegrateWithSystem {
+		switch {
+		case strings.HasSuffix(binaryPath, ".AppBundle"):
+			// Prepare the arguments for RunFromCache for AppBundle
+			args := []string{"--deintegrate", binaryPath}
+			err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
+			if err != nil {
+				return "error deintegrating with the system for .AppBundle: " + err.Error()
+			}
+		case strings.HasSuffix(binaryPath, ".AppImage"):
+			// Prepare the arguments for RunFromCache for AppImage
+			args := []string{"--deintegrate", binaryPath}
+			err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
+			if err != nil {
+				return "error deintegrating with the system for .AppImage: " + err.Error()
+			}
+		}
+	}
+
+	return ""
 }

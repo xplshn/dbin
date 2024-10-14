@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -23,26 +24,6 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 	performCorrections := func(binaryPath string) (string, string) {
 		if strings.HasSuffix(binaryPath, ".no_strip") {
 			return strings.TrimSuffix(binaryPath, ".no_strip"), ""
-		}
-
-		// Check the binary name for specific extensions and handle integration accordingly
-		if config.IntegrateWithSystem {
-			switch {
-			case strings.HasSuffix(binaryPath, ".AppBundle"):
-				// Prepare the arguments for RunFromCache for AppBundle
-				args := []string{"--integrate", binaryPath}
-				err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
-				if err != nil {
-					return "", "error integrating with the system for .AppBundle: " + err.Error()
-				}
-			case strings.HasSuffix(binaryPath, ".AppImage"):
-				// Prepare the arguments for RunFromCache for AppImage
-				args := []string{"--integrate", binaryPath}
-				err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
-				if err != nil {
-					return "", "error integrating with the system for .AppImage: " + err.Error()
-				}
-			}
 		}
 
 		return binaryPath, ""
@@ -75,6 +56,18 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 				return
 			}
 
+			// Make the binary executable
+			if err := os.Chmod(destination, 0755); err != nil {
+				errChan <- fmt.Errorf("error making binary executable %s: %v", destination, err)
+				return
+			}
+
+			// Run hooks after the file is downloaded and chmod +x
+			if err := runHooks(config, destination, verbosityLevel); err != "" {
+				errChan <- fmt.Errorf("[%s] could not be handled by its hooks: %s", destination, err)
+				return
+			}
+
 			// Add full name to the binary's xattr
 			if err := addFullName(destination, binaryName); err != nil {
 				errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
@@ -101,6 +94,30 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 	}
 
 	return nil
+}
+
+// runHooks runs the hooks after the file is downloaded and chmod +x
+func runHooks(config *Config, binaryPath string, verbosityLevel Verbosity) string {
+	if config.IntegrateWithSystem {
+		switch {
+		case strings.HasSuffix(binaryPath, ".AppBundle"):
+			// Prepare the arguments for RunFromCache for AppBundle
+			args := []string{"--integrate", binaryPath}
+			err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
+			if err != nil {
+				return "error integrating with the system for .AppBundle: " + err.Error()
+			}
+		case strings.HasSuffix(binaryPath, ".AppImage"):
+			// Prepare the arguments for RunFromCache for AppImage
+			args := []string{"--integrate", binaryPath}
+			err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
+			if err != nil {
+				return "error integrating with the system for .AppImage: " + err.Error()
+			}
+		}
+	}
+
+	return ""
 }
 
 // installCommand installs one or more binaries based on the verbosity level.

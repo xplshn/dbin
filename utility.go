@@ -68,21 +68,6 @@ func isExecutable(filePath string) bool {
 	return info.Mode().IsRegular() && (info.Mode().Perm()&0o111) != 0
 }
 
-// listFilesInDir lists all files in a directory
-func listFilesInDir(dir string) ([]string, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-	files := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			files = append(files, filepath.Join(dir, entry.Name()))
-		}
-	}
-	return files, nil
-}
-
 // validateProgramsFrom checks the validity of programs against a remote source
 func validateProgramsFrom(config *Config, programsToValidate []string) ([]string, error) {
 	installDir := config.InstallDir
@@ -227,12 +212,35 @@ func truncatePrintf(disableTruncation, addNewLine bool, format string, a ...inte
 	return fmt.Print(truncateSprintf(indicator, format, a...))
 }
 
+// listFilesInDir lists all files in a directory
+func listFilesInDir(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	files := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			files = append(files, filepath.Join(dir, entry.Name()))
+		}
+	}
+	return files, nil
+}
+
 // getFullName retrieves the full binary name from the extended attributes of the binary file.
+// If the binary does not exist, it returns the basename. If the full name attribute cannot be retrieved, it returns an error.
 func getFullName(binaryPath string) (string, error) {
+	// Check if the binary file exists using the existing isFileExist function
+	if !fileExists(binaryPath) {
+		// Return the basename if the file doesn't exist
+		return filepath.Base(binaryPath), nil
+	}
+
 	// Retrieve the "user.FullName" attribute
 	fullName, err := xattr.Get(binaryPath, "user.FullName")
 	if err != nil {
-		return "", fmt.Errorf("could not retrieve full name from xattr for %s: %w", binaryPath, err)
+		// Return an error if the full name cannot be retrieved but the binary exists
+		return "", fmt.Errorf("full name attribute not found for binary: %s", binaryPath)
 	}
 
 	return string(fullName), nil
