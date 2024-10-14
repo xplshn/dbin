@@ -6,8 +6,8 @@ import (
 	"net/url"
 )
 
-// findURL fetches the URLs and BLAKE3sum for the specified binaries
-func findURL(binaryNames []string, trackerFile string, repositories []string, metadataURLs []string, verbosityLevel Verbosity) ([]string, []string, error) {
+// findURL fetches the URLs and BLAKE3sum for the specified binaries using xattr instead of trackerFile.
+func findURL(binaryNames, repositories, metadataURLs []string, installDir string, verbosityLevel Verbosity) ([]string, []string, error) {
 	var foundURLs []string
 	var foundB3sum []string
 
@@ -25,15 +25,18 @@ func findURL(binaryNames []string, trackerFile string, repositories []string, me
 		}
 
 		// Try to get binary info from info.go logic
-		binInfo, err := getBinaryInfo(trackerFile, binaryName, metadataURLs)
-		if err == nil && binInfo.DownloadURL != "" {
-			// If the download_url (Source) is available, return it with BLAKE3sum
-			if verbosityLevel >= extraVerbose {
-				fmt.Printf("\033[2K\rFound \"%s\" via the metadata files", binaryName)
+		fullBinaryName, err := getFullName(binaryName)
+		if err == nil && fullBinaryName != "" {
+			binInfo, err := getBinaryInfo(fullBinaryName, installDir, metadataURLs)
+			if err == nil && binInfo.DownloadURL != "" {
+				// If the download_url (Source) is available, return it with BLAKE3sum
+				if verbosityLevel >= extraVerbose {
+					fmt.Printf("\033[2K\rFound \"%s\" via the metadata files", binaryName)
+				}
+				foundURLs = append(foundURLs, binInfo.DownloadURL)
+				foundB3sum = append(foundB3sum, binInfo.Bsum)
+				continue
 			}
-			foundURLs = append(foundURLs, binInfo.DownloadURL)
-			foundB3sum = append(foundB3sum, binInfo.Bsum)
-			continue
 		}
 
 		// If no valid download_url found, proceed with HEAD requests on repositories
@@ -49,7 +52,7 @@ func findURL(binaryNames []string, trackerFile string, repositories []string, me
 			// Create a new request with the User-Agent header
 			req, err := http.NewRequest("HEAD", url, nil)
 			if err != nil {
-				continue // Handle error appropriately
+				continue // TODO: Handle error appropriately
 			}
 			req.Header.Set("User-Agent", "dbin")
 

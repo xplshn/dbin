@@ -15,7 +15,7 @@ import (
 )
 
 // update checks for updates to the valid programs and installs any that have changed.
-func update(programsToUpdate []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
+func update(programsToUpdate []string, installDir string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	// Initialize counters
 	var (
 		skipped, updated, errors, toBeChecked uint32
@@ -25,7 +25,7 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 	)
 
 	// Call validateProgramsFrom with InstallDir and programsToUpdate
-	programsToUpdate, err := validateProgramsFrom(installDir, trackerFile, metadataURLs, programsToUpdate)
+	programsToUpdate, err := validateProgramsFrom(installDir, metadataURLs, programsToUpdate)
 	if err != nil {
 		return err
 	}
@@ -49,12 +49,14 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 			defer wg.Done()
 
 			installPath := filepath.Join(installDir, filepath.Base(program))
+			fullName, err := getFullName(installPath)
+
 			if !fileExists(installPath) {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Tried to update a non-existent program %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Tried to update a non-existent program %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
 				}
 				progressMutex.Unlock()
 				return
@@ -65,19 +67,19 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get B3sum for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get B3sum for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
 				}
 				progressMutex.Unlock()
 				return
 			}
 
-			binaryInfo, err := getBinaryInfo(trackerFile, program, metadataURLs)
+			binaryInfo, err := getBinaryInfo(program, installDir, metadataURLs)
 			if err != nil {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get metadata for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get metadata for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
 				}
 				progressMutex.Unlock()
 				return
@@ -88,19 +90,19 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Skipping %s because the B3sum field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Skipping %s because the B3sum field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
 				}
 				progressMutex.Unlock()
 				return
 			}
 
 			if checkDifferences(localB3sum, binaryInfo.Bsum) == 1 {
-				err := installCommand([]string{program}, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
+				err := installCommand([]string{program}, installDir, verbosityLevel, repositories, metadataURLs)
 				if err != nil {
 					progressMutex.Lock()
 					atomic.AddUint32(&errors, 1)
 					if verbosityLevel >= silentVerbosityWithErrors {
-						errorMessages += fmt.Sprintf("Failed to update '%s', please check this file's properties, etc.\n", program)
+						errorMessages += fmt.Sprintf("Failed to update '%s', please check this file's properties, etc.\n", installPath)
 					}
 					progressMutex.Unlock()
 					return
@@ -109,14 +111,14 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&updated, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Successfully updated %s.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Successfully updated %s.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
 				}
 				progressMutex.Unlock()
 			} else {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | No updates available for %s.", atomic.LoadUint32(&checked), toBeChecked, padding, program)
+					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | No updates available for %s.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
 				}
 				progressMutex.Unlock()
 			}
@@ -134,8 +136,8 @@ func update(programsToUpdate []string, installDir, trackerFile string, verbosity
 	// Print final counts
 	if verbosityLevel >= normalVerbosity || (errors > 0 && verbosityLevel >= silentVerbosityWithErrors) {
 		fmt.Printf(finalCounts)
-		for _, error := range strings.Split(errorMessages, "\n") {
-			fmt.Println(strings.TrimSpace(error))
+		for _, errorMsg := range strings.Split(errorMessages, "\n") {
+			fmt.Println(strings.TrimSpace(errorMsg))
 		}
 	}
 

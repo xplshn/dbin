@@ -1,4 +1,4 @@
-//usr/bin/env go run findURL.go fsearch.go info.go install.go listBinaries.go main.go remove.go run.go update.go utility.go fetch.go "$@"; exit $?
+// usr/bin/env go run findURL.go fsearch.go info.go install.go listBinaries.go main.go remove.go run.go update.go utility.go fetch.go "$@"; exit $?
 // dbin - 📦 Poor man's package manager. The easy to use, easy to get, suckless software distribution system
 package main
 
@@ -19,7 +19,7 @@ type Verbosity int8
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
-	version                             = "0.5.1"
+	version                             = "0.6"
 	indicator                           = "...>"
 	maxCacheSize                        = 10
 	binariesToDelete                    = 5
@@ -46,23 +46,18 @@ func getEnvVar(key, defaultValue string) string {
 }
 
 // setupEnvironment initializes the environment settings including architecture, repositories, and metadata URLs.
-func setupEnvironment() (string, string, string, []string, []string, bool, error) {
+func setupEnvironment() (string, string, []string, []string, bool, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", "", "", nil, nil, false, fmt.Errorf("failed to get user's Home directory: %v", err)
+		return "", "", nil, nil, false, fmt.Errorf("failed to get user's Home directory: %v", err)
 	}
 
 	tempDir, err := os.UserCacheDir()
 	if err != nil {
-		return "", "", "", nil, nil, false, fmt.Errorf("failed to get user's Cache directory: %v", err)
-	}
-	confDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", "", "", nil, nil, false, fmt.Errorf("failed to get user's XDG Config directory: %v", err)
+		return "", "", nil, nil, false, fmt.Errorf("failed to get user's Cache directory: %v", err)
 	}
 
 	tempDir = getEnvVar("DBIN_CACHEDIR", filepath.Join(tempDir, "dbin_cache"))
-	trackerFile := getEnvVar("DBIN_TRACKERFILE", filepath.Join(confDir, "dbin.tracker.json"))
 
 	// DBIN_INSTALL_DIR or XDG_BIN_HOME. "$HOME/.local/bin" as fallback
 	installDir := os.Getenv("DBIN_INSTALL_DIR")
@@ -77,7 +72,7 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 	disableTruncationStr := getEnvVar("DBIN_NOTRUNCATION", "false")
 	disableTruncation, err := strconv.ParseBool(disableTruncationStr)
 	if err != nil {
-		return "", "", "", nil, nil, false, fmt.Errorf("failed to parse DBIN_NOTRUNCATION: %v", err)
+		return "", "", nil, nil, false, fmt.Errorf("failed to parse DBIN_NOTRUNCATION: %v", err)
 	}
 
 	determineArch := func() (string, error) {
@@ -116,13 +111,13 @@ func setupEnvironment() (string, string, string, []string, []string, bool, error
 
 	arch, err := determineArch()
 	if err != nil {
-		return "", "", "", nil, nil, false, err
+		return "", "", nil, nil, false, err
 	}
 
 	repositories := getRepositories(arch)
 	metadataURLs := getMetadataURLs(arch)
 
-	return trackerFile, installDir, tempDir, repositories, metadataURLs, disableTruncation, nil
+	return installDir, tempDir, repositories, metadataURLs, disableTruncation, nil
 }
 
 func main() {
@@ -147,7 +142,6 @@ eget2             Equivalent to "run --transparent --silent eget2"`,
 			"3_Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory path
 DBIN_INSTALL_DIR   If present, it must contain a valid directory path
 DBIN_NOTRUNCATION  If present, and set to ONE (1), string truncation will be disabled
-DBIN_TRACKERFILE   If present, it must point to a valid file path, in an existing directory
 DBIN_REPO_URLS     If present, it must contain one or more repository URLS ended in / separated by ;
 DBIN_METADATA_URLS If present, it must contain one or more repository's metadata url separated by ;`,
 			"4_Examples": `dbin search editor
@@ -234,12 +228,11 @@ dbin run btop`,
 	command := args[0]
 	args = args[1:]
 
-	trackerFile, installDir, tempDir, repositories, metadataURLs, disableTruncation, err := setupEnvironment()
+	installDir, tempDir, repositories, metadataURLs, disableTruncation, err := setupEnvironment()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	runCommandTrackerFile := filepath.Join(tempDir, "dbin.cached.tracker.json")
 
 	switch command {
 	case "findurl":
@@ -248,7 +241,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaryNames := args
-		urls, _, err := findURL(binaryNames, trackerFile, repositories, metadataURLs, verbosityLevel)
+		urls, _, err := findURL(binaryNames, repositories, metadataURLs, installDir, verbosityLevel)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
@@ -266,7 +259,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := installCommand(binaries, installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
+		err := installCommand(binaries, installDir, verbosityLevel, repositories, metadataURLs)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -278,7 +271,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := removeCommand(binaries, installDir, trackerFile, verbosityLevel)
+		err := removeCommand(binaries, installDir, verbosityLevel)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -288,7 +281,7 @@ dbin run btop`,
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
 				// Call fSearch with an empty query and a large limit to list all described binaries
-				fSearch(metadataURLs, installDir, tempDir, "", disableTruncation, 99999, runCommandTrackerFile)
+				fSearch(metadataURLs, installDir, tempDir, "", disableTruncation, 99999)
 			} else {
 				errorOut("dbin: Unknown command.\n")
 			}
@@ -332,7 +325,7 @@ dbin run btop`,
 		}
 
 		query := args[queryIndex]
-		err := fSearch(metadataURLs, installDir, tempDir, query, disableTruncation, limit, runCommandTrackerFile)
+		err := fSearch(metadataURLs, installDir, tempDir, query, disableTruncation, limit)
 		if err != nil {
 			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
@@ -344,7 +337,7 @@ dbin run btop`,
 		}
 
 		if binaryName == "" {
-			installedPrograms, err := validateProgramsFrom(installDir, trackerFile, metadataURLs, nil)
+			installedPrograms, err := validateProgramsFrom(installDir, metadataURLs, nil)
 			if err != nil {
 				fmt.Printf("error validating programs: %v\n", err)
 				os.Exit(1)
@@ -353,12 +346,12 @@ dbin run btop`,
 				fmt.Println(program)
 			}
 		} else {
-			binaryInfo, err := getBinaryInfo(trackerFile, binaryName, metadataURLs)
+			binaryInfo, err := getBinaryInfo(binaryName, installDir, metadataURLs)
 			if err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Name: %s\n", binaryInfo.Name)
+			fmt.Printf("Name: %s\n", binaryInfo.RealName)
 			if binaryInfo.Description != "" {
 				fmt.Printf("Description: %s\n", binaryInfo.Description)
 			}
@@ -399,7 +392,7 @@ dbin run btop`,
 				fmt.Printf("Category: %s\n", binaryInfo.Category)
 			}
 			if binaryInfo.ExtraBins != "" {
-				fmt.Printf("Extra Bins: %s\n", binaryInfo.ExtraBins)
+				truncatePrintf(disableTruncation, true, "Extra Bins: %s\n", binaryInfo.ExtraBins)
 			}
 		}
 	case "run":
@@ -422,17 +415,17 @@ dbin run btop`,
 			os.Exit(1)
 		}
 
-		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, runCommandTrackerFile, transparentMode, verbosityLevel, repositories, metadataURLs)
+		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, transparentMode, verbosityLevel, repositories, metadataURLs)
 	case "tldr":
-		RunFromCache("tlrc", flag.Args()[1:], tempDir, runCommandTrackerFile, true, verbosityLevel, repositories, metadataURLs)
+		RunFromCache("tlrc", flag.Args()[1:], tempDir, true, verbosityLevel, repositories, metadataURLs)
 	case "eget2":
-		RunFromCache("eget2", flag.Args()[1:], tempDir, runCommandTrackerFile, true, verbosityLevel, repositories, metadataURLs)
+		RunFromCache("eget2", flag.Args()[1:], tempDir, true, verbosityLevel, repositories, metadataURLs)
 	case "update":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {
 			programsToUpdate = os.Args[2:]
 		}
-		if err := update(programsToUpdate, installDir, trackerFile, verbosityLevel, repositories, metadataURLs); err != nil {
+		if err := update(programsToUpdate, installDir, verbosityLevel, repositories, metadataURLs); err != nil {
 			fmt.Println("Update failed:", err)
 		}
 	default:

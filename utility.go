@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall" // We manually check if the file is busy. This means that `dbin` only runs on Unix-like operating systems for now.
+	"syscall" // We manually check if the file is busy. This means that `dbin` only runs on Unix clones for now.
 
 	"github.com/goccy/go-json"
 	"github.com/pkg/xattr"
@@ -84,7 +84,7 @@ func listFilesInDir(dir string) ([]string, error) {
 }
 
 // validateProgramsFrom checks the validity of programs against a remote source
-func validateProgramsFrom(installDir, trackerFile string, metadataURLs, programsToValidate []string) ([]string, error) {
+func validateProgramsFrom(installDir string, metadataURLs, programsToValidate []string) ([]string, error) {
 	remotePrograms, err := listBinaries(metadataURLs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list remote binaries: %w", err)
@@ -98,44 +98,38 @@ func validateProgramsFrom(installDir, trackerFile string, metadataURLs, programs
 	programsToValidate = removeDuplicates(programsToValidate)
 	validPrograms := make([]string, 0, len(programsToValidate))
 
-	// Inline function to get the binary name or fall back to the original name
-	getBinaryName := func(file string) string {
-		binaryName, err := getBinaryNameFromTrackerFile(trackerFile, file)
-		if err != nil || binaryName == "" {
-			return file
-		}
-		return binaryName
-	}
-
 	// Inline function to validate a file against the remote program list
-	validate := func(file string) bool {
+	validate := func(file string) (string, bool) {
 		if isSymlink(file) {
-			return false
+			return "", false
 		}
 
-		// Check for the user.ManagedBy attribute
-		managedBy, err := xattr.Get(file, "user.ManagedBy")
-		if err != nil || string(managedBy) != "dbin" {
-			return false
+		// Retrieve the fullName of the binary
+		fullBinaryName, err := getFullName(file)
+		if err != nil || fullBinaryName == "" {
+			return "", false // If we can't get the full name, consider it invalid
 		}
 
-		binaryName := getBinaryName(filepath.Base(file))
-		return contains(remotePrograms, binaryName)
+		// Check if the full name exists in the remote programs
+		if contains(remotePrograms, fullBinaryName) {
+			return fullBinaryName, true
+		}
+		return "", false
 	}
 
 	if len(programsToValidate) == 0 {
 		// Validate all files in the directory
 		for _, file := range files {
-			if validate(file) {
-				validPrograms = append(validPrograms, filepath.Base(file))
+			if fullName, valid := validate(file); valid {
+				validPrograms = append(validPrograms, fullName)
 			}
 		}
 	} else {
 		// Validate only the specified programs
 		for _, program := range programsToValidate {
 			file := filepath.Join(installDir, program)
-			if validate(file) {
-				validPrograms = append(validPrograms, program)
+			if fullName, valid := validate(file); valid {
+				validPrograms = append(validPrograms, fullName)
 			}
 		}
 	}
@@ -196,14 +190,20 @@ func truncateSprintf(indicator, format string, a ...interface{}) string {
 	// Format the string first
 	formatted := fmt.Sprintf(format, a...)
 
+	// Check if output is piped
+	if isPipedOutput() {
+		return formatted // No truncation if output is being piped to another program
+	}
+
 	// Determine the truncation length & truncate the formatted string if it exceeds the available space
 	availableSpace := getTerminalWidth() - len(indicator)
 	if len(formatted) > availableSpace {
 		formatted = formatted[:availableSpace]
+		// Remove trailing punctuation and spaces
 		for strings.HasSuffix(formatted, ",") || strings.HasSuffix(formatted, ".") || strings.HasSuffix(formatted, " ") {
 			formatted = formatted[:len(formatted)-1]
 		}
-		formatted = fmt.Sprintf("%s%s", formatted, indicator) // Add the dots.
+		formatted = fmt.Sprintf("%s%s", formatted, indicator) // Add the indicator (the dots)
 	}
 
 	return formatted
@@ -220,102 +220,23 @@ func truncatePrintf(disableTruncation, addNewLine bool, format string, a ...inte
 	return fmt.Print(truncateSprintf(indicator, format, a...))
 }
 
-// addToTrackerFile appends one or more binary names to the tracker file or updates existing entries.
-func addToTrackerFile(trackerFile string, binaryNames []string, installDir string) error {
-	tracker, err := readTrackerFile(trackerFile)
+// getFullName retrieves the full binary name from the extended attributes of the binary file.
+func getFullName(binaryPath string) (string, error) {
+	// Retrieve the "user.FullName" attribute
+	fullName, err := xattr.Get(binaryPath, "user.FullName")
 	if err != nil {
-		return err
+		return "", fmt.Errorf("could not retrieve full name from xattr for %s: %w", binaryPath, err)
 	}
 
-	// Loop through the binary names slice
-	for _, binaryName := range binaryNames {
-		baseName := filepath.Base(binaryName)
-		tracker[baseName] = binaryName // Always update or add the entry
-	}
-
-	err = writeTrackerFile(trackerFile, tracker)
-	if err != nil {
-		return fmt.Errorf("could not write to tracker file: %w", err)
-	}
-
-	cleanupTrackerFile(trackerFile, installDir)
-	return nil
+	return string(fullName), nil
 }
 
-// getBinaryNameFromTrackerFile retrieves the full binary name from the tracker file based on the base name.
-func getBinaryNameFromTrackerFile(trackerFile, baseName string) (string, error) {
-	baseName = filepath.Base(baseName)
-	tracker, err := readTrackerFile(trackerFile)
-	if err != nil {
-		return "", fmt.Errorf("could not read tracker file: %w", err)
+// addFullName writes the full binary name to the extended attributes of the binary file.
+func addFullName(binaryPath string, fullName string) error {
+	// Set the "user.FullName" attribute
+	if err := xattr.Set(binaryPath, "user.FullName", []byte(fullName)); err != nil {
+		return fmt.Errorf("failed to set xattr for %s: %w", binaryPath, err)
 	}
-
-	if binaryName, exists := tracker[baseName]; exists {
-		return binaryName, nil
-	}
-
-	return "", fmt.Errorf("no match found for %s in tracker file", baseName)
-}
-
-// cleanupTrackerFile removes entries for binaries no longer present in the install directory.
-func cleanupTrackerFile(trackerFile, installDir string) error {
-	tracker, err := readTrackerFile(trackerFile)
-	if err != nil {
-		return err
-	}
-
-	newTracker := make(map[string]string)
-	for baseName, repoPath := range tracker {
-		expectedPath := filepath.Join(installDir, baseName)
-		if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
-			// If the file does not exist in the installDir, skip adding it to newTracker
-			continue
-		}
-		// Keep the entry if the file exists
-		newTracker[baseName] = repoPath
-	}
-
-	err = writeTrackerFile(trackerFile, newTracker)
-	if err != nil {
-		return fmt.Errorf("could not write to tracker file: %w", err)
-	}
-
-	return nil
-}
-
-// readTrackerFile reads the tracker file and returns the tracker map.
-func readTrackerFile(trackerFile string) (map[string]string, error) {
-	file, err := os.Open(trackerFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return make(map[string]string), nil // If the file doesn't exist, return an empty map
-		}
-		return nil, fmt.Errorf("could not open tracker file: %w", err)
-	}
-	defer file.Close()
-
-	tracker := make(map[string]string)
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&tracker); err != nil {
-		return nil, fmt.Errorf("could not decode tracker file: %w", err)
-	}
-
-	return tracker, nil
-}
-
-// writeTrackerFile writes the tracker map to the tracker file.
-func writeTrackerFile(trackerFile string, tracker map[string]string) error {
-	file, err := os.OpenFile(trackerFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("could not open tracker file: %w", err)
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	if err := encoder.Encode(tracker); err != nil {
-		return fmt.Errorf("could not encode tracker file: %w", err)
-	}
-
 	return nil
 }
 
@@ -411,6 +332,16 @@ func calculateChecksum(filePath string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
+}
+
+// isPipedOutput checks if the output is piped
+func isPipedOutput() bool {
+	// Check if stdout is a pipe
+	fileInfo, err := os.Stdout.Stat()
+	if err != nil {
+		return false // Default to not piped if there's an error
+	}
+	return (fileInfo.Mode() & os.ModeNamedPipe) != 0
 }
 
 func isSymlink(filePath string) bool {

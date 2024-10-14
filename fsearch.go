@@ -8,10 +8,10 @@ import (
 )
 
 // fSearch searches for binaries based on the given search term
-func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disableTruncation bool, limit int, runCommandTrackerFile string) error {
+func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disableTruncation bool, limit int) error {
 	type tBinary struct {
 		Architecture string `json:"architecture"`
-		RealName         string `json:"bin_name"`
+		RealName     string `json:"bin_name"`
 		Description  string `json:"description"`
 	}
 
@@ -69,14 +69,16 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 
 		// Determine the prefix based on conditions
 		prefix := "[-]"
-		cachedLocation, trackedBinaryRealName := ReturnCachedFile(tempDir, RealName, runCommandTrackerFile)
+		//cachedLocation, trackedBinaryRealName := ReturnCachedFile(tempDir, RealName)
 
 		if installPath := filepath.Join(installDir, baseRealName); fileExists(installPath) && !installedBinaries[baseRealName] {
 			prefix = "[i]"
 			installedBinaries[baseRealName] = true
-		} else if trackedBinaryRealName == RealName && fileExists(cachedLocation) {
-			prefix = "[c]"
 		}
+		//TODO Handle cached binaries, somehow
+		//} else if trackedBinaryRealName == RealName && fileExists(cachedLocation) {
+		//	prefix = "[c]"
+		//}
 
 		truncatePrintf(disableTruncation, true, "%s %s - %s ", prefix, RealName, description)
 	}

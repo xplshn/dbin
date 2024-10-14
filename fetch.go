@@ -1,3 +1,4 @@
+// TODO: Add ability to manage external binaries
 package main
 
 import (
@@ -9,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/xattr"
+	//"github.com/pkg/xattr"
 	"github.com/schollz/progressbar/v3"
 	"github.com/zeebo/blake3"
 )
@@ -143,9 +144,9 @@ downloadLoop:
 	}
 
 	// Mark the binary as ours
-	if err := xattr.Set(destination, "user.ManagedBy", []byte("dbin")); err != nil {
-		return "", fmt.Errorf("failed to set xattr for %s: %v", destination, err)
-	}
+	//if err := xattr.Set(destination, "user.ManagedBy", []byte("dbin")); err != nil {
+	//	return "", fmt.Errorf("failed to set xattr for %s: %v", destination, err)
+	//}
 
 	return destination, nil
 }

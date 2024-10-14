@@ -10,19 +10,13 @@ import (
 	"github.com/pkg/xattr"
 )
 
-// removeCommand handles the overall flow, passing binaries to removeBinaries and ensuring tracker cleanup.
-func removeCommand(binaries []string, installDir, trackerFile string, verbosityLevel Verbosity) error {
+// removeCommand handles the overall flow, passing binaries to removeBinaries
+func removeCommand(binaries []string, installDir string, verbosityLevel Verbosity) error {
 	// Call removeBinaries to handle the actual removal process
 	err := removeBinaries(removeDuplicates(binaries), installDir, verbosityLevel)
 	if err != nil {
 		return err
 	}
-	// Cleanup the tracker file after all binaries are removed
-	err = cleanupTrackerFile(trackerFile, installDir)
-	if err != nil {
-		return fmt.Errorf("error cleaning up tracker file: %w", err)
-	}
-
 	return nil
 }
 

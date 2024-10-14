@@ -9,15 +9,14 @@ import (
 )
 
 // installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
-func installBinaries(ctx context.Context, binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
+func installBinaries(ctx context.Context, binaries []string, installDir string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(binaries))
-	urls, checksums, err := findURL(binaries, trackerFile, repositories, metadataURLs, verbosityLevel)
+	urls, checksums, err := findURL(binaries, repositories, metadataURLs, installDir, verbosityLevel)
 	if err != nil {
 		return err
 	}
 
-	var installedBinaries []string
 	var errors []string
 
 	for i, binaryName := range binaries {
@@ -26,7 +25,7 @@ func installBinaries(ctx context.Context, binaries []string, installDir, tracker
 			defer wg.Done()
 			url := urls[i]
 			checksum := checksums[i]
-			destination := filepath.Join(installDir, filepath.Base(binaryName))
+			destination := performCorrections(filepath.Join(installDir, filepath.Base(binaryName)))
 
 			// Ensure file isn't in use
 			if isFileBusy(destination) {
@@ -34,14 +33,18 @@ func installBinaries(ctx context.Context, binaries []string, installDir, tracker
 				return
 			}
 
-			// Fetch binary and put it at destination
+			// Fetch binary and place it at destination
 			_, err := fetchBinaryFromURLToDest(ctx, url, checksum, destination)
 			if err != nil {
 				errChan <- fmt.Errorf("error fetching binary %s: %v", binaryName, err)
 				return
 			}
 
-			installedBinaries = append(installedBinaries, binaryName)
+			// Add full name to the binary's xattr
+			if err := addFullName(destination, binaryName); err != nil {
+				errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
+				return
+			}
 		}(i, binaryName)
 	}
 
@@ -62,18 +65,18 @@ func installBinaries(ctx context.Context, binaries []string, installDir, tracker
 		}
 	}
 
-	// Update tracker file
-	if trackerFile != "" {
-		err := addToTrackerFile(trackerFile, installedBinaries, installDir)
-		if err != nil {
-			return fmt.Errorf("failed to update tracker file: %v", err)
-		}
-	}
-
 	return nil
 }
 
+// performCorrections checks the binary name for specific extensions and handles them appropiately
+func performCorrections(binaryPath string) string {
+	if strings.HasSuffix(binaryPath, ".no_strip") {
+		return strings.TrimSuffix(binaryPath, ".no_strip")
+	}
+	return binaryPath
+}
+
 // installCommand installs one or more binaries based on the verbosity level.
-func installCommand(binaries []string, installDir, trackerFile string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
-	return installBinaries(context.Background(), removeDuplicates(binaries), installDir, trackerFile, verbosityLevel, repositories, metadataURLs)
+func installCommand(binaries []string, installDir string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
+	return installBinaries(context.Background(), removeDuplicates(binaries), installDir, verbosityLevel, repositories, metadataURLs)
 }
