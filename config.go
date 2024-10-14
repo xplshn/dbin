@@ -15,14 +15,14 @@ import (
 
 // Config structure holding configuration settings
 type Config struct {
-	RepoURLs            []string `json:"repo_urls" env:"DBIN_REPO_URLS"`
-	MetadataURLs        []string `json:"metadata_urls" env:"DBIN_METADATA_URLS"`
-	InstallDir          string   `json:"install_dir" env:"DBIN_INSTALL_DIR"`
-	CacheDir            string   `json:"cache_dir" env:"DBIN_CACHEDIR"`
-	DisableTruncation   bool     `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
-	IntegrateWithSystem bool     `json:"integrate_with_system" env:"DBIN_INTEGRATE"`
-	Limit               int      `json:"fsearch_limit"`
-	Hooks               Hooks    `json:"hooks"`
+	RepoURLs            []string `json:"repo_urls,omitempty" env:"DBIN_REPO_URLS"`
+	MetadataURLs        []string `json:"metadata_urls,omitempty" env:"DBIN_METADATA_URLS"`
+	InstallDir          string   `json:"install_dir,omitempty" env:"DBIN_INSTALL_DIR"`
+	CacheDir            string   `json:"cache_dir,omitempty" env:"DBIN_CACHEDIR"`
+	DisableTruncation   bool     `json:"disable_truncation,omitempty" env:"DBIN_NOTRUNCATION"`
+	IntegrateWithSystem bool     `json:"integrate_with_system,omitempty" env:"DBIN_INTEGRATE"`
+	Limit               int      `json:"fsearch_limit,omitempty"`
+	Hooks               Hooks    `json:"hooks,omitempty"`
 }
 
 // Hooks structure holding user-defined commands per extension
