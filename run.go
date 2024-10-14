@@ -14,23 +14,21 @@ import (
 )
 
 // ReturnCachedFile retrieves the cached file location and its corresponding fullName. Returns an empty string and an error if not found.
-func ReturnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBinaryName string) {
-	baseName := filepath.Base(binaryName)
-	cachedBinary = filepath.Join(config.CacheDir, baseName)
+func ReturnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBinaryName string, err error) {
+	cachedBinary = filepath.Join(config.CacheDir, filepath.Base(binaryName))
 
 	// Retrieve the fullName of the cachedBinary
-	trackedBinaryName, err := getFullName(cachedBinary)
+	trackedBinaryName, err = getFullName(cachedBinary)
 	if err != nil {
-		trackedBinaryName = ""
+		return "", "", err
 	}
 
 	// Check if the cached binary exists
 	if !fileExists(cachedBinary) {
-		cachedBinary = ""
+		return "", "", errors.New("cached binary not found")
 	}
 
-	// Return empty strings if the cached binary is not found
-	return cachedBinary, trackedBinaryName
+	return cachedBinary, trackedBinaryName, nil
 }
 
 // RunFromCache runs the binary from cache or fetches it if not found
@@ -54,8 +52,7 @@ func RunFromCache(config *Config, binaryName string, args []string, transparentM
 	baseName := filepath.Base(binaryName)
 
 	// Check if the binary exists in the cache
-	cacheDir := config.CacheDir
-	cachedFile := filepath.Join(cacheDir, baseName)
+	cachedFile := filepath.Join(config.CacheDir, baseName)
 	if fileExists(cachedFile) && isExecutable(cachedFile) {
 		// Verify that the cached binary corresponds to the correct binary by checking the fullName
 		trackedBinaryName, err := getFullName(cachedFile)
@@ -68,6 +65,8 @@ func RunFromCache(config *Config, binaryName string, args []string, transparentM
 			}
 
 			// Fetch the correct binary
+			config.IntegrateWithSystem = false
+			config.InstallDir = config.CacheDir
 			if err := installCommand(config, []string{binaryName}, silentVerbosityWithErrors); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
 					fmt.Fprintf(os.Stderr, "Error: could not fetch and cache the binary: %v\n", err)
@@ -76,20 +75,20 @@ func RunFromCache(config *Config, binaryName string, args []string, transparentM
 			}
 
 			// Run the newly fetched binary
-			if err := runBinary(filepath.Join(cacheDir, baseName), args, verbosityLevel); err != nil {
+			if err := runBinary(filepath.Join(config.CacheDir, baseName), args, verbosityLevel); err != nil {
 				return err
 			}
-			return cleanCache(cacheDir, verbosityLevel)
+			return cleanCache(config.CacheDir, verbosityLevel)
 		}
 
 		// Run the binary from cache if fullName matches
 		if verbosityLevel >= normalVerbosity {
 			fmt.Printf("Running '%s' from cache...\n", binaryName)
 		}
-		if err := runBinary(filepath.Join(cacheDir, baseName), args, verbosityLevel); err != nil {
+		if err := runBinary(filepath.Join(config.CacheDir, baseName), args, verbosityLevel); err != nil {
 			return err
 		}
-		return cleanCache(cacheDir, verbosityLevel)
+		return cleanCache(config.CacheDir, verbosityLevel)
 	}
 
 	if verbosityLevel >= normalVerbosity {
@@ -97,6 +96,8 @@ func RunFromCache(config *Config, binaryName string, args []string, transparentM
 	}
 
 	// Fetch the binary if it doesn't exist in the cache
+	config.IntegrateWithSystem = false
+	config.InstallDir = config.CacheDir
 	if err := installCommand(config, []string{binaryName}, silentVerbosityWithErrors); err != nil {
 		if verbosityLevel >= silentVerbosityWithErrors {
 			fmt.Fprintf(os.Stderr, "error: could not cache the binary: %v\n", err)
@@ -105,10 +106,10 @@ func RunFromCache(config *Config, binaryName string, args []string, transparentM
 	}
 
 	// Run the freshly fetched binary
-	if err := runBinary(filepath.Join(cacheDir, baseName), args, verbosityLevel); err != nil {
+	if err := runBinary(filepath.Join(config.CacheDir, baseName), args, verbosityLevel); err != nil {
 		return err
 	}
-	return cleanCache(cacheDir, verbosityLevel)
+	return cleanCache(config.CacheDir, verbosityLevel)
 }
 
 // runBinary executes the binary with the given arguments.

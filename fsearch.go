@@ -72,7 +72,7 @@ func fSearch(config *Config, searchTerm string) error {
 
 		// Determine the prefix based on conditions
 		prefix := "[-]"
-		_, cachedBinaryRealName := ReturnCachedFile(config, RealName)
+		_, cachedBinaryRealName, _ := ReturnCachedFile(config, RealName)
 
 		if installPath := filepath.Join(installDir, baseRealName); fileExists(installPath) && !installedBinaries[baseRealName] {
 			prefix = "[i]"
