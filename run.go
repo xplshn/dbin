@@ -14,9 +14,9 @@ import (
 )
 
 // ReturnCachedFile retrieves the cached file location and its corresponding fullName. Returns an empty string and an error if not found.
-func ReturnCachedFile(binaryName, tempDir string) (cachedBinary string, trackedBinaryName string) {
+func ReturnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBinaryName string) {
 	baseName := filepath.Base(binaryName)
-	cachedBinary = filepath.Join(tempDir, baseName)
+	cachedBinary = filepath.Join(config.CacheDir, baseName)
 
 	// Retrieve the fullName of the cachedBinary
 	trackedBinaryName, err := getFullName(cachedBinary)
@@ -34,7 +34,7 @@ func ReturnCachedFile(binaryName, tempDir string) (cachedBinary string, trackedB
 }
 
 // RunFromCache runs the binary from cache or fetches it if not found
-func RunFromCache(binaryName string, args []string, tempDir string, transparentMode bool, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
+func RunFromCache(config *Config, binaryName string, args []string, transparentMode bool, verbosityLevel Verbosity) error {
 	flagsAndBinaryName := append(strings.Fields(binaryName), args...)
 	flag.CommandLine.Parse(flagsAndBinaryName)
 
@@ -54,7 +54,8 @@ func RunFromCache(binaryName string, args []string, tempDir string, transparentM
 	baseName := filepath.Base(binaryName)
 
 	// Check if the binary exists in the cache
-	cachedFile := filepath.Join(tempDir, baseName)
+	cacheDir := config.CacheDir
+	cachedFile := filepath.Join(cacheDir, baseName)
 	if fileExists(cachedFile) && isExecutable(cachedFile) {
 		// Verify that the cached binary corresponds to the correct binary by checking the fullName
 		trackedBinaryName, err := getFullName(cachedFile)
@@ -67,7 +68,7 @@ func RunFromCache(binaryName string, args []string, tempDir string, transparentM
 			}
 
 			// Fetch the correct binary
-			if err := installCommand([]string{binaryName}, tempDir, silentVerbosityWithErrors, repositories, metadataURLs); err != nil {
+			if err := installCommand(config, []string{binaryName}, silentVerbosityWithErrors); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
 					fmt.Fprintf(os.Stderr, "Error: could not fetch and cache the binary: %v\n", err)
 				}
@@ -75,20 +76,20 @@ func RunFromCache(binaryName string, args []string, tempDir string, transparentM
 			}
 
 			// Run the newly fetched binary
-			if err := runBinary(filepath.Join(tempDir, baseName), args, verbosityLevel); err != nil {
+			if err := runBinary(filepath.Join(cacheDir, baseName), args, verbosityLevel); err != nil {
 				return err
 			}
-			return cleanCache(tempDir, verbosityLevel)
+			return cleanCache(cacheDir, verbosityLevel)
 		}
 
 		// Run the binary from cache if fullName matches
 		if verbosityLevel >= normalVerbosity {
 			fmt.Printf("Running '%s' from cache...\n", binaryName)
 		}
-		if err := runBinary(filepath.Join(tempDir, baseName), args, verbosityLevel); err != nil {
+		if err := runBinary(filepath.Join(cacheDir, baseName), args, verbosityLevel); err != nil {
 			return err
 		}
-		return cleanCache(tempDir, verbosityLevel)
+		return cleanCache(cacheDir, verbosityLevel)
 	}
 
 	if verbosityLevel >= normalVerbosity {
@@ -96,7 +97,7 @@ func RunFromCache(binaryName string, args []string, tempDir string, transparentM
 	}
 
 	// Fetch the binary if it doesn't exist in the cache
-	if err := installCommand([]string{binaryName}, tempDir, silentVerbosityWithErrors, repositories, metadataURLs); err != nil {
+	if err := installCommand(config, []string{binaryName}, silentVerbosityWithErrors); err != nil {
 		if verbosityLevel >= silentVerbosityWithErrors {
 			fmt.Fprintf(os.Stderr, "error: could not cache the binary: %v\n", err)
 		}
@@ -104,10 +105,10 @@ func RunFromCache(binaryName string, args []string, tempDir string, transparentM
 	}
 
 	// Run the freshly fetched binary
-	if err := runBinary(filepath.Join(tempDir, baseName), args, verbosityLevel); err != nil {
+	if err := runBinary(filepath.Join(cacheDir, baseName), args, verbosityLevel); err != nil {
 		return err
 	}
-	return cleanCache(tempDir, verbosityLevel)
+	return cleanCache(cacheDir, verbosityLevel)
 }
 
 // runBinary executes the binary with the given arguments.
@@ -124,8 +125,8 @@ func runBinary(binaryPath string, args []string, verbosityLevel Verbosity) error
 	return err
 }
 
-func cleanCache(tempDir string, verbosityLevel Verbosity) error {
-	files, err := os.ReadDir(tempDir)
+func cleanCache(cacheDir string, verbosityLevel Verbosity) error {
+	files, err := os.ReadDir(cacheDir)
 	if err != nil {
 		return fmt.Errorf("error reading cache directory, cannot proceed with cleanup: %v", err)
 	}
@@ -142,7 +143,7 @@ func cleanCache(tempDir string, verbosityLevel Verbosity) error {
 
 	var filesWithAtime []fileWithAtime
 	for _, entry := range files {
-		filePath := filepath.Join(tempDir, entry.Name())
+		filePath := filepath.Join(cacheDir, entry.Name())
 
 		// Check if the file is executable
 		if !isExecutable(filePath) {
@@ -170,7 +171,7 @@ func cleanCache(tempDir string, verbosityLevel Verbosity) error {
 
 	// Remove the oldest executable binaries until cache size is within the limit
 	for i := 0; i < binariesToDelete && i < len(filesWithAtime); i++ {
-		filePath := filepath.Join(tempDir, filesWithAtime[i].info.Name())
+		filePath := filepath.Join(cacheDir, filesWithAtime[i].info.Name())
 		if err := os.Remove(filePath); err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "error removing old cached binary: %v\n", err)

@@ -22,7 +22,9 @@ var excludedFileNames = []string{
 }
 
 // listBinaries fetches and lists binary names from the given metadata URLs.
-func listBinaries(metadataURLs []string) ([]string, error) {
+func listBinaries(config *Config) ([]string, error) {
+	metadataURLs := config.MetadataURLs
+
 	var allBinaries []string
 	var metadata []struct {
 		RealName string `json:"bin_name"`

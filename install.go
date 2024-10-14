@@ -9,15 +9,44 @@ import (
 )
 
 // installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
-func installBinaries(ctx context.Context, binaries []string, installDir string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
+func installBinaries(ctx context.Context, config *Config, binaries []string, verbosityLevel Verbosity) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(binaries))
-	urls, checksums, err := findURL(binaries, repositories, metadataURLs, installDir, verbosityLevel)
+	urls, checksums, err := findURL(config, binaries, verbosityLevel)
 	if err != nil {
 		return err
 	}
 
 	var errors []string
+
+	// Nested performCorrections function
+	performCorrections := func(binaryPath string) (string, string) {
+		if strings.HasSuffix(binaryPath, ".no_strip") {
+			return strings.TrimSuffix(binaryPath, ".no_strip"), ""
+		}
+
+		// Check the binary name for specific extensions and handle integration accordingly
+		if config.IntegrateWithSystem {
+			switch {
+			case strings.HasSuffix(binaryPath, ".AppBundle"):
+				// Prepare the arguments for RunFromCache for AppBundle
+				args := []string{"--integrate", binaryPath}
+				err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
+				if err != nil {
+					return "", "error integrating with the system for .AppBundle: " + err.Error()
+				}
+			case strings.HasSuffix(binaryPath, ".AppImage"):
+				// Prepare the arguments for RunFromCache for AppImage
+				args := []string{"--integrate", binaryPath}
+				err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
+				if err != nil {
+					return "", "error integrating with the system for .AppImage: " + err.Error()
+				}
+			}
+		}
+
+		return binaryPath, ""
+	}
 
 	for i, binaryName := range binaries {
 		wg.Add(1)
@@ -25,7 +54,13 @@ func installBinaries(ctx context.Context, binaries []string, installDir string, 
 			defer wg.Done()
 			url := urls[i]
 			checksum := checksums[i]
-			destination := performCorrections(filepath.Join(installDir, filepath.Base(binaryName)))
+			destination := filepath.Join(config.InstallDir, filepath.Base(binaryName))
+
+			destination, err := performCorrections(destination)
+			if err != "" {
+				errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %s", destination, err)
+				return
+			}
 
 			// Ensure file isn't in use
 			if isFileBusy(destination) {
@@ -34,9 +69,9 @@ func installBinaries(ctx context.Context, binaries []string, installDir string, 
 			}
 
 			// Fetch binary and place it at destination
-			_, err := fetchBinaryFromURLToDest(ctx, url, checksum, destination)
-			if err != nil {
-				errChan <- fmt.Errorf("error fetching binary %s: %v", binaryName, err)
+			_, fetchErr := fetchBinaryFromURLToDest(ctx, url, checksum, destination)
+			if fetchErr != nil {
+				errChan <- fmt.Errorf("error fetching binary %s: %v", binaryName, fetchErr)
 				return
 			}
 
@@ -68,15 +103,7 @@ func installBinaries(ctx context.Context, binaries []string, installDir string, 
 	return nil
 }
 
-// performCorrections checks the binary name for specific extensions and handles them appropiately
-func performCorrections(binaryPath string) string {
-	if strings.HasSuffix(binaryPath, ".no_strip") {
-		return strings.TrimSuffix(binaryPath, ".no_strip")
-	}
-	return binaryPath
-}
-
 // installCommand installs one or more binaries based on the verbosity level.
-func installCommand(binaries []string, installDir string, verbosityLevel Verbosity, repositories, metadataURLs []string) error {
-	return installBinaries(context.Background(), removeDuplicates(binaries), installDir, verbosityLevel, repositories, metadataURLs)
+func installCommand(config *Config, binaries []string, verbosityLevel Verbosity) error {
+	return installBinaries(context.Background(), config, removeDuplicates(binaries), verbosityLevel)
 }

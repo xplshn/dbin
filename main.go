@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 
+	"github.com/goccy/go-json"
 	"github.com/xplshn/a-utils/pkg/ccmd"
 )
 
@@ -29,95 +31,145 @@ const (
 	extraSilent               Verbosity = -2
 )
 
-// parseColonSeparatedEnv splits a colon-separated string into a slice. If the environment variable is not set or is empty, it returns the provided default slice.
-func parseColonSeparatedEnv(envVar string, defaultValue []string) []string {
-	envValue := os.Getenv(envVar)
-	if envValue == "" {
-		return defaultValue
-	}
-	return strings.Split(envValue, ";")
+// Config structure holding configuration settings
+type Config struct {
+	InstallDir          string   `json:"install_dir" env:"DBIN_INSTALL_DIR"`
+	CacheDir            string   `json:"cache_dir" env:"DBIN_CACHEDIR"`
+	RepoURLs            []string `json:"repo_urls" env:"DBIN_REPO_URLS"`
+	MetadataURLs        []string `json:"metadata_urls" env:"DBIN_METADATA_URLS"`
+	DisableTruncation   bool     `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
+	IntegrateWithSystem bool     `json:"integrate_with_system" env:"DBIN_INTEGRATE"`
+	Limit               int      `json:"fsearch_limit"`
 }
 
-func getEnvVar(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
+// LoadConfig loads the configuration from the JSON file and handles environment variables automatically.
+func LoadConfig() (*Config, error) {
+	// Create a new config instance
+	cfg := &Config{}
 
-// setupEnvironment initializes the environment settings including architecture, repositories, and metadata URLs.
-func setupEnvironment() (string, string, []string, []string, bool, error) {
-	homeDir, err := os.UserHomeDir()
+	// Get the user config directory
+	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
-		return "", "", nil, nil, false, fmt.Errorf("failed to get user's Home directory: %v", err)
+		return nil, fmt.Errorf("failed to get user config directory: %v", err)
+	}
+	configFilePath := filepath.Join(userConfigDir, "dbin.json")
+
+	// Check if the JSON file exists
+	if _, err := os.Stat(configFilePath); err == nil {
+		// Load the JSON file if it exists
+		if err := loadJSON(configFilePath, cfg); err != nil {
+			return nil, fmt.Errorf("failed to load JSON file: %v", err)
+		}
+	} else if !os.IsNotExist(err) {
+		// Return an error if there's another issue with the file
+		return nil, fmt.Errorf("failed to access JSON file: %v", err)
 	}
 
+	// Override configuration with environment variables
+	overrideWithEnv(cfg)
+
+	// Set default values if needed
+	setDefaultValues(cfg)
+
+	return cfg, nil
+}
+
+// loadJSON loads configuration from a JSON file.
+func loadJSON(filePath string, cfg *Config) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	return decoder.Decode(cfg)
+}
+
+// overrideWithEnv overrides configuration with environment variables.
+func overrideWithEnv(cfg *Config) {
+	v := reflect.ValueOf(cfg).Elem()
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		envVar := t.Field(i).Tag.Get("env")
+
+		if value, exists := os.LookupEnv(envVar); exists {
+			switch field.Kind() {
+			case reflect.String:
+				field.SetString(value)
+			case reflect.Slice:
+				field.Set(reflect.ValueOf(parseStringSlice(value)))
+			case reflect.Bool:
+				if val, err := parseBool(value); err == nil {
+					field.SetBool(val)
+				}
+			case reflect.Int:
+				if val, err := strconv.Atoi(value); err == nil {
+					field.SetInt(int64(val))
+				}
+			}
+		}
+	}
+}
+
+// parseStringSlice splits a string by commas into a slice.
+func parseStringSlice(s string) []string {
+	return strings.Split(s, ",")
+}
+
+// parseBool converts a string to a boolean value.
+func parseBool(s string) (bool, error) {
+	return strconv.ParseBool(s)
+}
+
+// setDefaultValues sets default values for specific configuration entries.
+func setDefaultValues(config *Config) {
+	// Setting default InstallDir if not defined
+	if config.InstallDir == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Printf("failed to get user's Home directory: %v\n", err)
+			return
+		}
+		config.InstallDir = filepath.Join(homeDir, ".local/bin")
+	}
+
+	// Load cache dir from the user's cache directory
 	tempDir, err := os.UserCacheDir()
 	if err != nil {
-		return "", "", nil, nil, false, fmt.Errorf("failed to get user's Cache directory: %v", err)
+		fmt.Printf("failed to get user's Cache directory: %v\n", err)
+		return
+	}
+	if config.CacheDir == "" {
+		config.CacheDir = filepath.Join(tempDir, "dbin_cache")
 	}
 
-	tempDir = getEnvVar("DBIN_CACHEDIR", filepath.Join(tempDir, "dbin_cache"))
+	// Determine architecture and set default repositories and metadata URLs
+	arch := runtime.GOARCH + "_" + runtime.GOOS
 
-	// DBIN_INSTALL_DIR or XDG_BIN_HOME. "$HOME/.local/bin" as fallback
-	installDir := os.Getenv("DBIN_INSTALL_DIR")
-	if installDir == "" {
-		installDir = os.Getenv("XDG_BIN_HOME")
-		if installDir == "" {
-			// If neither are set, default to "$HOME/.local/bin"
-			installDir = filepath.Join(homeDir, ".local/bin")
-		}
-	}
-
-	disableTruncationStr := getEnvVar("DBIN_NOTRUNCATION", "false")
-	disableTruncation, err := strconv.ParseBool(disableTruncationStr)
-	if err != nil {
-		return "", "", nil, nil, false, fmt.Errorf("failed to parse DBIN_NOTRUNCATION: %v", err)
-	}
-
-	determineArch := func() (string, error) {
-		arch := runtime.GOARCH + "_" + runtime.GOOS
-
-		if arch != "amd64_linux" && arch != "arm64_linux" && arch != "arm64_android" {
-			return "", fmt.Errorf(unsupportedArchMsg + arch)
-		}
-
-		return arch, nil
-	}
-
-	getRepositories := func(arch string) []string {
-		// Default repository URLs
-		defaultRepos := []string{
+	// Set up default repositories if none are provided
+	if len(config.RepoURLs) == 0 {
+		config.RepoURLs = []string{
 			"https://bin.ajam.dev/" + arch + "/",
 			"https://bin.ajam.dev/" + arch + "/Baseutils/",
 		}
-
-		// Parse DBIN_REPO_URLS environment variable or return defaults
-		return parseColonSeparatedEnv("DBIN_REPO_URLS", defaultRepos)
 	}
 
-	getMetadataURLs := func(arch string) []string {
-		// Default metadata URLs
-		defaultMetadataURLs := []string{
-			//	"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Toolpacks.dbin_" + arch + ".json",
-			//	"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Baseutils.dbin_" + arch + ".json",
-			//	"https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/modMetadata/Toolpacks-extras.dbin_" + arch + ".json",
+	// Set up default metadata URLs if none are provided
+	if len(config.MetadataURLs) == 0 {
+		config.MetadataURLs = []string{
 			"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadataAIO/unifiedAIO_" + arch + ".dbin.min.json",
 		}
-
-		// Parse DBIN_METADATA_URLS environment variable or return defaults
-		return parseColonSeparatedEnv("DBIN_METADATA_URLS", defaultMetadataURLs)
 	}
 
-	arch, err := determineArch()
-	if err != nil {
-		return "", "", nil, nil, false, err
+	if config.Limit == 0 {
+		config.Limit = 90
 	}
-
-	repositories := getRepositories(arch)
-	metadataURLs := getMetadataURLs(arch)
-
-	return installDir, tempDir, repositories, metadataURLs, disableTruncation, nil
+	if !config.IntegrateWithSystem {
+		config.IntegrateWithSystem = true
+	}
 }
 
 func main() {
@@ -228,9 +280,10 @@ dbin run btop`,
 	command := args[0]
 	args = args[1:]
 
-	installDir, tempDir, repositories, metadataURLs, disableTruncation, err := setupEnvironment()
+	// Load configuration
+	config, err := LoadConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error loading config: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -241,7 +294,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaryNames := args
-		urls, _, err := findURL(binaryNames, repositories, metadataURLs, installDir, verbosityLevel)
+		urls, _, err := findURL(config, binaryNames, verbosityLevel)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
@@ -259,7 +312,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := installCommand(binaries, installDir, verbosityLevel, repositories, metadataURLs)
+		err := installCommand(config, binaries, verbosityLevel)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -271,7 +324,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := removeCommand(binaries, installDir, verbosityLevel)
+		err := removeBinaries(config, binaries, verbosityLevel)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -281,12 +334,12 @@ dbin run btop`,
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
 				// Call fSearch with an empty query and a large limit to list all described binaries
-				fSearch(metadataURLs, installDir, tempDir, "", disableTruncation, 99999)
+				fSearch(config, "")
 			} else {
 				errorOut("dbin: Unknown command.\n")
 			}
 		} else {
-			binaries, err := listBinaries(metadataURLs)
+			binaries, err := listBinaries(config)
 			if err != nil {
 				fmt.Println("Error listing binaries:", err)
 				os.Exit(1)
@@ -296,7 +349,6 @@ dbin run btop`,
 			}
 		}
 	case "search":
-		limit := 90
 		queryIndex := 0
 
 		if len(args) < queryIndex+1 {
@@ -307,7 +359,7 @@ dbin run btop`,
 		if len(args) > 0 && (args[queryIndex] == "--limit" || args[queryIndex] == "-l") {
 			if len(args) > queryIndex+1 {
 				var err error
-				limit, err = strconv.Atoi(args[queryIndex+1])
+				config.Limit, err = strconv.Atoi(args[queryIndex+1])
 				if err != nil {
 					fmt.Printf("error: 'limit' value is not an int: %v\n", err)
 					os.Exit(1)
@@ -325,74 +377,114 @@ dbin run btop`,
 		}
 
 		query := args[queryIndex]
-		err := fSearch(metadataURLs, installDir, tempDir, query, disableTruncation, limit)
+		err := fSearch(config, query)
 		if err != nil {
 			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
 		}
 	case "info":
 		var binaryName string
-		if len(args) > 0 {
-			binaryName = args[0]
+		var remote bool
+
+		// Check for flags: --remote or -r
+		for _, arg := range args {
+			if arg == "--remote" || arg == "-r" {
+				remote = true
+			} else if binaryName == "" { // The first non-flag argument is treated as binaryName
+				binaryName = arg
+			}
 		}
 
 		if binaryName == "" {
-			installedPrograms, err := validateProgramsFrom(installDir, metadataURLs, nil)
-			if err != nil {
-				fmt.Printf("error validating programs: %v\n", err)
-				os.Exit(1)
-			}
-			for _, program := range installedPrograms {
-				fmt.Println(program)
+			if !remote {
+				// Get the list of files in the installation directory
+				files, err := listFilesInDir(config.InstallDir)
+				if err != nil {
+					fmt.Printf("error listing files in %s: %v\n", config.InstallDir, err)
+					os.Exit(1)
+				}
+
+				installedPrograms := make([]string, 0)
+
+				// Loop over the files and check if they are installed
+				for _, file := range files {
+					fullBinaryName := listInstalled(file)
+					if fullBinaryName != "" {
+						installedPrograms = append(installedPrograms, fullBinaryName)
+					}
+				}
+
+				// Print the installed programs
+				for _, program := range installedPrograms {
+					fmt.Println(program)
+				}
+			} else {
+				// Validate programs from the remote source
+				installedPrograms, err := validateProgramsFrom(config, nil)
+				if err != nil {
+					fmt.Printf("error validating programs: %v\n", err)
+					os.Exit(1)
+				}
+				// Print the installed programs
+				for _, program := range installedPrograms {
+					fmt.Println(program)
+				}
 			}
 		} else {
-			binaryInfo, err := getBinaryInfo(binaryName, installDir, metadataURLs)
-			if err != nil {
-				fmt.Printf("%v\n", err)
-				os.Exit(1)
-			}
-			fmt.Printf("Name: %s\n", binaryInfo.RealName)
-			if binaryInfo.Description != "" {
-				fmt.Printf("Description: %s\n", binaryInfo.Description)
-			}
-			if binaryInfo.Note != "" {
-				fmt.Printf("Note: %s\n", binaryInfo.Note)
-			}
-			if binaryInfo.Version != "" {
-				fmt.Printf("Version: %s\n", binaryInfo.Version)
-			}
-			if binaryInfo.DownloadURL != "" {
-				fmt.Printf("Download URL: %s\n", binaryInfo.DownloadURL)
-			}
-			if binaryInfo.Size != "" {
-				fmt.Printf("Size: %s\n", binaryInfo.Size)
-			}
-			if binaryInfo.Bsum != "" {
-				fmt.Printf("B3SUM: %s\n", binaryInfo.Bsum)
-			}
-			if binaryInfo.Shasum != "" {
-				fmt.Printf("SHA256: %s\n", binaryInfo.Shasum)
-			}
-			if binaryInfo.BuildDate != "" {
-				fmt.Printf("Build Date: %s\n", binaryInfo.BuildDate)
-			}
-			if binaryInfo.SrcURL != "" {
-				fmt.Printf("Source URL: %s\n", binaryInfo.SrcURL)
-			}
-			if binaryInfo.WebURL != "" {
-				fmt.Printf("Web URL: %s\n", binaryInfo.WebURL)
-			}
-			if binaryInfo.BuildScript != "" {
-				fmt.Printf("Build Script: %s\n", binaryInfo.BuildScript)
-			}
-			if binaryInfo.BuildLog != "" {
-				fmt.Printf("Build Log: %s\n", binaryInfo.BuildLog)
-			}
-			if binaryInfo.Category != "" {
-				fmt.Printf("Category: %s\n", binaryInfo.Category)
-			}
-			if binaryInfo.ExtraBins != "" {
-				truncatePrintf(disableTruncation, true, "Extra Bins: %s\n", binaryInfo.ExtraBins)
+			// Logic to handle when a specific binary name is provided
+			fullBinaryName := listInstalled(filepath.Join(config.InstallDir, binaryName))
+			if fullBinaryName == "" {
+				fmt.Printf("'%s' is not installed.\n", binaryName)
+			} else {
+				binaryInfo, err := getBinaryInfo(config, binaryName)
+				if err != nil {
+					fmt.Printf("%v\n", err)
+					os.Exit(1)
+				}
+				// Print detailed binary information
+				fmt.Printf("Name: %s\n", binaryInfo.RealName)
+				if binaryInfo.Description != "" {
+					fmt.Printf("Description: %s\n", binaryInfo.Description)
+				}
+				if binaryInfo.Note != "" {
+					fmt.Printf("Note: %s\n", binaryInfo.Note)
+				}
+				if binaryInfo.Version != "" {
+					fmt.Printf("Version: %s\n", binaryInfo.Version)
+				}
+				if binaryInfo.DownloadURL != "" {
+					fmt.Printf("Download URL: %s\n", binaryInfo.DownloadURL)
+				}
+				if binaryInfo.Size != "" {
+					fmt.Printf("Size: %s\n", binaryInfo.Size)
+				}
+				if binaryInfo.Bsum != "" {
+					fmt.Printf("B3SUM: %s\n", binaryInfo.Bsum)
+				}
+				if binaryInfo.Shasum != "" {
+					fmt.Printf("SHA256: %s\n", binaryInfo.Shasum)
+				}
+				if binaryInfo.BuildDate != "" {
+					fmt.Printf("Build Date: %s\n", binaryInfo.BuildDate)
+				}
+				if binaryInfo.SrcURL != "" {
+					fmt.Printf("Source URL: %s\n", binaryInfo.SrcURL)
+				}
+				if binaryInfo.WebURL != "" {
+					fmt.Printf("Web URL: %s\n", binaryInfo.WebURL)
+				}
+				if binaryInfo.BuildScript != "" {
+					fmt.Printf("Build Script: %s\n", binaryInfo.BuildScript)
+				}
+				if binaryInfo.BuildLog != "" {
+					fmt.Printf("Build Log: %s\n", binaryInfo.BuildLog)
+				}
+				if binaryInfo.Category != "" {
+					fmt.Printf("Category: %s\n", binaryInfo.Category)
+				}
+				if binaryInfo.ExtraBins != "" {
+					truncatePrintf(config.DisableTruncation, true, "Extra Bins: %s\n", binaryInfo.ExtraBins)
+				}
 			}
 		}
 	case "run":
@@ -415,17 +507,17 @@ dbin run btop`,
 			os.Exit(1)
 		}
 
-		RunFromCache(flag.Arg(0), flag.Args()[1:], tempDir, transparentMode, verbosityLevel, repositories, metadataURLs)
+		RunFromCache(config, flag.Arg(0), flag.Args()[1:], transparentMode, verbosityLevel)
 	case "tldr":
-		RunFromCache("tlrc", flag.Args()[1:], tempDir, true, verbosityLevel, repositories, metadataURLs)
+		RunFromCache(config, "tlrc", flag.Args()[1:], true, verbosityLevel)
 	case "eget2":
-		RunFromCache("eget2", flag.Args()[1:], tempDir, true, verbosityLevel, repositories, metadataURLs)
+		RunFromCache(config, "eget2", flag.Args()[1:], true, verbosityLevel)
 	case "update":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {
 			programsToUpdate = os.Args[2:]
 		}
-		if err := update(programsToUpdate, installDir, verbosityLevel, repositories, metadataURLs); err != nil {
+		if err := update(config, programsToUpdate, verbosityLevel); err != nil {
 			fmt.Println("Update failed:", err)
 		}
 	default:

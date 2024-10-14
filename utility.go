@@ -84,8 +84,9 @@ func listFilesInDir(dir string) ([]string, error) {
 }
 
 // validateProgramsFrom checks the validity of programs against a remote source
-func validateProgramsFrom(installDir string, metadataURLs, programsToValidate []string) ([]string, error) {
-	remotePrograms, err := listBinaries(metadataURLs)
+func validateProgramsFrom(config *Config, programsToValidate []string) ([]string, error) {
+	installDir := config.InstallDir
+	remotePrograms, err := listBinaries(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list remote binaries: %w", err)
 	}
@@ -100,16 +101,10 @@ func validateProgramsFrom(installDir string, metadataURLs, programsToValidate []
 
 	// Inline function to validate a file against the remote program list
 	validate := func(file string) (string, bool) {
-		if isSymlink(file) {
-			return "", false
+		fullBinaryName := listInstalled(file) // Get the full binary name of the file
+		if fullBinaryName == "" {
+			return "", false // If we couldn't get a valid name, return invalid
 		}
-
-		// Retrieve the fullName of the binary
-		fullBinaryName, err := getFullName(file)
-		if err != nil || fullBinaryName == "" {
-			return "", false // If we can't get the full name, consider it invalid
-		}
-
 		// Check if the full name exists in the remote programs
 		if contains(remotePrograms, fullBinaryName) {
 			return fullBinaryName, true
@@ -135,6 +130,18 @@ func validateProgramsFrom(installDir string, metadataURLs, programsToValidate []
 	}
 
 	return validPrograms, nil
+}
+
+func listInstalled(binaryPath string) string {
+	if isSymlink(binaryPath) {
+		return ""
+	}
+	// Retrieve the fullName of the binary
+	fullBinaryName, err := getFullName(binaryPath)
+	if err != nil || fullBinaryName == "" {
+		return "" // If we can't get the full name, consider it invalid
+	}
+	return fullBinaryName
 }
 
 // errorEncoder generates a unique error code based on the sum of ASCII values of the error message.

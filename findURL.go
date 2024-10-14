@@ -7,7 +7,7 @@ import (
 )
 
 // findURL fetches the URLs and BLAKE3sum for the specified binaries using xattr instead of trackerFile.
-func findURL(binaryNames, repositories, metadataURLs []string, installDir string, verbosityLevel Verbosity) ([]string, []string, error) {
+func findURL(config *Config, binaryNames []string, verbosityLevel Verbosity) ([]string, []string, error) {
 	var foundURLs []string
 	var foundB3sum []string
 
@@ -27,7 +27,7 @@ func findURL(binaryNames, repositories, metadataURLs []string, installDir string
 		// Try to get binary info from info.go logic
 		fullBinaryName, err := getFullName(binaryName)
 		if err == nil && fullBinaryName != "" {
-			binInfo, err := getBinaryInfo(fullBinaryName, installDir, metadataURLs)
+			binInfo, err := getBinaryInfo(config, fullBinaryName)
 			if err == nil && binInfo.DownloadURL != "" {
 				// If the download_url (Source) is available, return it with BLAKE3sum
 				if verbosityLevel >= extraVerbose {
@@ -40,13 +40,13 @@ func findURL(binaryNames, repositories, metadataURLs []string, installDir string
 		}
 
 		// If no valid download_url found, proceed with HEAD requests on repositories
-		found := false
-		for i, repository := range repositories {
+		found, repoURLs := false, config.RepoURLs
+		for i, repository := range repoURLs {
 			url := fmt.Sprintf("%s/%s", repository, binaryName)
 
 			// Show progress only in verbose modes
 			if verbosityLevel >= normalVerbosity {
-				fmt.Printf("\033[2K\r<%d/%d> | Checking \"%s\" in repository \"%s\"\r", i+1, len(repositories), binaryName, repository)
+				fmt.Printf("\033[2K\r<%d/%d> | Checking \"%s\" in repository \"%s\"\r", i+1, len(repoURLs), binaryName, repository)
 			}
 
 			// Create a new request with the User-Agent header
@@ -61,7 +61,7 @@ func findURL(binaryNames, repositories, metadataURLs []string, installDir string
 			if err == nil && resp.StatusCode == http.StatusOK {
 				// If found, print message based on verbosity
 				if verbosityLevel >= extraVerbose {
-					fmt.Printf("\033[2K\r<%d/%d> | Found \"%s\" at %s", i+1, len(repositories), binaryName, repository)
+					fmt.Printf("\033[2K\r<%d/%d> | Found \"%s\" at %s", i+1, len(repoURLs), binaryName, repository)
 				}
 				foundURLs = append(foundURLs, url)
 				foundB3sum = append(foundB3sum, "") // No BLAKE3sum if found this way

@@ -72,15 +72,15 @@ func findBinaryInfo(metadata []map[string]interface{}, binaryName string) (Binar
 }
 
 // getBinaryInfo retrieves binary metadata for the specified binary name by fetching and searching through multiple JSON files.
-func getBinaryInfo(binaryName, installDir string, metadataURLs []string) (*BinaryInfo, error) {
+func getBinaryInfo(config *Config, binaryName string) (*BinaryInfo, error) {
 	// Check the tracker file first
-	realBinaryName, err := getFullName(filepath.Join(installDir, binaryName))
+	realBinaryName, err := getFullName(filepath.Join(config.InstallDir, binaryName))
 	if err == nil {
 		binaryName = realBinaryName
 	}
 
 	var metadata []map[string]interface{}
-	for _, url := range metadataURLs {
+	for _, url := range config.MetadataURLs {
 		var tempMetadata []map[string]interface{}
 		err := fetchJSON(url, &tempMetadata)
 		if err != nil {

@@ -6,37 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-
-	"github.com/pkg/xattr"
 )
 
-// removeCommand handles the overall flow, passing binaries to removeBinaries
-func removeCommand(binaries []string, installDir string, verbosityLevel Verbosity) error {
-	// Call removeBinaries to handle the actual removal process
-	err := removeBinaries(removeDuplicates(binaries), installDir, verbosityLevel)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // removeBinaries processes each binary, removing only those that pass validation.
-func removeBinaries(binaries []string, installDir string, verbosityLevel Verbosity) error {
+func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity) error {
 	var wg sync.WaitGroup
 	var removeErrors []string
 	var mutex sync.Mutex
 
-	// Inline function to check if a binary is ours
-	validate := func(file string) bool {
-		if isSymlink(file) {
-			return false
-		}
-		managedBy, err := xattr.Get(file, "user.ManagedBy")
-		if err != nil || string(managedBy) != "dbin" {
-			return false
-		}
-		return true
-	}
+	installDir := config.InstallDir
 
 	// Loop over the binaries and remove the valid ones
 	for _, binaryName := range binaries {
@@ -46,7 +24,9 @@ func removeBinaries(binaries []string, installDir string, verbosityLevel Verbosi
 
 			installPath := filepath.Join(installDir, filepath.Base(binaryName))
 
-			if !validate(installPath) {
+			// Validate using the listInstalled function
+			fullBinaryName := listInstalled(installPath)
+			if fullBinaryName == "" {
 				if verbosityLevel >= normalVerbosity {
 					fmt.Fprintf(os.Stderr, "Skipping '%s': it was not installed by dbin\n", binaryName)
 				}
@@ -63,7 +43,7 @@ func removeBinaries(binaries []string, installDir string, verbosityLevel Verbosi
 					if verbosityLevel >= silentVerbosityWithErrors {
 						fmt.Fprintf(os.Stderr, "error: failed to remove '%s' from %s. %v\n", binaryName, installDir, err)
 					}
-					// Add error to the list in a thread-safe way, i guess
+					// Add error to the list in a thread-safe way
 					mutex.Lock()
 					removeErrors = append(removeErrors, fmt.Sprintf("failed to remove '%s' from %s: %v", binaryName, installDir, err))
 					mutex.Unlock()

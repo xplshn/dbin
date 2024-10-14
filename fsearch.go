@@ -8,7 +8,7 @@ import (
 )
 
 // fSearch searches for binaries based on the given search term
-func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disableTruncation bool, limit int) error {
+func fSearch(config *Config, searchTerm string) error {
 	type tBinary struct {
 		Architecture string `json:"architecture"`
 		RealName     string `json:"bin_name"`
@@ -17,7 +17,7 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 
 	// Fetch metadata
 	var binaries []tBinary
-	for _, url := range metadataURLs {
+	for _, url := range config.MetadataURLs {
 		var tempBinaries []tBinary
 		err := fetchJSON(url, &tempBinaries)
 		if err != nil {
@@ -48,6 +48,7 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 	}
 
 	// Check if no matching binaries found
+	limit := config.Limit
 	if len(searchResults) == 0 {
 		return fmt.Errorf("no matching binaries found for '%s'", searchTerm)
 	} else if len(searchResults) > limit {
@@ -58,6 +59,8 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 	installedBinaries := make(map[string]bool)
 
 	// Check if the binary exists in the INSTALL_DIR and print results with installation state indicators
+	installDir := config.InstallDir
+	disableTruncation := config.DisableTruncation
 	for _, line := range searchResults {
 		parts := strings.SplitN(line, " - ", 2)
 		if len(parts) < 2 {
@@ -69,16 +72,14 @@ func fSearch(metadataURLs []string, installDir, tempDir, searchTerm string, disa
 
 		// Determine the prefix based on conditions
 		prefix := "[-]"
-		//cachedLocation, trackedBinaryRealName := ReturnCachedFile(tempDir, RealName)
+		_, cachedBinaryRealName := ReturnCachedFile(config, RealName)
 
 		if installPath := filepath.Join(installDir, baseRealName); fileExists(installPath) && !installedBinaries[baseRealName] {
 			prefix = "[i]"
 			installedBinaries[baseRealName] = true
+		} else if cachedBinaryRealName == RealName {
+			prefix = "[c]"
 		}
-		//TODO Handle cached binaries, somehow
-		//} else if trackedBinaryRealName == RealName && fileExists(cachedLocation) {
-		//	prefix = "[c]"
-		//}
 
 		truncatePrintf(disableTruncation, true, "%s %s - %s ", prefix, RealName, description)
 	}
