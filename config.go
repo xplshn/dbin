@@ -15,10 +15,10 @@ import (
 
 // Config structure holding configuration settings
 type Config struct {
-	InstallDir          string   `json:"install_dir" env:"DBIN_INSTALL_DIR"`
-	CacheDir            string   `json:"cache_dir" env:"DBIN_CACHEDIR"`
 	RepoURLs            []string `json:"repo_urls" env:"DBIN_REPO_URLS"`
 	MetadataURLs        []string `json:"metadata_urls" env:"DBIN_METADATA_URLS"`
+	InstallDir          string   `json:"install_dir" env:"DBIN_INSTALL_DIR"`
+	CacheDir            string   `json:"cache_dir" env:"DBIN_CACHEDIR"`
 	DisableTruncation   bool     `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
 	IntegrateWithSystem bool     `json:"integrate_with_system" env:"DBIN_INTEGRATE"`
 	Limit               int      `json:"fsearch_limit"`
@@ -246,7 +246,14 @@ func setDefaultValues(config *Config) {
 				DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
 				UseRunFromCache:       true,
 			},
-			"": {
+			".NixAppImage": {
+				IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
+				DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
+				IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
+				DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
+				UseRunFromCache:       true,
+			},
+			"": { // Normal static binaries don't need a handler, so we're just using a NoOp
 				NoOp: true,
 			},
 		},
