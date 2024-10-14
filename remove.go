@@ -24,6 +24,14 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 
 			installPath := filepath.Join(installDir, filepath.Base(binaryName))
 
+			// Check if the binary exists before proceeding
+			if !fileExists(installPath) {
+				if verbosityLevel >= normalVerbosity {
+					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s. Skipping removal.\n", binaryName, installDir)
+				}
+				return
+			}
+
 			// Get the full name of the binary installed
 			fullBinaryName, err := getFullName(installPath)
 			if err != nil {
@@ -62,19 +70,13 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 			// Remove the binary
 			err = os.Remove(installPath)
 			if err != nil {
-				if os.IsNotExist(err) {
-					if verbosityLevel >= normalVerbosity {
-						fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s\n", binaryName, installDir)
-					}
-				} else {
-					if verbosityLevel >= silentVerbosityWithErrors {
-						fmt.Fprintf(os.Stderr, "error: failed to remove '%s' from %s. %v\n", binaryName, installDir, err)
-					}
-					// Add error to the list in a thread-safe way
-					mutex.Lock()
-					removeErrors = append(removeErrors, fmt.Sprintf("failed to remove '%s' from %s: %v", binaryName, installDir, err))
-					mutex.Unlock()
+				if verbosityLevel >= silentVerbosityWithErrors {
+					fmt.Fprintf(os.Stderr, "error: failed to remove '%s' from %s. %v\n", binaryName, installDir, err)
 				}
+				// Add error to the list in a thread-safe way
+				mutex.Lock()
+				removeErrors = append(removeErrors, fmt.Sprintf("failed to remove '%s' from %s: %v", binaryName, installDir, err))
+				mutex.Unlock()
 			} else if verbosityLevel <= extraVerbose {
 				fmt.Printf("'%s' removed from %s\n", binaryName, installDir)
 			}
@@ -92,23 +94,18 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 	return nil
 }
 
-// runDeintegrationHooks runs the deintegration hooks before removing the binary
+// runDeintegrationHooks runs the deintegration hooks for binaries which need to be deintegrated // TODO: Let users implement their own hooks and put them in the config, leverage a few variables and logic operators
 func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) string {
 	if config.IntegrateWithSystem {
-		switch {
-		case strings.HasSuffix(binaryPath, ".AppBundle"):
-			// Prepare the arguments for RunFromCache for AppBundle
-			args := []string{"--deintegrate", binaryPath}
-			err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
-			if err != nil {
-				return "error deintegrating with the system for .AppBundle: " + err.Error()
-			}
-		case strings.HasSuffix(binaryPath, ".AppImage"):
-			// Prepare the arguments for RunFromCache for AppImage
-			args := []string{"--deintegrate", binaryPath}
-			err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
-			if err != nil {
-				return "error deintegrating with the system for .AppImage: " + err.Error()
+		suffixes := []string{".AppBundle", ".AppImage", ".NixAppImage"}
+		for _, suffix := range suffixes {
+			if strings.HasSuffix(binaryPath, suffix) {
+				args := []string{"--deintegrate", binaryPath}
+				err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
+				if err != nil {
+					return fmt.Sprintf("error deintegrating %s from the system: via the %s hook: %s", binaryPath, suffix, err.Error())
+				}
+				break
 			}
 		}
 	}

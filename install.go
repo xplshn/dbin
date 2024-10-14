@@ -63,7 +63,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 			}
 
 			// Run hooks after the file is downloaded and chmod +x
-			if err := runHooks(config, destination, verbosityLevel); err != "" {
+			if err := runIntegrationHooks(config, destination, verbosityLevel); err != "" {
 				errChan <- fmt.Errorf("[%s] could not be handled by its hooks: %s", destination, err)
 				return
 			}
@@ -96,23 +96,18 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 	return nil
 }
 
-// runHooks runs the hooks after the file is downloaded and chmod +x
-func runHooks(config *Config, binaryPath string, verbosityLevel Verbosity) string {
+// runIntegrationHooks runs the integration hooks for binaries which need to be integrated // TODO: Let users implement their own hooks and put them in the config, leverage a few variables and logic operators
+func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) string {
 	if config.IntegrateWithSystem {
-		switch {
-		case strings.HasSuffix(binaryPath, ".AppBundle"):
-			// Prepare the arguments for RunFromCache for AppBundle
-			args := []string{"--integrate", binaryPath}
-			err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
-			if err != nil {
-				return "error integrating with the system for .AppBundle: " + err.Error()
-			}
-		case strings.HasSuffix(binaryPath, ".AppImage"):
-			// Prepare the arguments for RunFromCache for AppImage
-			args := []string{"--integrate", binaryPath}
-			err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
-			if err != nil {
-				return "error integrating with the system for .AppImage: " + err.Error()
+		suffixes := []string{".AppBundle", ".AppImage", ".NixAppImage"}
+		for _, suffix := range suffixes {
+			if strings.HasSuffix(binaryPath, suffix) {
+				args := []string{"--integrate", binaryPath}
+				err := RunFromCache(config, "pelfd", args, true, verbosityLevel)
+				if err != nil {
+					return fmt.Sprintf("error integrating %s with the system: via the %s hook: %s", binaryPath, suffix, err.Error())
+				}
+				break
 			}
 		}
 	}
