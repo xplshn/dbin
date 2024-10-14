@@ -431,60 +431,54 @@ dbin run btop`,
 				}
 			}
 		} else {
-			// Logic to handle when a specific binary name is provided
-			fullBinaryName := listInstalled(filepath.Join(config.InstallDir, binaryName))
-			if fullBinaryName == "" {
-				fmt.Printf("'%s' is not installed.\n", binaryName)
-			} else {
-				binaryInfo, err := getBinaryInfo(config, binaryName)
-				if err != nil {
-					fmt.Printf("%v\n", err)
-					os.Exit(1)
-				}
-				// Print detailed binary information
-				fmt.Printf("Name: %s\n", binaryInfo.RealName)
-				if binaryInfo.Description != "" {
-					fmt.Printf("Description: %s\n", binaryInfo.Description)
-				}
-				if binaryInfo.Note != "" {
-					fmt.Printf("Note: %s\n", binaryInfo.Note)
-				}
-				if binaryInfo.Version != "" {
-					fmt.Printf("Version: %s\n", binaryInfo.Version)
-				}
-				if binaryInfo.DownloadURL != "" {
-					fmt.Printf("Download URL: %s\n", binaryInfo.DownloadURL)
-				}
-				if binaryInfo.Size != "" {
-					fmt.Printf("Size: %s\n", binaryInfo.Size)
-				}
-				if binaryInfo.Bsum != "" {
-					fmt.Printf("B3SUM: %s\n", binaryInfo.Bsum)
-				}
-				if binaryInfo.Shasum != "" {
-					fmt.Printf("SHA256: %s\n", binaryInfo.Shasum)
-				}
-				if binaryInfo.BuildDate != "" {
-					fmt.Printf("Build Date: %s\n", binaryInfo.BuildDate)
-				}
-				if binaryInfo.SrcURL != "" {
-					fmt.Printf("Source URL: %s\n", binaryInfo.SrcURL)
-				}
-				if binaryInfo.WebURL != "" {
-					fmt.Printf("Web URL: %s\n", binaryInfo.WebURL)
-				}
-				if binaryInfo.BuildScript != "" {
-					fmt.Printf("Build Script: %s\n", binaryInfo.BuildScript)
-				}
-				if binaryInfo.BuildLog != "" {
-					fmt.Printf("Build Log: %s\n", binaryInfo.BuildLog)
-				}
-				if binaryInfo.Category != "" {
-					fmt.Printf("Category: %s\n", binaryInfo.Category)
-				}
-				if binaryInfo.ExtraBins != "" {
-					truncatePrintf(config.DisableTruncation, true, "Extra Bins: %s\n", binaryInfo.ExtraBins)
-				}
+			binaryInfo, err := getBinaryInfo(config, binaryName)
+			if err != nil {
+				fmt.Printf("%v\n", err)
+				os.Exit(1)
+			}
+			// Print detailed binary information
+			fmt.Printf("Name: %s\n", binaryInfo.RealName)
+			if binaryInfo.Description != "" {
+				fmt.Printf("Description: %s\n", binaryInfo.Description)
+			}
+			if binaryInfo.Note != "" {
+				fmt.Printf("Note: %s\n", binaryInfo.Note)
+			}
+			if binaryInfo.Version != "" {
+				fmt.Printf("Version: %s\n", binaryInfo.Version)
+			}
+			if binaryInfo.DownloadURL != "" {
+				fmt.Printf("Download URL: %s\n", binaryInfo.DownloadURL)
+			}
+			if binaryInfo.Size != "" {
+				fmt.Printf("Size: %s\n", binaryInfo.Size)
+			}
+			if binaryInfo.Bsum != "" {
+				fmt.Printf("B3SUM: %s\n", binaryInfo.Bsum)
+			}
+			if binaryInfo.Shasum != "" {
+				fmt.Printf("SHA256: %s\n", binaryInfo.Shasum)
+			}
+			if binaryInfo.BuildDate != "" {
+				fmt.Printf("Build Date: %s\n", binaryInfo.BuildDate)
+			}
+			if binaryInfo.SrcURL != "" {
+				fmt.Printf("Source URL: %s\n", binaryInfo.SrcURL)
+			}
+			if binaryInfo.WebURL != "" {
+				fmt.Printf("Web URL: %s\n", binaryInfo.WebURL)
+			}
+			if binaryInfo.BuildScript != "" {
+				fmt.Printf("Build Script: %s\n", binaryInfo.BuildScript)
+			}
+			if binaryInfo.BuildLog != "" {
+				fmt.Printf("Build Log: %s\n", binaryInfo.BuildLog)
+			}
+			if binaryInfo.Category != "" {
+				fmt.Printf("Category: %s\n", binaryInfo.Category)
+			}
+			if binaryInfo.ExtraBins != "" {
+				truncatePrintf(config.DisableTruncation, true, "Extra Bins: %s\n", binaryInfo.ExtraBins)
 			}
 		}
 	case "run":
