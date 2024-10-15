@@ -96,13 +96,13 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 
 // runDeintegrationHooks runs the deintegration hooks for binaries which need to be deintegrated
 func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) error {
-	if config.IntegrateWithSystem {
+	if config.UseIntegrationHooks {
 		// Infer the file extension from the binaryPath
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			// Execute user-defined deintegration hooks
 			for _, cmd := range hookCommands.DeintegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, config.IntegrateWithSystem, verbosityLevel); err != nil {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel); err != nil {
 					return err
 				}
 			}

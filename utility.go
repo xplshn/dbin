@@ -87,8 +87,11 @@ func validateProgramsFrom(config *Config, programsToValidate []string) ([]string
 	// Inline function to validate a file against the remote program list
 	validate := func(file string) (string, bool) {
 		fullBinaryName := listInstalled(file) // Get the full binary name of the file
-		if fullBinaryName == "" {
-			return "", false // If we couldn't get a valid name, return invalid
+		if config.RetakeOwnership == true {
+			fullBinaryName = filepath.Base(file)
+			if fullBinaryName == "" {
+				return "", false // If we couldn't get a valid name, return invalid
+			}
 		}
 		// Check if the full name exists in the remote programs
 		if contains(remotePrograms, fullBinaryName) {

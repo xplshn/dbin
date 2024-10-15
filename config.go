@@ -15,14 +15,16 @@ import (
 
 // Config structure holding configuration settings
 type Config struct {
-	RepoURLs            []string `json:"repo_urls,omitempty" env:"DBIN_REPO_URLS"`
-	MetadataURLs        []string `json:"metadata_urls,omitempty" env:"DBIN_METADATA_URLS"`
-	InstallDir          string   `json:"install_dir,omitempty" env:"DBIN_INSTALL_DIR"`
-	CacheDir            string   `json:"cache_dir,omitempty" env:"DBIN_CACHEDIR"`
-	DisableTruncation   bool     `json:"disable_truncation,omitempty" env:"DBIN_NOTRUNCATION"`
-	IntegrateWithSystem bool     `json:"integrate_with_system,omitempty" env:"DBIN_INTEGRATE"`
-	Limit               int      `json:"fsearch_limit,omitempty"`
-	Hooks               Hooks    `json:"hooks,omitempty"`
+	RepoURLs            []string        `json:"repo_urls" env:"DBIN_REPO_URLS"`
+	MetadataURLs        []string        `json:"metadata_urls" env:"DBIN_METADATA_URLS"`
+	InstallDir          string          `json:"install_dir" env:"DBIN_INSTALL_DIR"`
+	CacheDir            string          `json:"cache_dir" env:"DBIN_CACHEDIR"`
+	Limit               int             `json:"fsearch_limit"`
+	DisableTruncation   bool            `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
+	RetakeOwnership     bool            `json:"retake_ownership" env:"DBIN_REOWN"`
+	UseIntegrationHooks bool            `json:"use_integration_hooks" env:"DBIN_USEHOOKS"`
+	Hooks               Hooks           `json:"integration_hooks,omitempty"`
+	CorrectionHooks     CorrectionHooks `json:"correction_hooks,omitempty"`
 }
 
 // Hooks structure holding user-defined commands per extension
@@ -38,6 +40,16 @@ type HookCommands struct {
 	DeintegrationErrorMsg string   `json:"deintegration_error_msg"`
 	UseRunFromCache       bool     `json:"use_run_from_cache"`
 	NoOp                  bool     `json:"nop"`
+}
+
+// CorrectionHooks structure holding user-defined correction hooks
+type CorrectionHooks struct {
+	Commands map[string]CorrectionCommand `json:"commands"`
+}
+
+// CorrectionCommand structure for correction commands
+type CorrectionCommand struct {
+	Command string `json:"command"`
 }
 
 func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension string, isIntegration bool, verbosityLevel Verbosity) error {
@@ -230,8 +242,11 @@ func setDefaultValues(config *Config) {
 	if config.Limit == 0 {
 		config.Limit = 90
 	}
-	if !config.IntegrateWithSystem {
-		config.IntegrateWithSystem = true
+	if !config.UseIntegrationHooks {
+		config.UseIntegrationHooks = true
+	}
+	if !config.RetakeOwnership {
+		config.RetakeOwnership = false
 	}
 }
 
@@ -271,6 +286,15 @@ func CreateDefaultConfig() error {
 				IntegrationErrorMsg:   "[%s] Could not be UPXed; Error: %v",
 				UseRunFromCache:       true,
 				NoOp:                  true,
+			},
+		},
+	}
+
+	// Set default correction hooks
+	cfg.CorrectionHooks = CorrectionHooks{
+		Commands: map[string]CorrectionCommand{
+			".no_strip": {
+				Command: "{{trimSuffix}} {{binary}} .no_strip",
 			},
 		},
 	}

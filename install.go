@@ -20,15 +20,6 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 
 	var errors []string
 
-	// Nested performCorrections function
-	performCorrections := func(binaryPath string) (string, error) {
-		if strings.HasSuffix(binaryPath, ".no_strip") {
-			return strings.TrimSuffix(binaryPath, ".no_strip"), nil
-		}
-
-		return binaryPath, nil
-	}
-
 	for i, binaryName := range binaries {
 		wg.Add(1)
 		go func(i int, binaryName string) {
@@ -37,7 +28,6 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 			checksum := checksums[i]
 			destination := filepath.Join(config.InstallDir, filepath.Base(binaryName))
 
-			destination, err := performCorrections(destination)
 			if err != nil {
 				errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", binaryName, err)
 				return
@@ -98,13 +88,13 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 
 // runIntegrationHooks runs the integration hooks for binaries which need to be integrated
 func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) error {
-	if config.IntegrateWithSystem {
+	if config.UseIntegrationHooks {
 		// Infer the file extension from the binaryPath
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			// Execute user-defined integration hooks
 			for _, cmd := range hookCommands.IntegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, config.IntegrateWithSystem, verbosityLevel); err != nil {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel); err != nil {
 					return err
 				}
 			}

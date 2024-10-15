@@ -65,7 +65,7 @@ func RunFromCache(config *Config, binaryName string, args []string, transparentM
 			}
 
 			// Fetch the correct binary
-			config.IntegrateWithSystem = false
+			config.UseIntegrationHooks = false
 			config.InstallDir = config.CacheDir
 			if err := installCommand(config, []string{binaryName}, silentVerbosityWithErrors); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
@@ -96,7 +96,7 @@ func RunFromCache(config *Config, binaryName string, args []string, transparentM
 	}
 
 	// Fetch the binary if it doesn't exist in the cache
-	config.IntegrateWithSystem = false
+	config.UseIntegrationHooks = false
 	config.InstallDir = config.CacheDir
 	if err := installCommand(config, []string{binaryName}, silentVerbosityWithErrors); err != nil {
 		if verbosityLevel >= silentVerbosityWithErrors {
