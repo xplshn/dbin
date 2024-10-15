@@ -1,4 +1,3 @@
-// TODO: be sure
 package main
 
 import (
@@ -18,6 +17,12 @@ type labeledString struct {
 	mainURL           string
 	fallbackURL       string
 	resolveToFinalURL bool
+}
+
+var repoLabels = map[string]string{
+	"bin":  "Toolpacks",
+	"pkg":  "Toolpacks-extras",
+	"base": "Baseutils",
 }
 
 type Item struct {
@@ -46,16 +51,7 @@ type Metadata struct {
 	Base []Item `json:"base"`
 }
 
-var repoLabels = map[string]string{
-	"bin":  "Toolpacks",
-	"pkg":  "Toolpacks-extras",
-	"base": "Baseutils",
-}
-
-func urldecode(encoded string) (string, error) {
-	return url.PathUnescape(encoded)
-}
-
+// Function to process items by removing arch-specific and repo-label prefixes
 func processItems(items []Item, realArchs, validatedArchs []string, repo labeledString, section string) []Item {
 	for i, item := range items {
 		// If resolveToFinalURL is false, skip URL transformation
@@ -117,9 +113,9 @@ func downloadJSON(url string) (Metadata, error) {
 	return metadata, nil
 }
 
-func saveJSON(filename string, items []Item) error {
+func saveJSON(filename string, metadata Metadata) error {
 	// Marshal JSON with indentation
-	jsonData, err := json.MarshalIndent(items, "", "  ")
+	jsonData, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -178,9 +174,7 @@ func downloadWithFallback(repo labeledString) (Metadata, error) {
 func main() {
 	validatedArchs := []string{"amd64_linux", "arm64_linux"}
 	realArchs := []string{"x86_64_Linux", "x86_64-Linux", "aarch64_Linux", "aarch64-Linux", "aarch64_arm64_Linux", "aarch64_arm64-Linux", "x86_64", "x64_Windows"}
-	//realArchs := []string{"x86_64", "x86_64_Linux", "aarch64_Linux", "aarch64_arm64_Linux"}
 
-	// Loop over the indices to access both validatedArchs and realArchs
 	for i := range validatedArchs {
 		arch := validatedArchs[i]
 
@@ -197,26 +191,19 @@ func main() {
 				continue
 			}
 
-			save := func(outputFile string, items []Item) {
-				if err := saveJSON(outputFile, items); err != nil {
-					fmt.Printf("Error saving JSON to %s: %v\n", outputFile, err)
-					return
-				}
-				fmt.Printf("Processed and saved to %s\n", outputFile)
+			// Process bin, pkg, and base sections with path corrections
+			metadata.Bin = processItems(metadata.Bin, realArchs, validatedArchs, repo, "bin")
+			metadata.Pkg = processItems(metadata.Pkg, realArchs, validatedArchs, repo, "pkg")
+			metadata.Base = processItems(metadata.Base, realArchs, validatedArchs, repo, "base")
+
+			// Save the processed metadata to a JSON file
+			outputFile := fmt.Sprintf("METADATA_AIO_%s.json", arch)
+			if err := saveJSON(outputFile, metadata); err != nil {
+				fmt.Printf("Error saving JSON to %s: %v\n", outputFile, err)
+				continue
 			}
 
-			// Process bin items
-			processedBinItems := processItems(metadata.Bin, realArchs, validatedArchs, repo, "bin")
-			// Process pkg items
-			processedPkgItems := processItems(metadata.Pkg, realArchs, validatedArchs, repo, "pkg")
-			// Process base items
-			processedBaseItems := processItems(metadata.Base, realArchs, validatedArchs, repo, "base")
-
-			// Merge all items into a single slice
-			allItems := append(append(processedBinItems, processedPkgItems...), processedBaseItems...)
-
-			// Save the unified items to a single file
-			save(fmt.Sprintf("unifiedAIO_%s.dbin.json", arch), allItems)
+			fmt.Printf("Processed and saved to %s\n", outputFile)
 		}
 	}
 }
