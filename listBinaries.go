@@ -11,7 +11,7 @@ import (
 var excludedFileTypes = []string{
 	".7z", ".bz2", ".json", ".gz", ".xz", ".md",
 	".txt", ".tar", ".zip", ".cfg", ".dir",
-	".test", ".appimage",
+	".test", //".appimage"
 }
 
 var excludedFileNames = []string{
@@ -23,23 +23,31 @@ var excludedFileNames = []string{
 
 // listBinaries fetches and lists binary names from the given metadata URLs.
 func listBinaries(config *Config) ([]string, error) {
-	metadataURLs := config.MetadataURLs
-
 	var allBinaries []string
-	var metadata []struct {
-		RealName string `json:"bin_name"`
-	}
 
-	// Fetch binaries from each metadata URL
-	for _, url := range metadataURLs {
+	for _, url := range config.MetadataURLs {
+		var metadata map[string]interface{}
 		if err := fetchJSON(url, &metadata); err != nil {
 			return nil, fmt.Errorf("failed to fetch metadata from %s: %v", url, err)
 		}
 
-		// Extract binary RealNames
-		for _, item := range metadata {
-			if item.RealName != "" {
-				allBinaries = append(allBinaries, item.RealName)
+		// Iterate over all sections in the metadata
+		for _, section := range metadata {
+			binaries, ok := section.([]interface{})
+			if !ok {
+				continue
+			}
+
+			for _, item := range binaries {
+				binMap, ok := item.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				realName, _ := binMap["bin_name"].(string)
+				if realName != "" {
+					allBinaries = append(allBinaries, realName)
+				}
 			}
 		}
 	}

@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall" // We manually check if the file is busy. This means that `dbin` only runs on Unix clones for now.
 
 	"github.com/goccy/go-json"
 	"github.com/pkg/xattr"
@@ -292,19 +291,6 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 		fmt.Printf("[%s] is a nix object. Corrections have been made.\n", filepath.Base(filePath))
 	}
 	return nil
-}
-
-func isFileBusy(filePath string) bool {
-	file, err := os.OpenFile(filePath, os.O_RDWR, 0755)
-	if err != nil {
-		if pathErr, ok := err.(*os.PathError); ok && pathErr.Err == syscall.ETXTBSY {
-			return true
-		}
-	}
-	if file != nil {
-		file.Close()
-	}
-	return false
 }
 
 func fetchJSON(url string, v interface{}) error {

@@ -18,30 +18,40 @@ func fSearch(config *Config, searchTerm string) error {
 	// Fetch metadata
 	var binaries []tBinary
 	for _, url := range config.MetadataURLs {
-		var tempBinaries []tBinary
-		err := fetchJSON(url, &tempBinaries)
+		var metadata map[string]interface{}
+		err := fetchJSON(url, &metadata)
 		if err != nil {
 			return fmt.Errorf("failed to fetch and decode binary information from %s: %v", url, err)
 		}
-		binaries = append(binaries, tempBinaries...)
-	}
 
-	// Filter binaries based on exclusions
-	var allBinaryRealNames []string
-	for _, binary := range binaries {
-		if binary.RealName != "" {
-			allBinaryRealNames = append(allBinaryRealNames, binary.RealName)
+		// Iterate over all sections and gather binaries
+		for _, section := range metadata {
+			binList, ok := section.([]interface{})
+			if !ok {
+				continue
+			}
+
+			for _, bin := range binList {
+				binMap, ok := bin.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				realName, _ := binMap["bin_name"].(string)
+				description, _ := binMap["description"].(string)
+				binaries = append(binaries, tBinary{
+					RealName:    realName,
+					Description: description,
+				})
+			}
 		}
 	}
-	filteredBinaries := filterBinaries(allBinaryRealNames)
 
 	// Filter binaries based on the search term and architecture
 	searchResults := make([]string, 0)
 	for _, binary := range binaries {
-		if contains(filteredBinaries, binary.RealName) &&
-			(strings.Contains(strings.ToLower(binary.RealName), strings.ToLower(searchTerm)) ||
-				strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm))) {
-
+		if strings.Contains(strings.ToLower(binary.RealName), strings.ToLower(searchTerm)) ||
+			strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm)) {
 			entry := fmt.Sprintf("%s - %s", binary.RealName, binary.Description)
 			searchResults = append(searchResults, entry)
 		}

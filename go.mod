@@ -12,6 +12,7 @@ require (
 	github.com/tdewolff/minify/v2 v2.20.37
 	github.com/xplshn/a-utils v0.0.0-20241013165245-f321841bb8eb
 	github.com/zeebo/blake3 v0.2.4
+	google.golang.org/protobuf v1.35.1
 )
 
 require (

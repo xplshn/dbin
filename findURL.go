@@ -42,7 +42,7 @@ func findURL(config *Config, binaryNames []string, verbosityLevel Verbosity) ([]
 		// If no valid download_url found, proceed with HEAD requests on repositories
 		found, repoURLs := false, config.RepoURLs
 		for i, repository := range repoURLs {
-			url := fmt.Sprintf("%s/%s", repository, binaryName)
+			url := fmt.Sprintf("%s%s", repository, binaryName)
 
 			// Show progress only in verbose modes
 			if verbosityLevel >= normalVerbosity {
@@ -77,7 +77,7 @@ func findURL(config *Config, binaryNames []string, verbosityLevel Verbosity) ([]
 
 		// Handle verbosity for error output
 		if !found && verbosityLevel >= silentVerbosityWithErrors {
-			return nil, nil, fmt.Errorf("error: didn't find the DOWNLOAD_URL for [%s]", binaryName)
+			return nil, nil, fmt.Errorf("error: didn't find the DOWNLOAD_URL for [%s]\n", binaryName)
 		}
 	}
 

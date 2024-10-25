@@ -33,12 +33,6 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 				return
 			}
 
-			// Ensure file isn't in use
-			if isFileBusy(destination) {
-				errChan <- fmt.Errorf("[%s] is busy and cannot be replaced", destination)
-				return
-			}
-
 			// Fetch binary and place it at destination
 			_, fetchErr := fetchBinaryFromURLToDest(ctx, url, checksum, destination)
 			if fetchErr != nil {

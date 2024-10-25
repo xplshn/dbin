@@ -26,52 +26,66 @@ type BinaryInfo struct {
 	ExtraBins   string `json:"extra_bins,omitempty"`
 }
 
-// findBinaryInfo searches for binary metadata in the provided metadata slice.
-func findBinaryInfo(metadata []map[string]interface{}, binaryName string) (BinaryInfo, bool) {
-	for _, binMap := range metadata {
-		name, nameOk := binMap["name"].(string)
-		realName, realNameOk := binMap["bin_name"].(string)
+// findBinaryInfo searches for binary metadata across multiple sections in the provided metadata map.
+func findBinaryInfo(metadata map[string]interface{}, binaryName string) (BinaryInfo, bool) {
+	for _, section := range metadata {
+		// Each section is a list of binaries
+		binaries, ok := section.([]interface{})
+		if !ok {
+			continue
+		}
 
-		if (nameOk && name == binaryName) || (realNameOk && realName == binaryName) {
-			description, _ := binMap["description"].(string)
-			note, _ := binMap["note"].(string)
-			version, _ := binMap["version"].(string)
-			downloadURL, _ := binMap["download_url"].(string)
-			size, _ := binMap["size"].(string)
-			bsum, _ := binMap["bsum"].(string)
-			shasum, _ := binMap["shasum"].(string)
-			buildDate, _ := binMap["build_date"].(string)
-			srcURL, _ := binMap["src_url"].(string)
-			webURL, _ := binMap["web_url"].(string)
-			buildScript, _ := binMap["build_script"].(string)
-			buildLog, _ := binMap["build_log"].(string)
-			category, _ := binMap["category"].(string)
-			extraBins, _ := binMap["extra_bins"].(string)
+		// Iterate through each binary in the section
+		for _, bin := range binaries {
+			binMap, ok := bin.(map[string]interface{})
+			if !ok {
+				continue
+			}
 
-			return BinaryInfo{
-				RealName:    realName,
-				Name:        name,
-				Description: description,
-				Note:        note,
-				Version:     version,
-				DownloadURL: downloadURL,
-				Size:        size,
-				Bsum:        bsum,
-				Shasum:      shasum,
-				BuildDate:   buildDate,
-				SrcURL:      srcURL,
-				WebURL:      webURL,
-				BuildScript: buildScript,
-				BuildLog:    buildLog,
-				Category:    category,
-				ExtraBins:   extraBins,
-			}, true
+			name, nameOk := binMap["name"].(string)
+			realName, realNameOk := binMap["bin_name"].(string)
+
+			if (nameOk && name == binaryName) || (realNameOk && realName == binaryName) {
+				description, _ := binMap["description"].(string)
+				note, _ := binMap["note"].(string)
+				version, _ := binMap["version"].(string)
+				downloadURL, _ := binMap["download_url"].(string)
+				size, _ := binMap["size"].(string)
+				bsum, _ := binMap["bsum"].(string)
+				shasum, _ := binMap["shasum"].(string)
+				buildDate, _ := binMap["build_date"].(string)
+				srcURL, _ := binMap["src_url"].(string)
+				webURL, _ := binMap["web_url"].(string)
+				buildScript, _ := binMap["build_script"].(string)
+				buildLog, _ := binMap["build_log"].(string)
+				category, _ := binMap["category"].(string)
+				extraBins, _ := binMap["extra_bins"].(string)
+
+				return BinaryInfo{
+					RealName:    realName,
+					Name:        name,
+					Description: description,
+					Note:        note,
+					Version:     version,
+					DownloadURL: downloadURL,
+					Size:        size,
+					Bsum:        bsum,
+					Shasum:      shasum,
+					BuildDate:   buildDate,
+					SrcURL:      srcURL,
+					WebURL:      webURL,
+					BuildScript: buildScript,
+					BuildLog:    buildLog,
+					Category:    category,
+					ExtraBins:   extraBins,
+				}, true
+			}
 		}
 	}
 	return BinaryInfo{}, false
 }
 
-// getBinaryInfo retrieves binary metadata for the specified binary name by fetching and searching through multiple JSON files.
+// getBinaryInfo retrieves binary metadata for the specified binary name by fetching and searching through the given metadata files
 func getBinaryInfo(config *Config, binaryName string) (*BinaryInfo, error) {
 	// Check the tracker file first
 	realBinaryName, err := getFullName(filepath.Join(config.InstallDir, binaryName))
@@ -79,20 +93,20 @@ func getBinaryInfo(config *Config, binaryName string) (*BinaryInfo, error) {
 		binaryName = realBinaryName
 	}
 
-	var metadata []map[string]interface{}
+	var metadata map[string]interface{}
 	for _, url := range config.MetadataURLs {
-		var tempMetadata []map[string]interface{}
+		var tempMetadata map[string]interface{}
 		err := fetchJSON(url, &tempMetadata)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch and decode binary information from %s: %v", url, err)
 		}
-		metadata = append(metadata, tempMetadata...)
+		metadata = tempMetadata
+
+		binInfo, found := findBinaryInfo(metadata, binaryName)
+		if found {
+			return &binInfo, nil
+		}
 	}
 
-	binInfo, found := findBinaryInfo(metadata, binaryName)
-	if !found {
-		return nil, fmt.Errorf("error: info for the requested binary ('%s') not found in any of the metadata files", binaryName)
-	}
-
-	return &binInfo, nil
+	return nil, fmt.Errorf("error: info for the requested binary ('%s') not found in any of the metadata files", binaryName)
 }
