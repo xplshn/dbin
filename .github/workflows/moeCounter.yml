@@ -18,7 +18,7 @@ jobs:
       - name: Get binary count
         id: get-listc
         run: |
-          LISTC=$(./main.go list | wc -l)
+          LISTC=$(go run *.go list | wc -l)
           echo "LISTC=$LISTC" >> $GITHUB_ENV
 
       - name: Download MoeCounter image
