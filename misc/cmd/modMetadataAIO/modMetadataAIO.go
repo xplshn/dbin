@@ -23,8 +23,8 @@ type labeledString struct {
 type Item struct {
 	RealName    string `json:"bin_name"`
 	Name        string `json:"name"`
+	Icon        string `json:"icon"`
 	Description string `json:"description,omitempty"`
-	Note        string `json:"note,omitempty"`
 	Version     string `json:"version,omitempty"`
 	DownloadURL string `json:"download_url,omitempty"`
 	Size        string `json:"size,omitempty"`
@@ -37,7 +37,8 @@ type Item struct {
 	BuildLog    string `json:"build_log,omitempty"`
 	Category    string `json:"category,omitempty"`
 	ExtraBins   string `json:"extra_bins,omitempty"`
-	Icon        string `json:"icon"`
+	Note        string `json:"note,omitempty"`
+	Appstream   string `json:"appstream,omitempty"`
 }
 
 type Metadata struct {
