@@ -28,8 +28,10 @@ var repoLabels = map[string]string{
 type Item struct {
 	RealName    string `json:"bin_name"`
 	Name        string `json:"name"`
-	Icon        string `json:"icon"`
+	BinId       string `json:"bin_id,omitempty"`
+	Icon        string `json:"icon,omitempty"`
 	Description string `json:"description,omitempty"`
+	Screenshots string `json:"screenshots,omitempty"`
 	Version     string `json:"version,omitempty"`
 	DownloadURL string `json:"download_url,omitempty"`
 	Size        string `json:"size,omitempty"`
