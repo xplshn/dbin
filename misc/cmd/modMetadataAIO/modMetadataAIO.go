@@ -284,7 +284,7 @@ func main() {
 
 		repos := []labeledString{
 			{"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
-				"https://pkg.ajam.dev/" + arch + "/METADATA.AIO.min.json",
+				"https://bin.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
 				true},
 		}
 
