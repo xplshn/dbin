@@ -1,4 +1,4 @@
-package main // TODO, make generated metadata reflect/have the same fields as the repo's actual metadata
+package main
 
 import (
 	"fmt"
@@ -28,9 +28,9 @@ var repoLabels = map[string]string{
 }
 
 type Item struct {
-	RealName       string   `json:"pkg"`
-	Name           string   `json:"pkg_name"`
-	BinId          string   `json:"pkg_id,omitempty"`
+	RealName       string   `json:"pkg"`              // should map to bin
+	Name           string   `json:"pkg_name"`         // should map to bin_name
+	BinId          string   `json:"pkg_id,omitempty"` // should map to bin_id
 	Icon           string   `json:"icon,omitempty"`
 	Description    string   `json:"description,omitempty"`
 	Screenshots    []string `json:"screenshots,omitempty"`
@@ -41,11 +41,11 @@ type Item struct {
 	Shasum         string   `json:"shasum,omitempty"` // SHA256
 	BuildDate      string   `json:"build_date,omitempty"`
 	SrcURL         string   `json:"src_url,omitempty"`
-	WebURL         string   `json:"homepage,omitempty"`
+	WebURL         string   `json:"homepage,omitempty"` // should map to web_url
 	BuildScript    string   `json:"build_script,omitempty"`
 	BuildLog       string   `json:"build_log,omitempty"`
 	Category       string   `json:"category,omitempty"`
-	ExtraBins      string   `json:"provides,omitempty"`
+	ExtraBins      string   `json:"provides,omitempty"` // should map to extra_bins
 	Note           string   `json:"note,omitempty"`
 	Appstream      string   `json:"appstream,omitempty"`
 	PopularityRank int      `json:"popularity_rank,omitempty"` // = installs, as tracked by Flathub
@@ -57,6 +57,36 @@ type Metadata struct {
 	Base []Item `json:"base"`
 }
 
+type OutputItem struct {
+	Bin            string   `json:"bin"`
+	BinName        string   `json:"bin_name"`
+	BinId          string   `json:"bin_id,omitempty"`
+	Icon           string   `json:"icon,omitempty"`
+	Description    string   `json:"description,omitempty"`
+	Screenshots    []string `json:"screenshots,omitempty"`
+	Version        string   `json:"version,omitempty"`
+	DownloadURL    string   `json:"download_url,omitempty"`
+	Size           string   `json:"size,omitempty"`
+	Bsum           string   `json:"bsum,omitempty"`
+	Shasum         string   `json:"shasum,omitempty"`
+	BuildDate      string   `json:"build_date,omitempty"`
+	SrcURL         string   `json:"src_url,omitempty"`
+	WebURL         string   `json:"web_url,omitempty"`
+	BuildScript    string   `json:"build_script,omitempty"`
+	BuildLog       string   `json:"build_log,omitempty"`
+	Category       string   `json:"category,omitempty"`
+	ExtraBins      string   `json:"extra_bins,omitempty"`
+	Note           string   `json:"note,omitempty"`
+	Appstream      string   `json:"appstream,omitempty"`
+	PopularityRank int      `json:"popularity_rank,omitempty"`
+}
+
+type OutputMetadata struct {
+	Bin  []OutputItem `json:"bin"`
+	Pkg  []OutputItem `json:"pkg"`
+	Base []OutputItem `json:"base"`
+}
+
 type FlathubItem struct {
 	Name              string `json:"name"`
 	Id                string `json:"id"`
@@ -65,6 +95,48 @@ type FlathubItem struct {
 
 type FlathubResponse struct {
 	Hits []FlathubItem `json:"hits"`
+}
+
+func convertItem(item Item) OutputItem {
+	return OutputItem{
+		Bin:            item.RealName,
+		BinName:        item.Name,
+		BinId:          item.BinId,
+		Icon:           item.Icon,
+		Description:    item.Description,
+		Screenshots:    item.Screenshots,
+		Version:        item.Version,
+		DownloadURL:    item.DownloadURL,
+		Size:           item.Size,
+		Bsum:           item.Bsum,
+		Shasum:         item.Shasum,
+		BuildDate:      item.BuildDate,
+		SrcURL:         item.SrcURL,
+		WebURL:         item.WebURL,
+		BuildScript:    item.BuildScript,
+		BuildLog:       item.BuildLog,
+		Category:       item.Category,
+		ExtraBins:      item.ExtraBins,
+		Note:           item.Note,
+		Appstream:      item.Appstream,
+		PopularityRank: item.PopularityRank,
+	}
+}
+
+func convertItems(items []Item) []OutputItem {
+	var outputItems []OutputItem
+	for _, item := range items {
+		outputItems = append(outputItems, convertItem(item))
+	}
+	return outputItems
+}
+
+func convertMetadata(metadata Metadata) OutputMetadata {
+	return OutputMetadata{
+		Bin:  convertItems(metadata.Bin),
+		Pkg:  convertItems(metadata.Pkg),
+		Base: convertItems(metadata.Base),
+	}
 }
 
 // Function to process items by removing arch-specific and repo-label prefixes
@@ -129,7 +201,7 @@ func downloadJSON(url string) (Metadata, error) {
 	return metadata, nil
 }
 
-func saveJSON(filename string, metadata Metadata) error {
+func saveJSON(filename string, metadata OutputMetadata) error {
 	// Marshal JSON with indentation
 	jsonData, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
@@ -305,9 +377,12 @@ func main() {
 			//updatePopularityRank(metadata.Bin, popularityMap, idMap)
 			//updatePopularityRank(metadata.Base, popularityMap, idMap)
 
+			// Convert Metadata to OutputMetadata
+			outputMetadata := convertMetadata(metadata)
+
 			// Save the processed metadata to a JSON file
 			outputFile := fmt.Sprintf("METADATA_AIO_%s.json", arch)
-			if err := saveJSON(outputFile, metadata); err != nil {
+			if err := saveJSON(outputFile, outputMetadata); err != nil {
 				fmt.Printf("Error saving JSON to %s: %v\n", outputFile, err)
 				continue
 			}
