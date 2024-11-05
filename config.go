@@ -226,16 +226,16 @@ func setDefaultValues(config *Config) {
 	// Set up default repositories if none are provided
 	if len(config.RepoURLs) == 0 {
 		config.RepoURLs = []string{
-			"https://bin.ajam.dev/" + arch + "/",
-			"https://bin.ajam.dev/" + arch + "/Baseutils/",
-			"https://pkg.ajam.dev/" + arch + "/",
+			"https://bin.pkgforge.dev/" + arch + "/",
+			"https://bin.pkgforge.dev/" + arch + "/Baseutils/",
+			"https://pkg.pkgforge.dev/" + arch + "/",
 		}
 	}
 
 	// Set up default metadata URLs if none are provided
 	if len(config.MetadataURLs) == 0 {
 		config.MetadataURLs = []string{
-			"https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/modMetadataAIO/METADATA_AIO_" + arch + ".json",
+			"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadataAIO-ng/METADATA_AIO_" + arch + ".min.json",
 		}
 	}
 

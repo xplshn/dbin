@@ -8,8 +8,9 @@ import (
 
 // BinaryInfo struct holds binary metadata used in main.go for the `info`, `update`, `list` functionality
 type BinaryInfo struct {
-	RealName    string `json:"bin_name"`
-	Name        string `json:"name"`
+	RealName    string `json:"pkg"`
+	Name        string `json:"pkg_name"`
+	PkgId       string `json:"pkg_id"`
 	Description string `json:"description,omitempty"`
 	Note        string `json:"note,omitempty"`
 	Version     string `json:"version,omitempty"`
@@ -19,11 +20,11 @@ type BinaryInfo struct {
 	Shasum      string `json:"shasum,omitempty"` // SHA256
 	BuildDate   string `json:"build_date,omitempty"`
 	SrcURL      string `json:"src_url,omitempty"`
-	WebURL      string `json:"web_url,omitempty"`
+	WebURL      string `json:"homepage,omitempty"`
 	BuildScript string `json:"build_script,omitempty"`
 	BuildLog    string `json:"build_log,omitempty"`
 	Category    string `json:"category,omitempty"`
-	ExtraBins   string `json:"extra_bins,omitempty"`
+	ExtraBins   string `json:"provides,omitempty"`
 }
 
 // findBinaryInfo searches for binary metadata across multiple sections in the provided metadata map.
@@ -42,8 +43,8 @@ func findBinaryInfo(metadata map[string]interface{}, binaryName string) (BinaryI
 				continue
 			}
 
-			name, nameOk := binMap["name"].(string)
-			realName, realNameOk := binMap["bin_name"].(string)
+			name, nameOk := binMap["pkg_name"].(string)
+			realName, realNameOk := binMap["pkg"].(string)
 
 			if (nameOk && name == binaryName) || (realNameOk && realName == binaryName) {
 				description, _ := binMap["description"].(string)
@@ -55,11 +56,11 @@ func findBinaryInfo(metadata map[string]interface{}, binaryName string) (BinaryI
 				shasum, _ := binMap["shasum"].(string)
 				buildDate, _ := binMap["build_date"].(string)
 				srcURL, _ := binMap["src_url"].(string)
-				webURL, _ := binMap["web_url"].(string)
+				webURL, _ := binMap["homepage"].(string)
 				buildScript, _ := binMap["build_script"].(string)
 				buildLog, _ := binMap["build_log"].(string)
 				category, _ := binMap["category"].(string)
-				extraBins, _ := binMap["extra_bins"].(string)
+				extraBins, _ := binMap["provides"].(string)
 
 				return BinaryInfo{
 					RealName:    realName,
