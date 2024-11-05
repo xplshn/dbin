@@ -284,11 +284,7 @@ func main() {
 
 		repos := []labeledString{
 			{"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
-<<<<<<< HEAD
 				"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.json",
-=======
-				"https://bin.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
->>>>>>> refs/remotes/origin/master
 				true},
 		}
 
