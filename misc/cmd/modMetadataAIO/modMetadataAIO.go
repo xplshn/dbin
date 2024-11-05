@@ -28,7 +28,7 @@ var repoLabels = map[string]string{
 }
 
 type Item struct {
-	RealName       string   `json:"bin"`
+	RealName       string   `json:"pkg"`
 	Name           string   `json:"pkg_name"`
 	BinId          string   `json:"pkg_id,omitempty"`
 	Icon           string   `json:"icon,omitempty"`
