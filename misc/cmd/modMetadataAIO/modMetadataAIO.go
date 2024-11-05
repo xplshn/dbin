@@ -1,4 +1,4 @@
-package main
+package main // TODO, make generated metadata reflect/have the same fields as the repo's actual metadata
 
 import (
 	"fmt"
@@ -28,9 +28,9 @@ var repoLabels = map[string]string{
 }
 
 type Item struct {
-	RealName       string   `json:"bin_name"`
-	Name           string   `json:"name"`
-	BinId          string   `json:"bin_id,omitempty"`
+	RealName       string   `json:"bin"`
+	Name           string   `json:"pkg_name"`
+	BinId          string   `json:"pkg_id,omitempty"`
 	Icon           string   `json:"icon,omitempty"`
 	Description    string   `json:"description,omitempty"`
 	Screenshots    []string `json:"screenshots,omitempty"`
@@ -41,11 +41,11 @@ type Item struct {
 	Shasum         string   `json:"shasum,omitempty"` // SHA256
 	BuildDate      string   `json:"build_date,omitempty"`
 	SrcURL         string   `json:"src_url,omitempty"`
-	WebURL         string   `json:"web_url,omitempty"`
+	WebURL         string   `json:"homepage,omitempty"`
 	BuildScript    string   `json:"build_script,omitempty"`
 	BuildLog       string   `json:"build_log,omitempty"`
 	Category       string   `json:"category,omitempty"`
-	ExtraBins      string   `json:"extra_bins,omitempty"`
+	ExtraBins      string   `json:"provides,omitempty"`
 	Note           string   `json:"note,omitempty"`
 	Appstream      string   `json:"appstream,omitempty"`
 	PopularityRank int      `json:"popularity_rank,omitempty"` // = installs, as tracked by Flathub
@@ -283,8 +283,8 @@ func main() {
 		arch := validatedArchs[i]
 
 		repos := []labeledString{
-			{"https://bin.ajam.dev/" + arch + "/METADATA.AIO.min.json",
-				"https://pkg.ajam.dev/" + arch + "/METADATA.AIO.min.json",
+			{"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
+				"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.json",
 				true},
 		}
 
