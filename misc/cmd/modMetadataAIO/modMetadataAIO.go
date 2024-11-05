@@ -283,7 +283,7 @@ func main() {
 		arch := validatedArchs[i]
 
 		repos := []labeledString{
-			{"https://bin.ajam.dev/" + arch + "/METADATA.AIO.min.json",
+			{"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
 				"https://pkg.ajam.dev/" + arch + "/METADATA.AIO.min.json",
 				true},
 		}
