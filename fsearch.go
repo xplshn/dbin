@@ -11,7 +11,7 @@ import (
 func fSearch(config *Config, searchTerm string) error {
 	type tBinary struct {
 		Architecture string `json:"architecture"`
-		RealName     string `json:"bin_name"`
+		RealName     string `json:"pkg"`
 		Description  string `json:"description"`
 	}
 
@@ -37,7 +37,7 @@ func fSearch(config *Config, searchTerm string) error {
 					continue
 				}
 
-				realName, _ := binMap["bin_name"].(string)
+				realName, _ := binMap["pkg"].(string)
 				description, _ := binMap["description"].(string)
 				binaries = append(binaries, tBinary{
 					RealName:    realName,
