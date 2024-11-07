@@ -44,7 +44,7 @@ func listBinaries(config *Config) ([]string, error) {
 					continue
 				}
 
-				realName, _ := binMap["bin_name"].(string)
+				realName, _ := binMap["pkg"].(string)
 				if realName != "" {
 					allBinaries = append(allBinaries, realName)
 				}
