@@ -220,7 +220,7 @@ func updatePopularityRank(items []Item, popularityMap map[string]int, idMap map[
 	for i := range items {
 		matched := false
 
-		// Try to match by bin_id first
+		// Try to match by bin_id first // FIXME
 		if flathubId, found := idMap[items[i].BinId]; found {
 			if rank, ok := popularityMap[flathubId]; ok {
 				items[i].PopularityRank = rank
@@ -230,11 +230,11 @@ func updatePopularityRank(items []Item, popularityMap map[string]int, idMap map[
 				fmt.Printf("Matched %s via bin_id, but no popularity_rank data is available (bin_id: %s, flathub id: %s: %d)\n", items[i].Name, items[i].BinId, flathubId, items[i].PopularityRank)
 			}
 		} else {
-			fmt.Printf("BinId: %s | Flathub Id: %s\n", items[i].BinId, flathubId)
+			// fmt.Printf("BinId: %s | Flathub Id: %s\n", items[i].BinId, flathubId)
 		}
 
 		// Fallback to name-based matching if no bin_id match is found
-		if !matched && matched { // Remove the && matched if you wish to enable matching via names
+		if !matched { //&& matched { // Remove the && matched if you wish to enable matching via names
 			baseName := extractBaseName(items[i].Name)
 			var bestMatch string
 			minDistance := 1000000 // A large number
