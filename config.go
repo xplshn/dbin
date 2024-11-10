@@ -17,7 +17,7 @@ import (
 type Config struct {
 	RepoURLs            []string        `json:"repo_urls" env:"DBIN_REPO_URLS"`
 	MetadataURLs        []string        `json:"metadata_urls" env:"DBIN_METADATA_URLS"`
-	InstallDir          string          `json:"install_dir" env:"DBIN_INSTALL_DIR"`
+	InstallDir          string          `json:"install_dir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
 	CacheDir            string          `json:"cache_dir" env:"DBIN_CACHEDIR"`
 	Limit               int             `json:"fsearch_limit"`
 	DisableTruncation   bool            `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
@@ -165,10 +165,8 @@ func overrideWithEnv(cfg *Config) {
 	v := reflect.ValueOf(cfg).Elem()
 	t := v.Type()
 
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		envVar := t.Field(i).Tag.Get("env")
-
+	// Helper function to set the field value based on the environment variable
+	setFieldFromEnv := func(field reflect.Value, envVar string) bool {
 		if value, exists := os.LookupEnv(envVar); exists {
 			switch field.Kind() {
 			case reflect.String:
@@ -182,6 +180,30 @@ func overrideWithEnv(cfg *Config) {
 			case reflect.Int:
 				if val, err := strconv.Atoi(value); err == nil {
 					field.SetInt(int64(val))
+				}
+			}
+			return true
+		}
+		return false
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		envTags := strings.Split(t.Field(i).Tag.Get("env"), " ")
+
+		// Check the first environment variable
+		if len(envTags) > 0 {
+			firstEnvVar := envTags[0]
+			if setFieldFromEnv(field, firstEnvVar) {
+				continue // Skip further processing for this field
+			}
+		}
+
+		// Check subsequent environment variables if the first one is not set and the field is not already set
+		if field.IsZero() {
+			for _, envVar := range envTags[1:] {
+				if setFieldFromEnv(field, envVar) {
+					break // Stop processing further env tags for this field
 				}
 			}
 		}
