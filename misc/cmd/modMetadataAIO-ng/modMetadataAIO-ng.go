@@ -305,6 +305,19 @@ func main() {
 			//updatePopularityRank(metadata.Bin, popularityMap, idMap)
 			//updatePopularityRank(metadata.Base, popularityMap, idMap)
 
+			// Download additional metadata.json from the specified URL
+			additionalMetadataURL := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json"
+			additionalMetadata, err := downloadJSON(additionalMetadataURL)
+			if err != nil {
+				fmt.Printf("Error downloading additional metadata from %s: %v\n", additionalMetadataURL, err)
+				continue
+			}
+
+			// Merge the additional metadata into the main metadata
+			metadata.Bin = append(metadata.Bin, additionalMetadata.Bin...)
+			metadata.Pkg = append(metadata.Pkg, additionalMetadata.Pkg...)
+			metadata.Base = append(metadata.Base, additionalMetadata.Base...)
+
 			// Save the processed metadata to a JSON file
 			outputFile := fmt.Sprintf("METADATA_AIO_%s.json", arch)
 			if err := saveJSON(outputFile, metadata); err != nil {
