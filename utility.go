@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/goccy/go-json"
-	// json "github.com/bytedance/sonic"
 
 	"github.com/pkg/xattr"
 	"github.com/zeebo/blake3"

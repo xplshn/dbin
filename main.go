@@ -16,8 +16,8 @@ type Verbosity int8
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
-	version                             = "0.7"
 	indicator                           = "...>"
+	Version                             = "0.7"
 	maxCacheSize                        = 10
 	binariesToDelete                    = 5
 	normalVerbosity           Verbosity = 1
@@ -86,7 +86,7 @@ dbin run btop`,
 	flag.Parse()
 
 	if *versionFlag || *longVersionFlag {
-		fmt.Println(helpPage, "dbin version", version)
+		fmt.Println(helpPage, "dbin version", Version)
 		os.Exit(1)
 	}
 

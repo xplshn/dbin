@@ -50,6 +50,7 @@ func fetchBinaryFromURLToDest(ctx context.Context, url, checksum, destination st
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
 	req.Header.Set("Expires", "0")
+	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%s", Version))
 
 	// Perform the request
 	client := &http.Client{}
