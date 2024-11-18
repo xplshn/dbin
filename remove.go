@@ -9,7 +9,7 @@ import (
 )
 
 // removeBinaries processes each binary, removing only those that pass validation.
-func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity) error {
+func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	var wg sync.WaitGroup
 	var removeErrors []string
 	var mutex sync.Mutex
@@ -23,14 +23,6 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 			defer wg.Done()
 
 			installPath := filepath.Join(installDir, filepath.Base(binaryName))
-
-			// Check if the binary exists before proceeding
-			if !fileExists(installPath) {
-				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s. Skipping removal.\n", binaryName, installDir)
-				}
-				return
-			}
 
 			// Get the full name of the binary installed
 			fullBinaryName, err := getFullName(installPath)
@@ -47,6 +39,18 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 				installPath = filepath.Join(installDir, filepath.Base(fullBinaryName))
 			}
 
+			// Remove everything after the # (including the #) (if it exists)
+			parts := strings.SplitN(installPath, "#", 2)
+			installPath = parts[0]
+
+			// Check if the binary exists before proceeding
+			if !fileExists(installPath) {
+				if verbosityLevel >= normalVerbosity {
+					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s. Skipping removal.\n", binaryName, installDir)
+				}
+				return
+			}
+
 			// Validate if the binary was installed by checking the full binary name
 			if fullBinaryName == "" {
 				if verbosityLevel >= normalVerbosity {
@@ -56,7 +60,7 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 			}
 
 			// Run deintegration hooks before removing the binary
-			if err := runDeintegrationHooks(config, installPath, verbosityLevel); err != nil {
+			if err := runDeintegrationHooks(config, installPath, verbosityLevel, metadata); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
 					fmt.Fprintf(os.Stderr, "error: %s\n", err)
 				}
@@ -95,14 +99,14 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity)
 }
 
 // runDeintegrationHooks runs the deintegration hooks for binaries which need to be deintegrated
-func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) error {
+func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	if config.UseIntegrationHooks {
 		// Infer the file extension from the binaryPath
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			// Execute user-defined deintegration hooks
 			for _, cmd := range hookCommands.DeintegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel); err != nil {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel, metadata); err != nil {
 					return err
 				}
 			}

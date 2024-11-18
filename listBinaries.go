@@ -2,7 +2,6 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 )
@@ -22,32 +21,25 @@ var excludedFileNames = []string{
 }
 
 // listBinaries fetches and lists binary names from the given metadata URLs.
-func listBinaries(config *Config) ([]string, error) {
+func listBinaries(metadata map[string]interface{}) ([]string, error) {
 	var allBinaries []string
 
-	for _, url := range config.MetadataURLs {
-		var metadata map[string]interface{}
-		if err := fetchJSON(url, &metadata); err != nil {
-			return nil, fmt.Errorf("failed to fetch metadata from %s: %v", url, err)
+	// Iterate over all sections in the metadata
+	for _, section := range metadata {
+		binaries, ok := section.([]interface{})
+		if !ok {
+			continue
 		}
 
-		// Iterate over all sections in the metadata
-		for _, section := range metadata {
-			binaries, ok := section.([]interface{})
+		for _, item := range binaries {
+			binMap, ok := item.(map[string]interface{})
 			if !ok {
 				continue
 			}
 
-			for _, item := range binaries {
-				binMap, ok := item.(map[string]interface{})
-				if !ok {
-					continue
-				}
-
-				realName, _ := binMap["pkg"].(string)
-				if realName != "" {
-					allBinaries = append(allBinaries, realName)
-				}
+			realName, _ := binMap["pkg"].(string)
+			if realName != "" {
+				allBinaries = append(allBinaries, realName)
 			}
 		}
 	}

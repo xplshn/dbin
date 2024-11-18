@@ -52,7 +52,7 @@ type CorrectionCommand struct {
 	Command string `json:"command"`
 }
 
-func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension string, isIntegration bool, verbosityLevel Verbosity) error {
+func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension string, isIntegration bool, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	hookCommands, exists := config.Hooks.Commands[extension]
 	if !exists {
 		return fmt.Errorf("no commands found for extension: %s", extension)
@@ -81,7 +81,7 @@ func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension strin
 
 	if useRunFromCache {
 		// Directly call RunFromCache with the full command string
-		return RunFromCache(config, command, args, true, verbosityLevel)
+		return RunFromCache(config, command, args, true, verbosityLevel, metadata)
 	} else {
 		// Create a new command
 		cmdExec := exec.Command(command, args...)

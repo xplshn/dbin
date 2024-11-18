@@ -28,7 +28,7 @@ type BinaryInfo struct {
 }
 
 // findBinaryInfo searches for binary metadata across multiple sections in the provided metadata map.
-func findBinaryInfo(metadata map[string]interface{}, binaryName string) (BinaryInfo, bool) {
+func findBinaryInfo(binaryName string, metadata map[string]interface{}) (BinaryInfo, bool) {
 	for _, section := range metadata {
 		// Each section is a list of binaries
 		binaries, ok := section.([]interface{})
@@ -87,26 +87,16 @@ func findBinaryInfo(metadata map[string]interface{}, binaryName string) (BinaryI
 }
 
 // getBinaryInfo retrieves binary metadata for the specified binary name by fetching and searching through the given metadata files
-func getBinaryInfo(config *Config, binaryName string) (*BinaryInfo, error) {
+func getBinaryInfo(config *Config, binaryName string, metadata map[string]interface{}) (*BinaryInfo, error) {
 	// Check the tracker file first
 	realBinaryName, err := getFullName(filepath.Join(config.InstallDir, binaryName))
 	if err == nil {
 		binaryName = realBinaryName
 	}
 
-	var metadata map[string]interface{}
-	for _, url := range config.MetadataURLs {
-		var tempMetadata map[string]interface{}
-		err := fetchJSON(url, &tempMetadata)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch and decode binary information from %s: %v", url, err)
-		}
-		metadata = tempMetadata
-
-		binInfo, found := findBinaryInfo(metadata, binaryName)
-		if found {
-			return &binInfo, nil
-		}
+	binInfo, found := findBinaryInfo(binaryName, metadata)
+	if found {
+		return &binInfo, nil
 	}
 
 	return nil, fmt.Errorf("error: info for the requested binary ('%s') not found in any of the metadata files", binaryName)

@@ -8,7 +8,7 @@ import (
 )
 
 // differ lists programs that are installed but need an update/differ from the repo's b3sum of it
-func differ(config *Config, programs []string, verbosityLevel Verbosity) error {
+func differ(config *Config, programs []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	var installedPrograms []string
 
 	if programs == nil {
@@ -53,7 +53,7 @@ func differ(config *Config, programs []string, verbosityLevel Verbosity) error {
 			}
 
 			// Fetch remote metadata
-			binaryInfo, err := getBinaryInfo(config, program)
+			binaryInfo, err := getBinaryInfo(config, program, metadata)
 			if binaryInfo.Bsum == "" { // skip
 				return
 			}

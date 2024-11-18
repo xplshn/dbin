@@ -69,9 +69,9 @@ func isExecutable(filePath string) bool {
 }
 
 // validateProgramsFrom checks the validity of programs against a remote source
-func validateProgramsFrom(config *Config, programsToValidate []string) ([]string, error) {
+func validateProgramsFrom(config *Config, programsToValidate []string, metadata map[string]interface{}) ([]string, error) {
 	installDir := config.InstallDir
-	remotePrograms, err := listBinaries(config)
+	remotePrograms, err := listBinaries(metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list remote binaries: %w", err)
 	}

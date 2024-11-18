@@ -141,6 +141,19 @@ dbin run btop`,
 		os.Exit(1)
 	}
 
+	// Fetch the metadata ONLY once
+	var metadata map[string]interface{}
+	fetchMetadata := func() map[string]interface{} {
+		for _, url := range config.MetadataURLs {
+			err := fetchJSON(url, &metadata)
+			if err != nil {
+				fmt.Printf("failed to fetch and decode binary information from %s: %v\n", url, err)
+				continue
+			}
+		}
+		return metadata
+	}
+
 	switch command {
 	case "findurl":
 		if len(args) < 1 {
@@ -148,7 +161,8 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaryNames := args
-		urls, _, err := findURL(config, binaryNames, verbosityLevel)
+		fetchMetadata()
+		urls, _, err := findURL(config, binaryNames, verbosityLevel, metadata)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
@@ -173,7 +187,8 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := installCommand(config, binaries, verbosityLevel)
+		fetchMetadata()
+		err := installCommand(config, binaries, verbosityLevel, metadata)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -185,7 +200,7 @@ dbin run btop`,
 			os.Exit(1)
 		}
 		binaries := args
-		err := removeBinaries(config, binaries, verbosityLevel)
+		err := removeBinaries(config, binaries, verbosityLevel, metadata)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -195,12 +210,14 @@ dbin run btop`,
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
 				// Call fSearch with an empty query and a large limit to list all described binaries
-				fSearch(config, "")
+				fetchMetadata()
+				fSearch(config, "", metadata)
 			} else {
 				errorOut("dbin: Unknown command.\n")
 			}
 		} else {
-			binaries, err := listBinaries(config)
+			fetchMetadata()
+			binaries, err := listBinaries(metadata)
 			if err != nil {
 				fmt.Println("Error listing binaries:", err)
 				os.Exit(1)
@@ -238,7 +255,8 @@ dbin run btop`,
 		}
 
 		query := args[queryIndex]
-		err := fSearch(config, query)
+		fetchMetadata()
+		err := fSearch(config, query, metadata)
 		if err != nil {
 			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
@@ -281,7 +299,8 @@ dbin run btop`,
 				}
 			} else {
 				// Validate programs from the remote source
-				installedPrograms, err := validateProgramsFrom(config, nil)
+				fetchMetadata()
+				installedPrograms, err := validateProgramsFrom(config, nil, metadata)
 				if err != nil {
 					fmt.Printf("error validating programs: %v\n", err)
 					os.Exit(1)
@@ -292,7 +311,8 @@ dbin run btop`,
 				}
 			}
 		} else {
-			binaryInfo, err := getBinaryInfo(config, binaryName)
+			fetchMetadata()
+			binaryInfo, err := getBinaryInfo(config, binaryName, metadata)
 			if err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
@@ -362,17 +382,19 @@ dbin run btop`,
 			os.Exit(1)
 		}
 
-		RunFromCache(config, flag.Arg(0), flag.Args()[1:], transparentMode, verbosityLevel)
+		fetchMetadata()
+		RunFromCache(config, flag.Arg(0), flag.Args()[1:], transparentMode, verbosityLevel, metadata)
 	case "tldr":
-		RunFromCache(config, "tlrc", flag.Args()[1:], true, verbosityLevel)
+		RunFromCache(config, "tlrc", flag.Args()[1:], true, verbosityLevel, metadata)
 	case "eget2":
-		RunFromCache(config, "eget2", flag.Args()[1:], true, verbosityLevel)
+		RunFromCache(config, "eget2", flag.Args()[1:], true, verbosityLevel, metadata)
 	case "update":
 		var programsToUpdate []string
 		if len(os.Args) > 2 {
 			programsToUpdate = os.Args[2:]
 		}
-		if err := update(config, programsToUpdate, verbosityLevel); err != nil {
+		fetchMetadata()
+		if err := update(config, programsToUpdate, verbosityLevel, metadata); err != nil {
 			fmt.Println("Update failed:", err)
 		}
 	default:

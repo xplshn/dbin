@@ -15,7 +15,7 @@ import (
 )
 
 // update checks for updates to the valid programs and installs any that have changed.
-func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity) error {
+func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 
 	// Initialize counters
 	var (
@@ -26,7 +26,7 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity)
 	)
 
 	// Call validateProgramsFrom with config and programsToUpdate
-	programsToUpdate, err := validateProgramsFrom(config, programsToUpdate)
+	programsToUpdate, err := validateProgramsFrom(config, programsToUpdate, metadata)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity)
 				return
 			}
 
-			binaryInfo, err := getBinaryInfo(config, program)
+			binaryInfo, err := getBinaryInfo(config, program, metadata)
 			if err != nil {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
@@ -99,7 +99,7 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity)
 			}
 
 			if checkDifferences(localB3sum, binaryInfo.Bsum) == 1 {
-				err := installCommand(config, []string{program}, verbosityLevel)
+				err := installCommand(config, []string{program}, verbosityLevel, metadata)
 				if err != nil {
 					progressMutex.Lock()
 					atomic.AddUint32(&errors, 1)

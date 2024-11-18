@@ -8,7 +8,7 @@ import (
 )
 
 // fSearch searches for binaries based on the given search term
-func fSearch(config *Config, searchTerm string) error {
+func fSearch(config *Config, searchTerm string, metadata map[string]interface{}) error {
 	type tBinary struct {
 		Architecture string `json:"architecture"`
 		RealName     string `json:"pkg"`
@@ -17,33 +17,25 @@ func fSearch(config *Config, searchTerm string) error {
 
 	// Fetch metadata
 	var binaries []tBinary
-	for _, url := range config.MetadataURLs {
-		var metadata map[string]interface{}
-		err := fetchJSON(url, &metadata)
-		if err != nil {
-			return fmt.Errorf("failed to fetch and decode binary information from %s: %v", url, err)
+	// Iterate over all sections and gather binaries
+	for _, section := range metadata {
+		binList, ok := section.([]interface{})
+		if !ok {
+			continue
 		}
 
-		// Iterate over all sections and gather binaries
-		for _, section := range metadata {
-			binList, ok := section.([]interface{})
+		for _, bin := range binList {
+			binMap, ok := bin.(map[string]interface{})
 			if !ok {
 				continue
 			}
 
-			for _, bin := range binList {
-				binMap, ok := bin.(map[string]interface{})
-				if !ok {
-					continue
-				}
-
-				realName, _ := binMap["pkg"].(string)
-				description, _ := binMap["description"].(string)
-				binaries = append(binaries, tBinary{
-					RealName:    realName,
-					Description: description,
-				})
-			}
+			realName, _ := binMap["pkg"].(string)
+			description, _ := binMap["description"].(string)
+			binaries = append(binaries, tBinary{
+				RealName:    realName,
+				Description: description,
+			})
 		}
 	}
 

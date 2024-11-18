@@ -10,10 +10,10 @@ import (
 )
 
 // installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
-func installBinaries(ctx context.Context, config *Config, binaries []string, verbosityLevel Verbosity) error {
+func installBinaries(ctx context.Context, config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(binaries))
-	urls, checksums, err := findURL(config, binaries, verbosityLevel)
+	urls, checksums, err := findURL(config, binaries, verbosityLevel, metadata)
 	if err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 			defer wg.Done()
 			url := urls[i]
 			checksum := checksums[i]
-			destination := filepath.Join(config.InstallDir, filepath.Base(binaryName))
+			destination := filepath.Join(config.InstallDir, filepath.Base(url))
 
 			if err != nil {
 				errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", binaryName, err)
@@ -47,7 +47,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 			}
 
 			// Run hooks after the file is downloaded and chmod +x
-			if err := runIntegrationHooks(config, destination, verbosityLevel); err != nil {
+			if err := runIntegrationHooks(config, destination, verbosityLevel, metadata); err != nil {
 				errChan <- err
 				return
 			}
@@ -81,14 +81,14 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 }
 
 // runIntegrationHooks runs the integration hooks for binaries which need to be integrated
-func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity) error {
+func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	if config.UseIntegrationHooks {
 		// Infer the file extension from the binaryPath
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			// Execute user-defined integration hooks
 			for _, cmd := range hookCommands.IntegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel); err != nil {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel, metadata); err != nil {
 					return err
 				}
 			}
@@ -98,6 +98,6 @@ func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbo
 }
 
 // installCommand installs one or more binaries based on the verbosity level.
-func installCommand(config *Config, binaries []string, verbosityLevel Verbosity) error {
-	return installBinaries(context.Background(), config, removeDuplicates(binaries), verbosityLevel)
+func installCommand(config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+	return installBinaries(context.Background(), config, removeDuplicates(binaries), verbosityLevel, metadata)
 }
