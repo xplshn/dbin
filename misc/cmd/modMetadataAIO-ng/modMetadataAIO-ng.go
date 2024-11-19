@@ -28,27 +28,28 @@ var repoLabels = map[string]string{
 }
 
 type Item struct {
-	RealName       string   `json:"pkg"`
-	Name           string   `json:"pkg_name"`
-	BinId          string   `json:"pkg_id,omitempty"`
-	Icon           string   `json:"icon,omitempty"`
-	Description    string   `json:"description,omitempty"`
-	Screenshots    []string `json:"screenshots,omitempty"`
-	Version        string   `json:"version,omitempty"`
-	DownloadURL    string   `json:"download_url,omitempty"`
-	Size           string   `json:"size,omitempty"`
-	Bsum           string   `json:"bsum,omitempty"`   // BLAKE3
-	Shasum         string   `json:"shasum,omitempty"` // SHA256
-	BuildDate      string   `json:"build_date,omitempty"`
-	SrcURL         string   `json:"src_url,omitempty"`
-	WebURL         string   `json:"homepage,omitempty"`
-	BuildScript    string   `json:"build_script,omitempty"`
-	BuildLog       string   `json:"build_log,omitempty"`
-	Category       string   `json:"category,omitempty"`
-	ExtraBins      string   `json:"provides,omitempty"`
-	Note           string   `json:"note,omitempty"`
-	Appstream      string   `json:"appstream,omitempty"`
-	PopularityRank int      `json:"popularity_rank,omitempty"` // = installs, as tracked by Flathub
+	RealName        string   `json:"pkg"`
+	Name            string   `json:"pkg_name"`
+	BinId           string   `json:"pkg_id,omitempty"`
+	Icon            string   `json:"icon,omitempty"`
+	Description     string   `json:"description,omitempty"`
+	RichDescription string   `json:"rich_description,omitempty"`
+	Screenshots     []string `json:"screenshots,omitempty"`
+	Version         string   `json:"version,omitempty"`
+	DownloadURL     string   `json:"download_url,omitempty"`
+	Size            string   `json:"size,omitempty"`
+	Bsum            string   `json:"bsum,omitempty"`   // BLAKE3
+	Shasum          string   `json:"shasum,omitempty"` // SHA256
+	BuildDate       string   `json:"build_date,omitempty"`
+	SrcURL          string   `json:"src_url,omitempty"`
+	WebURL          string   `json:"homepage,omitempty"`
+	BuildScript     string   `json:"build_script,omitempty"`
+	BuildLog        string   `json:"build_log,omitempty"`
+	Category        string   `json:"category,omitempty"`
+	ExtraBins       string   `json:"provides,omitempty"`
+	Note            string   `json:"note,omitempty"`
+	Appstream       string   `json:"appstream,omitempty"`
+	PopularityRank  int      `json:"popularity_rank,omitempty"` // = installs, as tracked by Flathub
 }
 
 type Metadata struct {
