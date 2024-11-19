@@ -221,7 +221,7 @@ func updatePopularityRank(items []Item, popularityMap map[string]int, idMap map[
 	for i := range items {
 		matched := false
 
-		// Try to match by bin_id first // FIXME
+		// Try to match by bin_id first
 		if flathubId, found := idMap[items[i].BinId]; found {
 			if rank, ok := popularityMap[flathubId]; ok {
 				items[i].PopularityRank = rank
@@ -230,12 +230,10 @@ func updatePopularityRank(items []Item, popularityMap map[string]int, idMap map[
 			} else {
 				fmt.Printf("Matched %s via bin_id, but no popularity_rank data is available (bin_id: %s, flathub id: %s: %d)\n", items[i].Name, items[i].BinId, flathubId, items[i].PopularityRank)
 			}
-		} else {
-			// fmt.Printf("BinId: %s | Flathub Id: %s\n", items[i].BinId, flathubId)
 		}
 
 		// Fallback to name-based matching if no bin_id match is found
-		if !matched { //&& matched { // Remove the && matched if you wish to enable matching via names
+		if !matched {
 			baseName := extractBaseName(items[i].Name)
 			var bestMatch string
 			minDistance := 1000000 // A large number
@@ -252,7 +250,7 @@ func updatePopularityRank(items []Item, popularityMap map[string]int, idMap map[
 				items[i].PopularityRank = popularityMap[bestMatch]
 				fmt.Printf("Updated popularity rank for %s (matched with %s, distance: %d): %d\n", items[i].Name, bestMatch, minDistance, items[i].PopularityRank)
 			} else {
-				//fmt.Printf("No reliable match found for %s (closest match: %s, distance: %d)\n", items[i].Name, bestMatch, minDistance)
+				// fmt.Printf("No reliable match found for %s (closest match: %s, distance: %d)\n", items[i].Name, bestMatch, minDistance)
 			}
 		}
 	}
@@ -277,12 +275,9 @@ func main() {
 		id := strings.ReplaceAll(item.Id, "_", ".")
 		popularityMap[item.Name] = item.InstallsLastMonth
 		idMap[id] = id
-		//fmt.Printf("Flathub item: %s (id: %s), Installs: %d\n", item.Name, id, item.InstallsLastMonth)
 	}
 
-	for i := range validatedArchs {
-		arch := validatedArchs[i]
-
+	for _, arch := range validatedArchs {
 		repos := []labeledString{
 			{"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
 				"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.json",
@@ -303,8 +298,8 @@ func main() {
 
 			// Update popularity rank
 			updatePopularityRank(metadata.Pkg, popularityMap, idMap)
-			//updatePopularityRank(metadata.Bin, popularityMap, idMap)
-			//updatePopularityRank(metadata.Base, popularityMap, idMap)
+			updatePopularityRank(metadata.Bin, popularityMap, idMap)
+			updatePopularityRank(metadata.Base, popularityMap, idMap)
 
 			// Download additional metadata.json from the specified URL
 			additionalMetadataURL := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json"
@@ -315,9 +310,9 @@ func main() {
 			}
 
 			// Merge the additional metadata into the main metadata
-			metadata.Bin = append(metadata.Bin, additionalMetadata.Bin...)
-			metadata.Pkg = append(metadata.Pkg, additionalMetadata.Pkg...)
-			metadata.Base = append(metadata.Base, additionalMetadata.Base...)
+			metadata.Bin = mergeItems(metadata.Bin, additionalMetadata.Bin)
+			metadata.Pkg = mergeItems(metadata.Pkg, additionalMetadata.Pkg)
+			metadata.Base = mergeItems(metadata.Base, additionalMetadata.Base)
 
 			// Save the processed metadata to a JSON file
 			outputFile := fmt.Sprintf("METADATA_AIO_%s.json", arch)
@@ -329,4 +324,33 @@ func main() {
 			fmt.Printf("Processed and saved to %s\n", outputFile)
 		}
 	}
+}
+
+// mergeItems merges two slices of Item, ensuring no duplicates and merging RichDescription
+func mergeItems(mainItems, additionalItems []Item) []Item {
+	itemMap := make(map[string]Item)
+
+	for _, item := range mainItems {
+		itemMap[item.RealName] = item
+	}
+
+	for _, item := range additionalItems {
+		if existingItem, found := itemMap[item.RealName]; found {
+			// Merge RichDescription if it exists in additional metadata
+			if item.RichDescription != "" {
+				existingItem.RichDescription = item.RichDescription
+			}
+			itemMap[item.RealName] = existingItem
+		} else {
+			itemMap[item.RealName] = item
+		}
+	}
+
+	// Convert the map back to a slice
+	var mergedItems []Item
+	for _, item := range itemMap {
+		mergedItems = append(mergedItems, item)
+	}
+
+	return mergedItems
 }
