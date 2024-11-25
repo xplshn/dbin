@@ -47,7 +47,7 @@ func differ(config *Config, programs []string, verbosityLevel Verbosity, metadat
 			}
 
 			// Get local B3sum
-			localB3sum, err := getLocalB3sum(installPath)
+			localB3sum, err := calculateChecksum(installPath)
 			if err != nil { // skip
 				return
 			}
