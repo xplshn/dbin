@@ -18,8 +18,23 @@ jobs:
       - name: Get binary count
         id: get-listc
         run: |
+          # First attempt to get the count
           LISTC=$(go run *.go list | wc -l)
           echo "LISTC=$LISTC" >> $GITHUB_ENV
+
+          # If the count is 0, wait 90 seconds and try again
+          if [ "$LISTC" -eq 0 ]; then
+            echo "First attempt returned 0, waiting 90 seconds..."
+            sleep 90
+            LISTC=$(go run *.go list | wc -l)
+            echo "LISTC after retry=$LISTC" >> $GITHUB_ENV
+          fi
+
+          # If still 0 after retry, fail the job
+          if [ "$LISTC" -eq 0 ]; then
+            echo "ERROR: The count is still 0 after retrying. Exiting without updating counter."
+            exit 1
+          fi
 
       - name: Download MoeCounter image
         run: |
