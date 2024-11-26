@@ -11,7 +11,7 @@
 [![ARM64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_aarch64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
 -->
 
-dbin is a simple, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux/Android systems, with plans to expand to other platforms soon, dbin is particularly well-suited for embedded systems, we support both amd64 & aarch64.
+dbin is a simple, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux systems, with plans to expand to other platforms soon, dbin is particularly well-suited for embedded systems, we support both amd64 & aarch64. (freeBSD + linuxlator is supported and works quite wonderfully, specially if you want an embeddded-ready freeBSD install, you can pair it with `dbin` instead of `pkg`)
 
 > Why?
 
