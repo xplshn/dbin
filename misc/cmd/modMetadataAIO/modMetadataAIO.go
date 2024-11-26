@@ -28,27 +28,28 @@ var repoLabels = map[string]string{
 }
 
 type Item struct {
-	RealName       string   `json:"pkg"`              // should map to bin
-	Name           string   `json:"pkg_name"`         // should map to bin_name
-	BinId          string   `json:"pkg_id,omitempty"` // should map to bin_id
-	Icon           string   `json:"icon,omitempty"`
-	Description    string   `json:"description,omitempty"`
-	Screenshots    []string `json:"screenshots,omitempty"`
-	Version        string   `json:"version,omitempty"`
-	DownloadURL    string   `json:"download_url,omitempty"`
-	Size           string   `json:"size,omitempty"`
-	Bsum           string   `json:"bsum,omitempty"`   // BLAKE3
-	Shasum         string   `json:"shasum,omitempty"` // SHA256
-	BuildDate      string   `json:"build_date,omitempty"`
-	SrcURL         string   `json:"src_url,omitempty"`
-	WebURL         string   `json:"homepage,omitempty"` // should map to web_url
-	BuildScript    string   `json:"build_script,omitempty"`
-	BuildLog       string   `json:"build_log,omitempty"`
-	Category       string   `json:"category,omitempty"`
-	ExtraBins      string   `json:"provides,omitempty"` // should map to extra_bins
-	Note           string   `json:"note,omitempty"`
-	Appstream      string   `json:"appstream,omitempty"`
-	PopularityRank int      `json:"popularity_rank,omitempty"` // = installs, as tracked by Flathub
+	RealName        string   `json:"pkg"`              // should map to bin
+	Name            string   `json:"pkg_name"`         // should map to bin_name
+	BinId           string   `json:"pkg_id,omitempty"` // should map to bin_id
+	Icon            string   `json:"icon,omitempty"`
+	Description     string   `json:"description,omitempty"`
+	RichDescription string   `json:"rich_description,omitempty"`
+	Screenshots     []string `json:"screenshots,omitempty"`
+	Version         string   `json:"version,omitempty"`
+	DownloadURL     string   `json:"download_url,omitempty"`
+	Size            string   `json:"size,omitempty"`
+	Bsum            string   `json:"bsum,omitempty"`   // BLAKE3
+	Shasum          string   `json:"shasum,omitempty"` // SHA256
+	BuildDate       string   `json:"build_date,omitempty"`
+	SrcURL          string   `json:"src_url,omitempty"`
+	WebURL          string   `json:"homepage,omitempty"` // should map to web_url
+	BuildScript     string   `json:"build_script,omitempty"`
+	BuildLog        string   `json:"build_log,omitempty"`
+	Category        string   `json:"category,omitempty"`
+	ExtraBins       string   `json:"provides,omitempty"` // should map to extra_bins
+	Note            string   `json:"note,omitempty"`
+	Appstream       string   `json:"appstream,omitempty"`
+	PopularityRank  int      `json:"popularity_rank,omitempty"` // = installs, as tracked by Flathub
 }
 
 type Metadata struct {
@@ -58,27 +59,28 @@ type Metadata struct {
 }
 
 type OutputItem struct {
-	Bin            string   `json:"bin"`
-	BinName        string   `json:"bin_name"`
-	BinId          string   `json:"bin_id,omitempty"`
-	Icon           string   `json:"icon,omitempty"`
-	Description    string   `json:"description,omitempty"`
-	Screenshots    []string `json:"screenshots,omitempty"`
-	Version        string   `json:"version,omitempty"`
-	DownloadURL    string   `json:"download_url,omitempty"`
-	Size           string   `json:"size,omitempty"`
-	Bsum           string   `json:"bsum,omitempty"`
-	Shasum         string   `json:"shasum,omitempty"`
-	BuildDate      string   `json:"build_date,omitempty"`
-	SrcURL         string   `json:"src_url,omitempty"`
-	WebURL         string   `json:"web_url,omitempty"`
-	BuildScript    string   `json:"build_script,omitempty"`
-	BuildLog       string   `json:"build_log,omitempty"`
-	Category       string   `json:"category,omitempty"`
-	ExtraBins      string   `json:"extra_bins,omitempty"`
-	Note           string   `json:"note,omitempty"`
-	Appstream      string   `json:"appstream,omitempty"`
-	PopularityRank int      `json:"popularity_rank,omitempty"`
+	Bin             string   `json:"bin"`
+	BinName         string   `json:"bin_name"`
+	BinId           string   `json:"bin_id,omitempty"`
+	Icon            string   `json:"icon,omitempty"`
+	Description     string   `json:"description,omitempty"`
+	RichDescription string   `json:"rich_description,omitempty"`
+	Screenshots     []string `json:"screenshots,omitempty"`
+	Version         string   `json:"version,omitempty"`
+	DownloadURL     string   `json:"download_url,omitempty"`
+	Size            string   `json:"size,omitempty"`
+	Bsum            string   `json:"bsum,omitempty"`
+	Shasum          string   `json:"shasum,omitempty"`
+	BuildDate       string   `json:"build_date,omitempty"`
+	SrcURL          string   `json:"src_url,omitempty"`
+	WebURL          string   `json:"web_url,omitempty"`
+	BuildScript     string   `json:"build_script,omitempty"`
+	BuildLog        string   `json:"build_log,omitempty"`
+	Category        string   `json:"category,omitempty"`
+	ExtraBins       string   `json:"extra_bins,omitempty"`
+	Note            string   `json:"note,omitempty"`
+	Appstream       string   `json:"appstream,omitempty"`
+	PopularityRank  int      `json:"popularity_rank,omitempty"`
 }
 
 type OutputMetadata struct {
@@ -99,27 +101,28 @@ type FlathubResponse struct {
 
 func convertItem(item Item) OutputItem {
 	return OutputItem{
-		Bin:            item.RealName,
-		BinName:        item.Name,
-		BinId:          item.BinId,
-		Icon:           item.Icon,
-		Description:    item.Description,
-		Screenshots:    item.Screenshots,
-		Version:        item.Version,
-		DownloadURL:    item.DownloadURL,
-		Size:           item.Size,
-		Bsum:           item.Bsum,
-		Shasum:         item.Shasum,
-		BuildDate:      item.BuildDate,
-		SrcURL:         item.SrcURL,
-		WebURL:         item.WebURL,
-		BuildScript:    item.BuildScript,
-		BuildLog:       item.BuildLog,
-		Category:       item.Category,
-		ExtraBins:      item.ExtraBins,
-		Note:           item.Note,
-		Appstream:      item.Appstream,
-		PopularityRank: item.PopularityRank,
+		Bin:             item.RealName,
+		BinName:         item.Name,
+		BinId:           item.BinId,
+		Icon:            item.Icon,
+		Description:     item.Description,
+		RichDescription: item.RichDescription,
+		Screenshots:     item.Screenshots,
+		Version:         item.Version,
+		DownloadURL:     item.DownloadURL,
+		Size:            item.Size,
+		Bsum:            item.Bsum,
+		Shasum:          item.Shasum,
+		BuildDate:       item.BuildDate,
+		SrcURL:          item.SrcURL,
+		WebURL:          item.WebURL,
+		BuildScript:     item.BuildScript,
+		BuildLog:        item.BuildLog,
+		Category:        item.Category,
+		ExtraBins:       item.ExtraBins,
+		Note:            item.Note,
+		Appstream:       item.Appstream,
+		PopularityRank:  item.PopularityRank,
 	}
 }
 
