@@ -7,60 +7,70 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/hedzr/progressbar"
+	"github.com/hedzr/progressbar/cursor"
 )
 
 // installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
 func installBinaries(ctx context.Context, config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+	cursor.Hide()
+	defer cursor.Show()
+
 	var wg sync.WaitGroup
+
 	errChan := make(chan error, len(binaries))
 	urls, checksums, err := findURL(config, binaries, verbosityLevel, metadata)
 	if err != nil {
 		return err
 	}
 
+	bar := progressbar.New()
+	tasks := progressbar.NewTasks(bar)
+	defer tasks.Close()
+
 	var errors []string
 
 	for i, binaryName := range binaries {
 		wg.Add(1)
-		go func(i int, binaryName string) {
-			defer wg.Done()
-			url := urls[i]
-			checksum := checksums[i]
-			destination := filepath.Join(config.InstallDir, filepath.Base(url))
+		url := urls[i]
+		checksum := checksums[i]
+		destination := filepath.Join(config.InstallDir, filepath.Base(url))
 
-			if err != nil {
-				errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", binaryName, err)
-				return
-			}
+		tasks.Add(
+			progressbar.WithTaskAddBarTitle(fmt.Sprintf("Downloading %s", binaryName)),
+			progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
+				defer wg.Done()
+				// Fetch binary and place it at destination
+				_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
+				if fetchErr != nil {
+					errChan <- fmt.Errorf("error fetching binary %s: %v", binaryName, fetchErr)
+					return
+				}
 
-			// Fetch binary and place it at destination
-			_, fetchErr := fetchBinaryFromURLToDest(ctx, url, checksum, destination)
-			if fetchErr != nil {
-				errChan <- fmt.Errorf("error fetching binary %s: %v", binaryName, fetchErr)
-				return
-			}
+				// Make the binary executable
+				if err := os.Chmod(destination, 0755); err != nil {
+					errChan <- fmt.Errorf("error making binary executable %s: %v", destination, err)
+					return
+				}
 
-			// Make the binary executable
-			if err := os.Chmod(destination, 0755); err != nil {
-				errChan <- fmt.Errorf("error making binary executable %s: %v", destination, err)
-				return
-			}
+				// Run hooks after the file is downloaded and chmod +x
+				if err := runIntegrationHooks(config, destination, verbosityLevel, metadata); err != nil {
+					errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", binaryName, err)
+					return
+				}
 
-			// Run hooks after the file is downloaded and chmod +x
-			if err := runIntegrationHooks(config, destination, verbosityLevel, metadata); err != nil {
-				errChan <- err
-				return
-			}
-
-			// Add full name to the binary's xattr
-			if err := addFullName(destination, binaryName); err != nil {
-				errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
-				return
-			}
-		}(i, binaryName)
+				// Add full name to the binary's xattr
+				if err := addFullName(destination, binaryName); err != nil {
+					errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
+					return
+				}
+			}),
+		)
 	}
 
 	go func() {
+		tasks.Wait()
 		wg.Wait()
 		close(errChan)
 	}()

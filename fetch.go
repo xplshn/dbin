@@ -10,36 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	//"github.com/pkg/xattr"
-	"github.com/schollz/progressbar/v3"
+	"github.com/hedzr/progressbar"
 	"github.com/zeebo/blake3"
 )
 
-func spawnProgressBar(contentLength int64, useSpinnerType bool) *progressbar.ProgressBar {
-	if useSpinnerType {
-		return progressbar.NewOptions(int(contentLength),
-			progressbar.OptionClearOnFinish(),
-			progressbar.OptionFullWidth(),
-			progressbar.OptionShowBytes(true),
-			progressbar.OptionSpinnerType(68),
-		)
-	}
-
-	return progressbar.NewOptions(int(contentLength),
-		progressbar.OptionClearOnFinish(),
-		progressbar.OptionFullWidth(),
-		progressbar.OptionShowBytes(true),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "=",
-			SaucerHead:    ">",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}),
-	)
-}
-
-func fetchBinaryFromURLToDest(ctx context.Context, url, checksum, destination string) (string, error) {
+func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, url, checksum, destination string) (string, error) {
 	// Create a new HTTP request with cache-control headers
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -60,6 +35,8 @@ func fetchBinaryFromURLToDest(ctx context.Context, url, checksum, destination st
 	}
 	defer resp.Body.Close()
 
+	bar.UpdateRange(0, resp.ContentLength)
+
 	// Ensure the parent directory exists
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return "", fmt.Errorf("failed to create parent directories for %s: %v", destination, err)
@@ -73,13 +50,6 @@ func fetchBinaryFromURLToDest(ctx context.Context, url, checksum, destination st
 	}
 	defer out.Close()
 
-	// Create progress bar
-	contentLength := resp.ContentLength
-	bar := spawnProgressBar(contentLength, false)
-
-	defer bar.Close()
-
-	var downloaded int64
 	buf := make([]byte, 4096)
 
 	hash := blake3.New()
@@ -93,20 +63,10 @@ downloadLoop:
 		default:
 			n, err := resp.Body.Read(buf)
 			if n > 0 {
-				if _, err := out.Write(buf[:n]); err != nil {
+				if _, err = io.MultiWriter(out, hash, bar).Write(buf[:n]); err != nil {
 					_ = os.Remove(tempFile)
 					return "", err
 				}
-
-				// Write to hash for checksum calculation
-				if _, err := hash.Write(buf[:n]); err != nil {
-					_ = os.Remove(tempFile)
-					return "", err
-				}
-
-				// Update progress bar
-				downloaded += int64(n)
-				bar.Add(n)
 			}
 			if err == io.EOF {
 				break downloadLoop
