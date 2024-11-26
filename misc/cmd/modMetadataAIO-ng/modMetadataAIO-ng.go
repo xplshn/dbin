@@ -310,9 +310,9 @@ func main() {
 			}
 
 			// Merge the additional metadata into the main metadata
-			metadata.Bin = mergeItems(metadata.Bin, additionalMetadata.Bin)
+			//metadata.Base = mergeItems(metadata.Base, additionalMetadata.Base)
+			//metadata.Bin = mergeItems(metadata.Bin, additionalMetadata.Bin)
 			metadata.Pkg = mergeItems(metadata.Pkg, additionalMetadata.Pkg)
-			metadata.Base = mergeItems(metadata.Base, additionalMetadata.Base)
 
 			// Save the processed metadata to a JSON file
 			outputFile := fmt.Sprintf("METADATA_AIO_%s.json", arch)
