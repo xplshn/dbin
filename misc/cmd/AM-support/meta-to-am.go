@@ -1,4 +1,5 @@
-// I know its unrelated to `dbin`, sorry to whomever sees this in the future, I'm too lazy to write a directory structure doc... Basically, this for AppBundleHUB (github.com/xplshn/AppBundleHUB) to be used by the AM package manager
+// I know it's unrelated to `dbin`, sorry to whomever sees this in the future, I'm too lazy to write a directory structure doc... 
+// Basically, this for AppBundleHUB (github.com/xplshn/AppBundleHUB) to be used by the AM package manager
 package main
 
 import (
@@ -7,7 +8,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 )
+
+const pipeRepl = "ǀ" // Replacement for `|` // In order to avoid breakign the MD table
 
 type Metadata struct {
 	Bin  []Package `json:"bin"`
@@ -23,6 +27,15 @@ type Package struct {
 	Homepage    string `json:"homepage"`
 	DownloadURL string `json:"download_url"`
 	Bsum        string `json:"bsum"`
+}
+
+// Utility function to replace `|` in string fields
+func replacePipeFields(pkg *Package) {
+	pkg.Pkg = strings.ReplaceAll(pkg.Pkg, "|", pipeRepl)
+	pkg.Description = strings.ReplaceAll(pkg.Description, "|", pipeRepl)
+	pkg.SrcURL = strings.ReplaceAll(pkg.SrcURL, "|", pipeRepl)
+	pkg.Homepage = strings.ReplaceAll(pkg.Homepage, "|", pipeRepl)
+	pkg.DownloadURL = strings.ReplaceAll(pkg.DownloadURL, "|", pipeRepl)
 }
 
 func main() {
@@ -68,15 +81,20 @@ func main() {
 			webURL = pkg.DownloadURL
 		}
 
+		// Replace `|` in fields
+		replacePipeFields(&pkg)
+
+		// Handle bsum
 		bsum := pkg.Bsum
 		if len(bsum) > 12 {
-			bsum = pkg.Bsum[:12]
-		} else {
+			bsum = bsum[:12]
+		} else if bsum == "" {
 			bsum = "nil"
 		}
 
+		// Write formatted data to file
 		file.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
-			pkg.Pkg, pkg.Description, webURL, pkg.DownloadURL, b3sum))
+			pkg.Pkg, pkg.Description, webURL, pkg.DownloadURL, bsum))
 	}
 
 	fmt.Println("Data has been written to AM.txt")
