@@ -1,3 +1,4 @@
+// I know its unrelated to `dbin`, sorry to whomever sees this in the future, I'm too lazy to write a directory structure doc... Basically, this for AppBundleHUB (github.com/xplshn/AppBundleHUB) to be used by the AM package manager
 package main
 
 import (
@@ -25,8 +26,7 @@ type Package struct {
 }
 
 func main() {
-	// dbin flavored metadata (has no "duplicates")
-	url := "https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/modMetadataAIO-ng/METADATA_AIO_amd64_linux.min.json"
+	url := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json"
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -69,14 +69,14 @@ func main() {
 		}
 
 		bsum := pkg.Bsum
-		if bsum == "" {
-			bsum = "nil"
-		} else if len(bsum) > 12 {
+		if len(bsum) > 12 {
 			bsum = pkg.Bsum[:12]
+		} else {
+			bsum = "nil"
 		}
 
 		file.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
-			pkg.Pkg, pkg.Description, webURL, pkg.DownloadURL, bsum))
+			pkg.Pkg, pkg.Description, webURL, pkg.DownloadURL, b3sum))
 	}
 
 	fmt.Println("Data has been written to AM.txt")
