@@ -29,7 +29,7 @@ type Package struct {
 
 // Utility function to replace `|` in string fields
 func replacePipeFields(pkg *Package) {
-	pkg.Pkg = strings.ReplaceAll(pkg.Pkg, "|", pipeRepl)
+	pkg.PkgName = strings.ReplaceAll(pkg.PkgName, "|", pipeRepl)
 	pkg.Description = strings.ReplaceAll(pkg.Description, "|", pipeRepl)
 	pkg.SrcURL = strings.ReplaceAll(pkg.SrcURL, "|", pipeRepl)
 	pkg.Homepage = strings.ReplaceAll(pkg.Homepage, "|", pipeRepl)
@@ -42,6 +42,19 @@ func replaceEmptyWithNil(value string) string {
 		return "nil"
 	}
 	return value
+}
+
+// Utility function to process PkgName as required
+func processPkgName(pkgName string) string {
+	// Step 1: Convert to lowercase
+	pkgName = strings.ToLower(pkgName)
+	// Step 2: Replace spaces with hyphens
+	pkgName = strings.ReplaceAll(pkgName, " ", "-")
+	// Step 3: Append `.appbundle` if not already present
+	if !strings.HasSuffix(pkgName, ".appbundle") {
+		pkgName += ".appbundle"
+	}
+	return pkgName
 }
 
 func main() {
@@ -77,7 +90,6 @@ func main() {
 	// Process each package and write to the file
 	for _, pkg := range append(append(metadata.Bin, metadata.Pkg...), metadata.Base...) {
 		// Replace empty fields with "nil"
-		pkg.Pkg = replaceEmptyWithNil(pkg.Pkg)
 		pkg.PkgName = replaceEmptyWithNil(pkg.PkgName)
 		pkg.Description = replaceEmptyWithNil(pkg.Description)
 		pkg.SrcURL = replaceEmptyWithNil(pkg.SrcURL)
@@ -96,6 +108,9 @@ func main() {
 		// Replace `|` in fields
 		replacePipeFields(&pkg)
 
+		// Process PkgName
+		pkgName := processPkgName(pkg.PkgName)
+
 		// Handle bsum
 		bsum := pkg.Bsum
 		if len(bsum) > 12 {
@@ -106,7 +121,7 @@ func main() {
 
 		// Write formatted data to file
 		file.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
-			strings.ToLower(pkg.Pkg), pkg.Description, webURL, pkg.DownloadURL, bsum))
+			pkgName, pkg.Description, webURL, pkg.DownloadURL, bsum))
 	}
 
 	fmt.Println("Data has been written to AM.txt")
