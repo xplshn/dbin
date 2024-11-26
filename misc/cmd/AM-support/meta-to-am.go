@@ -52,7 +52,7 @@ func processPkgName(pkgName string) string {
 	pkgName = strings.ReplaceAll(pkgName, " ", "-")
 	// Step 3: Append `.appbundle` if not already present
 	if !strings.HasSuffix(pkgName, ".appbundle") {
-		pkgName += "dwfs.appbundle"
+		pkgName += ".dwfs.appbundle"
 	}
 	return pkgName
 }
