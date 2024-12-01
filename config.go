@@ -20,6 +20,7 @@ type Config struct {
 	InstallDir          string          `json:"install_dir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
 	CacheDir            string          `json:"cache_dir" env:"DBIN_CACHEDIR"`
 	Limit               int             `json:"fsearch_limit"`
+	ProgressbarStyle    int             `json:"progressbar_style,omitempty"`
 	DisableTruncation   bool            `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
 	RetakeOwnership     bool            `json:"retake_ownership" env:"DBIN_REOWN"`
 	UseIntegrationHooks bool            `json:"use_integration_hooks" env:"DBIN_USEHOOKS"`
@@ -269,6 +270,9 @@ func setDefaultValues(config *Config) {
 	}
 	if !config.RetakeOwnership {
 		config.RetakeOwnership = false
+	}
+	if config.ProgressbarStyle == 0 {
+		config.ProgressbarStyle = 1
 	}
 }
 

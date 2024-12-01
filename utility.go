@@ -353,3 +353,14 @@ func isSymlink(filePath string) bool {
 	fileInfo, err := os.Lstat(filePath)
 	return err == nil && fileInfo.Mode()&os.ModeSymlink != 0
 }
+
+func sanitizeString(input string) string {
+	var sanitized strings.Builder
+	for _, ch := range input {
+		if ch >= 32 && ch <= 126 { // Printable ASCII characters
+			sanitized.WriteRune(ch)
+		}
+	}
+	return sanitized.String()
+}
+

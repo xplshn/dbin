@@ -9,15 +9,15 @@ import (
 	"sync"
 
 	"github.com/hedzr/progressbar"
-	"github.com/hedzr/progressbar/cursor"
+	//"github.com/hedzr/progressbar/cursor"
 )
-
-const whichStepper = 1
 
 // installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
 func installBinaries(ctx context.Context, config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
-	cursor.Hide()
-	defer cursor.Show()
+	//cursor.Hide()
+	//defer cursor.Show()
+	fmt.Printf("\x1B[?25l")
+	defer fmt.Printf("\x1B[?25h")
 
 	var wg sync.WaitGroup
 
@@ -41,7 +41,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 
 		tasks.Add(
 			progressbar.WithTaskAddBarTitle(fmt.Sprintf("Installing %s", binaryName)),
-			progressbar.WithTaskAddBarOptions(progressbar.WithBarStepper(whichStepper)),
+			progressbar.WithTaskAddBarOptions(progressbar.WithBarStepper(config.ProgressbarStyle)),
 			progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
 				defer wg.Done()
 				// Fetch binary and place it at destination

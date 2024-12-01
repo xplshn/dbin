@@ -81,7 +81,7 @@ downloadLoop:
 	// Final checksum verification
 	if checksum != "" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
-		if calculatedChecksum != checksum && checksum != "!no_warn" {
+		if calculatedChecksum != checksum && checksum != "null" {
 			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s\n", checksum, calculatedChecksum)
 		}
 	} else {
@@ -111,3 +111,4 @@ downloadLoop:
 
 	return destination, nil
 }
+

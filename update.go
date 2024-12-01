@@ -1,4 +1,3 @@
-// update.go // This file holds the implementation for the "update" functionality - (parallel) //>
 package main
 
 import (
@@ -11,13 +10,12 @@ import (
 
 // update checks for updates to the valid programs and installs any that have changed.
 func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
-
 	// Initialize counters
 	var (
-		skipped, updated, errors, toBeChecked uint32
-		checked                               uint32
-		errorMessages                         string
-		padding                               = " "
+		skipped, updated, errors uint32
+		checked                  uint32
+		errorMessages            string
+		errorMessagesMutex       sync.Mutex
 	)
 
 	// Call validateProgramsFrom with config and programsToUpdate
@@ -26,14 +24,11 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity,
 		return err
 	}
 
-	// Calculate toBeChecked
-	toBeChecked = uint32(len(programsToUpdate))
-
-	// Use a mutex for thread-safe updates to the progress
-	var progressMutex sync.Mutex
-
 	// Use a wait group to wait for all programs to finish updating
 	var wg sync.WaitGroup
+
+	// Separate slice to track programs that need updating
+	var outdatedPrograms []string
 
 	// Iterate over programsToUpdate and download/update each one concurrently
 	installDir := config.InstallDir
@@ -46,78 +41,41 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity,
 			defer wg.Done()
 
 			installPath := filepath.Join(installDir, filepath.Base(program))
-			fullName, err := getFullName(installPath)
 
 			if !fileExists(installPath) {
-				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
-				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Tried to update a non-existent program %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
-				}
-				progressMutex.Unlock()
 				return
 			}
 			localB3sum, err := calculateChecksum(installPath)
 			if err != nil {
-				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
-				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get B3sum for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
-				}
-				progressMutex.Unlock()
 				return
 			}
 
 			binaryInfo, err := getBinaryInfo(config, program, metadata)
 			if err != nil {
-				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
-				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Warning: Failed to get metadata for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
-				}
-				progressMutex.Unlock()
 				return
 			}
 
 			if binaryInfo.Bsum == "" {
-				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
-				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Skipping %s because the B3sum field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
-				}
-				progressMutex.Unlock()
 				return
 			}
 
-			if checkDifferences(localB3sum, binaryInfo.Bsum) == 1 {
-				err := installCommand(config, []string{program}, verbosityLevel, metadata)
-				if err != nil {
-					progressMutex.Lock()
-					atomic.AddUint32(&errors, 1)
-					if verbosityLevel >= silentVerbosityWithErrors {
-						errorMessages += fmt.Sprintf("Failed to update '%s', please check this file's properties, etc.\n", installPath)
-					}
-					progressMutex.Unlock()
-					return
-				}
-				progressMutex.Lock()
+			if localB3sum != binaryInfo.Bsum {
+				// Add to outdated programs for bulk installation
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&updated, 1)
-				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | Successfully updated %s.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
-				}
-				progressMutex.Unlock()
+				errorMessagesMutex.Lock()
+				outdatedPrograms = append(outdatedPrograms, program)
+				errorMessagesMutex.Unlock()
 			} else {
-				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
-				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, false, "\033[2K\r<%d/%d> %s | No updates available for %s.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
-				}
-				progressMutex.Unlock()
 			}
 		}(program)
 	}
@@ -125,26 +83,30 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity,
 	// Wait for all goroutines to finish
 	wg.Wait()
 
-	// Prepare final counts
-	finalCounts := fmt.Sprintf("\033[2K\rSkipped: %d\tUpdated: %d\tChecked: %d", atomic.LoadUint32(&skipped), atomic.LoadUint32(&updated), uint32(int(atomic.LoadUint32(&checked))))
-	if errors > 0 && verbosityLevel >= silentVerbosityWithErrors {
-		finalCounts += fmt.Sprintf("\tErrors: %d", atomic.LoadUint32(&errors))
+	// Bulk install outdated programs
+	if len(outdatedPrograms) > 0 {
+		err := installCommand(config, outdatedPrograms, 1, metadata)
+		if err != nil {
+			atomic.AddUint32(&errors, 1)
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Printf("Failed to update programs: %v\n", outdatedPrograms)
+			}
+		}
 	}
-	// Print final counts
-	if verbosityLevel >= normalVerbosity || (errors > 0 && verbosityLevel >= silentVerbosityWithErrors) {
-		fmt.Printf(finalCounts)
+
+	// Print stats
+	fmt.Printf("Skipped: %d\t Updated: %d\t Checked: %d\t Errors: %d\n",
+		atomic.LoadUint32(&skipped),
+		atomic.LoadUint32(&updated),
+		atomic.LoadUint32(&checked),
+		atomic.LoadUint32(&errors))
+
+	// Print errors, if any
+	if verbosityLevel >= silentVerbosityWithErrors && len(errorMessages) >= 1 {
 		for _, errorMsg := range strings.Split(errorMessages, "\n") {
 			fmt.Println(strings.TrimSpace(errorMsg))
 		}
 	}
 
 	return nil
-}
-
-// checkDifferences compares local and remote B3sum checksums.
-func checkDifferences(localB3sum, remoteB3sum string) int {
-	if localB3sum != remoteB3sum {
-		return 1
-	}
-	return 0
 }
