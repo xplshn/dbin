@@ -6,8 +6,8 @@ github.com/dgryski/trifles v0.0.0-20230903005119-f50d829f2e54 h1:SG7nF6SRlWhcT7c
 github.com/dgryski/trifles v0.0.0-20230903005119-f50d829f2e54/go.mod h1:if7Fbed8SFyPtHLHbg49SI7NAdJiC5WIA09pe59rfAA=
 github.com/goccy/go-json v0.10.3 h1:KZ5WoDbxAIgm2HNbYckL0se1fHD6rz5j4ywS6ebzDqA=
 github.com/goccy/go-json v0.10.3/go.mod h1:oq7eo15ShAhp70Anwd5lgX2pLfOS3QCiwU/PULtXL6M=
-github.com/hedzr/progressbar v1.1.11 h1:ofK4iMNxsiZcJ0e+xOBHccsd0CLNk4L1JuPRwyI+/rI=
-github.com/hedzr/progressbar v1.1.11/go.mod h1:djmaDQsUnLWb8L4iUQRLNrfELUbJM4wTDebsCcjm/qQ=
+github.com/hedzr/progressbar v1.1.9 h1:dvRNwF4jHUoBFAt6DVgNRB8101EH1ZArpUXvCM48JJQ=
+github.com/hedzr/progressbar v1.1.9/go.mod h1:djmaDQsUnLWb8L4iUQRLNrfELUbJM4wTDebsCcjm/qQ=
 github.com/klauspost/cpuid/v2 v2.2.9 h1:66ze0taIn2H33fBvCkXuv9BmCwDfafmiIVpKV9kKGuY=
 github.com/klauspost/cpuid/v2 v2.2.9/go.mod h1:rqkxqrZ1EhYM9G+hXH7YdowN5R5RGN6NK4QwQ3WMXF8=
 github.com/pkg/xattr v0.4.10 h1:Qe0mtiNFHQZ296vRgUjRCoPHPqH7VdTOrZx3g0T+pGA=
@@ -19,8 +19,8 @@ github.com/tdewolff/parse/v2 v2.7.19/go.mod h1:3FbJWZp3XT9OWVN3Hmfp0p/a08v4h8J9W
 github.com/tdewolff/test v1.0.11-0.20231101010635-f1265d231d52/go.mod h1:6DAvZliBAAnD7rhVgwaM7DE5/d9NMOAJ09SqYqeK4QE=
 github.com/tdewolff/test v1.0.11-0.20240106005702-7de5f7df4739 h1:IkjBCtQOOjIn03u/dMQK9g+Iw9ewps4mCl1nB8Sscbo=
 github.com/tdewolff/test v1.0.11-0.20240106005702-7de5f7df4739/go.mod h1:XPuWBzvdUzhCuxWO1ojpXsyzsA5bFoS3tO/Q3kFuTG8=
-github.com/xplshn/a-utils v0.0.0-20241115025949-12566eebb12f h1:79BYv6z79xJaa/0h8B96XRGJaidI30Cqg4eK/ag+Dlo=
-github.com/xplshn/a-utils v0.0.0-20241115025949-12566eebb12f/go.mod h1:yVZEREOZwZ58tuH7K9Z56Y9SRzc1FVchOEeVWXHHoe0=
+github.com/xplshn/a-utils v0.0.0-20241130162526-bcabf0cda41c h1:l8yq9jCfk5IY2aN43VzkO4MWEO7u9Sf/qKiTv9/fJd0=
+github.com/xplshn/a-utils v0.0.0-20241130162526-bcabf0cda41c/go.mod h1:P+dn+GAcb/qMpxvx+zhsHMAixsqur4N7k4qKTpsUOv8=
 github.com/zeebo/assert v1.1.0 h1:hU1L1vLTHsnO8x8c9KAR5GmM5QscxHg5RNU5z5qbUWY=
 github.com/zeebo/assert v1.1.0/go.mod h1:Pq9JiuJQpG8JLJdtkwrJESF0Foym2/D9XMU5ciN/wJ0=
 github.com/zeebo/blake3 v0.2.4 h1:KYQPkhpRtcqh0ssGYcKLG1JYvddkEA8QwCM/yBqhaZI=
