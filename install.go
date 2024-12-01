@@ -40,7 +40,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 		destination := filepath.Join(config.InstallDir, filepath.Base(url))
 
 		tasks.Add(
-			progressbar.WithTaskAddBarTitle(fmt.Sprintf("Installing %s", binaryName)),
+			progressbar.WithTaskAddBarTitle(truncateSprintf("Installing %s", binaryName)),
 			progressbar.WithTaskAddBarOptions(progressbar.WithBarStepper(config.ProgressbarStyle)),
 			progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
 				defer wg.Done()
