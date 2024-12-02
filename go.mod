@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/agnivade/levenshtein v1.2.0
 	github.com/goccy/go-json v0.10.3
-	github.com/hedzr/progressbar v1.1.9
+	github.com/hedzr/progressbar v1.1.12
 	github.com/pkg/xattr v0.4.10
 	github.com/tdewolff/minify/v2 v2.21.2
 	github.com/xplshn/a-utils v0.0.0-20241130162526-bcabf0cda41c
