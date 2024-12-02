@@ -9,15 +9,13 @@ import (
 	"sync"
 
 	"github.com/hedzr/progressbar"
-	//"github.com/hedzr/progressbar/cursor"
+	"github.com/hedzr/progressbar/cursor"
 )
 
 // installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
 func installBinaries(ctx context.Context, config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
-	//cursor.Hide()
-	//defer cursor.Show()
-	fmt.Printf("\x1B[?25l")
-	defer fmt.Printf("\x1B[?25h")
+	cursor.Hide()
+	defer cursor.Show()
 
 	var wg sync.WaitGroup
 
