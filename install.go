@@ -31,15 +31,43 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 
 	var errors []string
 
+	// get max length for binary name
+	binaryNameMaxlen := 0
+	for _, binaryName := range binaries {
+		if binaryNameMaxlen < len(binaryName) {
+			binaryNameMaxlen = len(binaryName)
+		}
+	}
+
+	termWidth := getTerminalWidth()
+
 	for i, binaryName := range binaries {
 		wg.Add(1)
 		url := urls[i]
 		checksum := checksums[i]
 		destination := filepath.Join(config.InstallDir, filepath.Base(url))
 
+		barTitle := fmt.Sprintf("Installing %s", binaryName)
+		pbarOpts := []progressbar.Opt{
+			progressbar.WithBarStepper(config.ProgressbarStyle),
+		}
+
+		if termWidth < 120 {
+			barTitle = binaryName
+			pbarOpts = append(
+				pbarOpts,
+				// max length of `{{.Percent}}` is 6
+				// length of ` {{.Percent}} | <font color="green">{{.Title}}</font>` is (binaryNameMaxlen + 11 + 4*2)
+				// 4*2 is color (\x1b[32mTitle\x1b[0m)
+				progressbar.WithBarTextSchema(`{{.Bar}} {{.Percent}} | <font color="green">{{.Title}}</font>`),
+				progressbar.WithBarWidth(termWidth - (binaryNameMaxlen + 19)),
+			)
+			
+		}
+
 		tasks.Add(
-			progressbar.WithTaskAddBarTitle(truncateSprintf("Installing %s", binaryName)),
-			progressbar.WithTaskAddBarOptions(progressbar.WithBarStepper(config.ProgressbarStyle)),
+			progressbar.WithTaskAddBarTitle(barTitle),
+			progressbar.WithTaskAddBarOptions(pbarOpts...),
 			progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
 				defer wg.Done()
 				// Fetch binary and place it at destination

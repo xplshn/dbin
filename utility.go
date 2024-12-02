@@ -6,13 +6,12 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/goccy/go-json"
+	"golang.org/x/term"
 
 	"github.com/pkg/xattr"
 	"github.com/zeebo/blake3"
@@ -151,28 +150,11 @@ func errorOut(format string, args ...interface{}) {
 }
 
 // GetTerminalWidth attempts to determine the width of the terminal.
-// It first tries using "stty size", then "tput cols", and finally falls back to  80 columns.
+// if failed, it will falls back to  80 columns.
 func getTerminalWidth() int {
-	// Try using stty size
-	cmd := exec.Command("stty", "size")
-	cmd.Stdin = os.Stdin
-	out, err := cmd.Output()
-	if err == nil {
-		// stty size returns rows and columns
-		parts := strings.Split(strings.TrimSpace(string(out)), " ")
-		if len(parts) == 2 {
-			width, _ := strconv.Atoi(parts[1])
-			return width
-		}
-	}
-
-	// Fallback to tput cols
-	cmd = exec.Command("tput", "cols")
-	cmd.Stdin = os.Stdin
-	out, err = cmd.Output()
-	if err == nil {
-		width, _ := strconv.Atoi(strings.TrimSpace(string(out)))
-		return width
+	w, _, _ := term.GetSize(int(os.Stdout.Fd()))
+	if w != 0 {
+		return w
 	}
 
 	// Fallback to  80 columns
