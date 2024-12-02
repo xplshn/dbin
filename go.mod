@@ -10,6 +10,7 @@ require (
 	github.com/tdewolff/minify/v2 v2.21.2
 	github.com/xplshn/a-utils v0.0.0-20241130162526-bcabf0cda41c
 	github.com/zeebo/blake3 v0.2.4
+	golang.org/x/term v0.26.0
 )
 
 require (
