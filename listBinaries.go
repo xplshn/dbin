@@ -17,7 +17,9 @@ var excludedFileNames = []string{
 	"TEST", "LICENSE", "experimentalBinaries_dir", "bundles_dir",
 	"blobs_dir", "robotstxt", "bdl.sh",
 	"uroot", "uroot-busybox", "gobusybox",
-	"sysinfo-collector", "neofetch", "sh",
+	"sysinfo-collector", "neofetch", "firefox.appimage",
+	"firefox-esr.appimage", "firefox-dev.appimage",
+	"firefox-nightly.appimage",
 }
 
 // listBinaries fetches and lists binary names from the given metadata URLs.
