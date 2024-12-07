@@ -92,7 +92,7 @@ $ dbin info micro
 Name: micro
 Description: A modern and intuitive terminal-based text editor
 Version: v2.0.14
-Download URL: https://bin.ajam.dev/x86_64/micro
+Download URL: https://bin.pkgforge.dev/x86_64/micro
 Size: 11.67 MB
 B3SUM: 2455db4db6e117717b33f6fb4a85d6630268442b111e1012e790feae6255484a
 SHA256: 6be82c65571f6aac935e7ef723932322ed5d665028a2179d66211b5629d4b665
@@ -100,7 +100,7 @@ Build Date: 2024-08-31T01:08:46
 Source URL: https://github.com/zyedidia/micro
 Web URL: https://github.com/zyedidia/micro
 Build Script: https://github.com/Azathothas/Toolpacks/tree/main/.github/scripts/x86_64_Linux/bins/micro.sh
-Build Log: https://bin.ajam.dev/x86_64/micro.log.txt
+Build Log: https://bin.pkgforge.dev/x86_64/micro.log.txt
 Category: command-line, cross-platform, editor, go, golang, micro, terminal, text-editor
 ```
 ##### Arguments of `list`
@@ -132,14 +132,15 @@ system_info=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/st
 ![image](https://github.com/user-attachments/assets/64700072-a087-4206-8b52-212ecfea668d)
 
 ### Where do these binaries come from? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
-- https://github.com/Azathothas/Toolpacks [https://bin.ajam.dev] [https://bin.ajam.dev/*/Baseutils/]
+- [AppBundleHub](https://github.com/xplshn/AppBundleHUB)
+- [PkgForge](https://github.com/pkgforge) & their [repositories](https://docs.pkgforge.dev/repositories)
 >Hmm, can I add my own repos?
 
-Yes! Absolutely. The repo's URL's are declared in main.go. Its simply a matter of providing a repo URL in the same format that the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo uses. You may skip the metadata part if you're only interested in the `install/add` functionality.
+Yes! Absolutely. The repo's URL's are declared in main.go. Its simply a matter of providing a repo URL in the same format that the [PkgForge Project uses](https://docs.pkgforge.dev/repositories/pkgforge-edge/metadata). You may skip the metadata part if you're only interested in the `install/add` functionality.
 
 >Good to hear, now... What about the so-called MetadataURLs?
 
-MetadataURLs provide info about the binaries, which is used to `search` and `update` binaries, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $DBIN_INSTALL_DIR from the [Toolpacks](https://github.com/Azathothas/Toolpacks) repo) and showing a binary's description, size, etc. You can take a look at [`modMetadata`'s](misc/cmd/modMetadata/main.go) `Item` struct if you want to make a custom repo which's binaries appear in `search`, are compatible with the `update` functionality and also work with `info`.
+MetadataURLs provide info about the binaries, which is used to `search` and `update` binaries, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $DBIN_INSTALL_DIR from the [PkgForge](https://github.com/pkgforge) [repositories](https://docs.pkgforge.dev/repositories)) and showing a binary's description, size, etc. You can take a look at [`modMetadata`'s](misc/cmd/modMetadata/main.go) `Item` struct if you want to make a custom repo which's binaries appear in `search`, are compatible with the `update` functionality and also work with `info`.
 
 ### Libraries
 I am using these two libraries for `dbin`:
