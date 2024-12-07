@@ -39,9 +39,22 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 		}
 	}
 
+	// Extract real names for filtering
+	allBinaryNames := make([]string, len(binaries))
+	for i, binary := range binaries {
+		allBinaryNames[i] = binary.RealName
+	}
+
+	// Filter binaries using the filterBinaries function from list.go
+	filteredBinaryNames := filterBinaries(allBinaryNames)
+
 	// Filter binaries based on the search term and architecture
 	searchResults := make([]string, 0)
 	for _, binary := range binaries {
+		if !contains(filteredBinaryNames, binary.RealName) || binary.Description == "" {
+			continue
+		}
+
 		if strings.Contains(strings.ToLower(binary.RealName), strings.ToLower(searchTerm)) ||
 			strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm)) {
 			entry := fmt.Sprintf("%s - %s", binary.RealName, binary.Description)

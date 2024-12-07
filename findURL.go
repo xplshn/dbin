@@ -16,12 +16,12 @@ func findURL(config *Config, binaryNames []string, verbosityLevel Verbosity, met
 		// Check if binaryName is a valid URL
 		parsedURL, err := url.ParseRequestURI(binaryName)
 		if err == nil && parsedURL.Scheme != "" && parsedURL.Host != "" {
-			// If it's a valid URL, return it with the checksum set to "!no_warn"
+			// If it's a valid URL, return it with the checksum set to "null"
 			if verbosityLevel >= extraVerbose {
 				fmt.Printf("\033[2K\rFound \"%s\" is already a valid URL", binaryName)
 			}
 			foundURLs = append(foundURLs, binaryName)
-			foundB3sum = append(foundB3sum, "!no_warn")
+			foundB3sum = append(foundB3sum, "null")
 			continue
 		}
 
