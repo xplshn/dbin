@@ -45,7 +45,7 @@ info              Show information about a specific binary OR display installed 
 search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
 tldr              Equivalent to "run --transparent --silent tlrc"
 eget2             Equivalent to "run --transparent --silent eget2"`,
-			"3_Variables": `DBIN_CACHEDIR     If present, it must contain a valid directory path
+			"3_Variables": `DBIN_CACHEDIR      If present, it must contain a valid directory path
 DBIN_INSTALL_DIR   If present, it must contain a valid directory path
 DBIN_NOTRUNCATION  If present, and set to ONE (1), string truncation will be disabled
 DBIN_REPO_URLS     If present, it must contain one or more repository URLS ended in / separated by ;
