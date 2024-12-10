@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/agnivade/levenshtein"
 	"github.com/goccy/go-json"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
@@ -33,7 +32,7 @@ type Item struct {
 	BinId           string   `json:"pkg_id,omitempty"`
 	Icon            string   `json:"icon,omitempty"`
 	Description     string   `json:"description,omitempty"`
-	RichDescription string   `json:"rich_description,omitempty"`
+	LongDescription string   `json:"description_long,omitempty"`
 	Screenshots     []string `json:"screenshots,omitempty"`
 	Version         string   `json:"version,omitempty"`
 	DownloadURL     string   `json:"download_url,omitempty"`
@@ -49,23 +48,12 @@ type Item struct {
 	ExtraBins       string   `json:"provides,omitempty"`
 	Note            string   `json:"note,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
-	PopularityRank  int      `json:"popularity_rank,omitempty"` // = installs, as tracked by Flathub
 }
 
 type Metadata struct {
 	Bin  []Item `json:"bin"`
 	Pkg  []Item `json:"pkg"`
 	Base []Item `json:"base"`
-}
-
-type FlathubItem struct {
-	Name              string `json:"name"`
-	Id                string `json:"id"`
-	InstallsLastMonth int    `json:"installs_last_month"`
-}
-
-type FlathubResponse struct {
-	Hits []FlathubItem `json:"hits"`
 }
 
 // Function to process items by removing arch-specific and repo-label prefixes
@@ -188,28 +176,6 @@ func downloadWithFallback(repo labeledString) (Metadata, error) {
 	return Metadata{}, err
 }
 
-func downloadFlathubPopularity(url string) (FlathubResponse, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return FlathubResponse{}, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return FlathubResponse{}, err
-	}
-
-	var popularity FlathubResponse
-	err = json.Unmarshal(body, &popularity)
-	if err != nil {
-		return FlathubResponse{}, err
-	}
-
-	fmt.Printf("Downloaded Flathub popularity data with %d items\n", len(popularity.Hits))
-	return popularity, nil
-}
-
 // extractBaseName extracts the base name of a file without the extension
 func extractBaseName(name string) string {
 	base := filepath.Base(name)
@@ -217,65 +183,9 @@ func extractBaseName(name string) string {
 	return strings.TrimSuffix(base, ext)
 }
 
-func updatePopularityRank(items []Item, popularityMap map[string]int, idMap map[string]string) {
-	for i := range items {
-		matched := false
-
-		// Try to match by bin_id first
-		if flathubId, found := idMap[items[i].BinId]; found {
-			if rank, ok := popularityMap[flathubId]; ok {
-				items[i].PopularityRank = rank
-				fmt.Printf("Updated popularity rank for %s (matched by bin_id: %s, flathub id: %s): %d\n", items[i].Name, items[i].BinId, flathubId, items[i].PopularityRank)
-				matched = true
-			} else {
-				fmt.Printf("Matched %s via bin_id, but no popularity_rank data is available (bin_id: %s, flathub id: %s: %d)\n", items[i].Name, items[i].BinId, flathubId, items[i].PopularityRank)
-			}
-		}
-
-		// Fallback to name-based matching if no bin_id match is found
-		if !matched {
-			baseName := extractBaseName(items[i].Name)
-			var bestMatch string
-			minDistance := 1000000 // A large number
-
-			for name := range popularityMap {
-				distance := levenshtein.ComputeDistance(strings.ToLower(baseName), strings.ToLower(name))
-				if distance < minDistance {
-					minDistance = distance
-					bestMatch = name
-				}
-			}
-
-			if minDistance <= 3 {
-				items[i].PopularityRank = popularityMap[bestMatch]
-				fmt.Printf("Updated popularity rank for %s (matched with %s, distance: %d): %d\n", items[i].Name, bestMatch, minDistance, items[i].PopularityRank)
-			} else {
-				// fmt.Printf("No reliable match found for %s (closest match: %s, distance: %d)\n", items[i].Name, bestMatch, minDistance)
-			}
-		}
-	}
-}
-
 func main() {
 	validatedArchs := []string{"amd64_linux", "arm64_linux"}
 	realArchs := []string{"x86_64_Linux", "x86_64-Linux", "aarch64_Linux", "aarch64-Linux", "aarch64_arm64_Linux", "aarch64_arm64-Linux", "x86_64", "x64_Windows"}
-
-	// Download Flathub popularity data
-	flathubURL := "https://huggingface.co/datasets/Azathothas/Toolpacks-Extras/resolve/main/FLATPAK_POPULAR.json?raw=true"
-	popularity, err := downloadFlathubPopularity(flathubURL)
-	if err != nil {
-		fmt.Printf("Error downloading Flathub popularity data: %v\n", err)
-		return
-	}
-
-	// Create maps for quick lookup of popularity ranks by name and id
-	popularityMap := make(map[string]int)
-	idMap := make(map[string]string)
-	for _, item := range popularity.Hits {
-		id := strings.ReplaceAll(item.Id, "_", ".")
-		popularityMap[item.Name] = item.InstallsLastMonth
-		idMap[id] = id
-	}
 
 	for _, arch := range validatedArchs {
 		repos := []labeledString{
@@ -309,11 +219,6 @@ func main() {
 			metadata.Bin = mergeItems(metadata.Bin, additionalMetadata.Bin)
 			metadata.Pkg = mergeItems(metadata.Pkg, additionalMetadata.Pkg)
 
-			// Update popularity rank
-			//updatePopularityRank(metadata.Base, popularityMap, idMap)
-			//updatePopularityRank(metadata.Bin, popularityMap, idMap)
-			updatePopularityRank(metadata.Pkg, popularityMap, idMap)
-
 			// Save the processed metadata to a JSON file
 			outputFile := fmt.Sprintf("METADATA_AIO_%s.json", arch)
 			if err := saveJSON(outputFile, metadata); err != nil {
@@ -326,24 +231,12 @@ func main() {
 	}
 }
 
-// mergeItems merges two slices of Item, ensuring no duplicates and merging RichDescription
+// mergeItems merges two slices of Item, ensuring no duplicates and merging LongDescription
 func mergeItems(mainItems, additionalItems []Item) []Item {
 	itemMap := make(map[string]Item)
 
 	for _, item := range mainItems {
 		itemMap[item.RealName] = item
-	}
-
-	for _, item := range additionalItems {
-		if existingItem, found := itemMap[item.RealName]; found {
-			// Merge RichDescription if it exists in additional metadata
-			if item.RichDescription != "" {
-				existingItem.RichDescription = item.RichDescription
-			}
-			itemMap[item.RealName] = existingItem
-		} else {
-			itemMap[item.RealName] = item
-		}
 	}
 
 	// Convert the map back to a slice
@@ -354,3 +247,4 @@ func mergeItems(mainItems, additionalItems []Item) []Item {
 
 	return mergedItems
 }
+
