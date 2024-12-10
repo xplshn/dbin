@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/goccy/go-json"
 	"golang.org/x/term"
+	"github.com/goccy/go-json"
 
 	"github.com/pkg/xattr"
 	"github.com/zeebo/blake3"
@@ -168,7 +168,7 @@ func truncateSprintf(indicator, format string, a ...interface{}) string {
 	formatted := fmt.Sprintf(format, a...)
 
 	// Check if output is piped
-	if isPipedOutput() {
+	if ! term.IsTerminal(0) {
 		return formatted // No truncation if output is being piped to another program
 	}
 
@@ -189,7 +189,7 @@ func truncateSprintf(indicator, format string, a ...interface{}) string {
 // truncatePrintf is a drop-in replacement for fmt.Printf that truncates the input string if it exceeds a certain length.
 func truncatePrintf(disableTruncation, addNewLine bool, format string, a ...interface{}) (n int, err error) {
 	if disableTruncation {
-		return fmt.Printf(format, a...)
+		return fmt.Println(fmt.Sprintf(format, a...))
 	}
 	if addNewLine {
 		return fmt.Println(truncateSprintf(indicator, format, a...))
@@ -319,16 +319,6 @@ func calculateChecksum(filePath string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
-}
-
-// isPipedOutput checks if the output is piped
-func isPipedOutput() bool {
-	// Check if stdout is a pipe
-	fileInfo, err := os.Stdout.Stat()
-	if err != nil {
-		return false // Default to not piped if there's an error
-	}
-	return (fileInfo.Mode() & os.ModeNamedPipe) != 0
 }
 
 func isSymlink(filePath string) bool {
