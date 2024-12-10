@@ -133,8 +133,9 @@ system_info=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/st
 
 ### Where do these binaries come from? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 - [AppBundleHub](https://github.com/xplshn/AppBundleHUB)
-- [PkgForge](https://github.com/pkgforge) & their [repositories](https://docs.pkgforge.dev/repositories)
->Hmm, can I add my own repos?
+- [PkgForge's repos](https://docs.pkgforge.dev/repositories)
+
+> Hmm, can I add my own repos?
 
 Yes! Absolutely. The repo's URL's are declared in main.go. Its simply a matter of providing a repo URL in the same format that the [PkgForge Project uses](https://docs.pkgforge.dev/repositories/pkgforge-edge/metadata). You may skip the metadata part if you're only interested in the `install/add` functionality.
 
