@@ -161,6 +161,14 @@ func getTerminalWidth() int {
 	return 80
 }
 
+// func inputIsPiped() bool {
+// 	fi, _ := os.Stdin.Stat()
+// 	if (fi.Mode() & os.ModeCharDevice) == 0 {
+// 	    return true
+// 	}
+// 	return false
+// }
+
 // NOTE: \n will always get cut off when using a truncate function, this may also happen to other formatting options
 // truncateSprintf formats the string and truncates it if it exceeds the terminal width.
 func truncateSprintf(indicator, format string, a ...interface{}) string {
@@ -168,7 +176,7 @@ func truncateSprintf(indicator, format string, a ...interface{}) string {
 	formatted := fmt.Sprintf(format, a...)
 
 	// Check if output is piped
-	if ! term.IsTerminal(0) {
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
 		return formatted // No truncation if output is being piped to another program
 	}
 
