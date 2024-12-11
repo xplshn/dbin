@@ -6,10 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/agnivade/levenshtein"
 	"github.com/goccy/go-json"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
@@ -49,13 +47,18 @@ type Item struct {
 	ExtraBins       string   `json:"provides,omitempty"` // should map to extra_bins
 	Note            string   `json:"note,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
-	PopularityRank  int      `json:"popularity_rank,omitempty"` // = installs, as tracked by Flathub
 }
 
 type Metadata struct {
 	Bin  []Item `json:"bin"`
 	Pkg  []Item `json:"pkg"`
 	Base []Item `json:"base"`
+}
+
+type OutputMetadata struct {
+	Bin  []OutputItem `json:"bin"`
+	Pkg  []OutputItem `json:"pkg"`
+	Base []OutputItem `json:"base"`
 }
 
 type OutputItem struct {
@@ -80,23 +83,6 @@ type OutputItem struct {
 	ExtraBins       string   `json:"extra_bins,omitempty"`
 	Note            string   `json:"note,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
-	PopularityRank  int      `json:"popularity_rank,omitempty"`
-}
-
-type OutputMetadata struct {
-	Bin  []OutputItem `json:"bin"`
-	Pkg  []OutputItem `json:"pkg"`
-	Base []OutputItem `json:"base"`
-}
-
-type FlathubItem struct {
-	Name              string `json:"name"`
-	Id                string `json:"id"`
-	InstallsLastMonth int    `json:"installs_last_month"`
-}
-
-type FlathubResponse struct {
-	Hits []FlathubItem `json:"hits"`
 }
 
 func convertItem(item Item) OutputItem {
@@ -122,7 +108,6 @@ func convertItem(item Item) OutputItem {
 		ExtraBins:       item.ExtraBins,
 		Note:            item.Note,
 		Appstream:       item.Appstream,
-		PopularityRank:  item.PopularityRank,
 	}
 }
 
@@ -262,104 +247,16 @@ func downloadWithFallback(repo labeledString) (Metadata, error) {
 	return Metadata{}, err
 }
 
-func downloadFlathubPopularity(url string) (FlathubResponse, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return FlathubResponse{}, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return FlathubResponse{}, err
-	}
-
-	var popularity FlathubResponse
-	err = json.Unmarshal(body, &popularity)
-	if err != nil {
-		return FlathubResponse{}, err
-	}
-
-	fmt.Printf("Downloaded Flathub popularity data with %d items\n", len(popularity.Hits))
-	return popularity, nil
-}
-
-// extractBaseName extracts the base name of a file without the extension
-func extractBaseName(name string) string {
-	base := filepath.Base(name)
-	ext := filepath.Ext(base)
-	return strings.TrimSuffix(base, ext)
-}
-
-func updatePopularityRank(items []Item, popularityMap map[string]int, idMap map[string]string) {
-	for i := range items {
-		matched := false
-
-		// Try to match by bin_id first
-		if flathubId, found := idMap[items[i].BinId]; found {
-			if rank, ok := popularityMap[flathubId]; ok {
-				items[i].PopularityRank = rank
-				fmt.Printf("Updated popularity rank for %s (matched by bin_id: %s, flathub id: %s): %d\n", items[i].Name, items[i].BinId, flathubId, items[i].PopularityRank)
-				matched = true
-			} else {
-				fmt.Printf("Matched %s via bin_id, but no popularity_rank data is available (bin_id: %s, flathub id: %s: %d)\n", items[i].Name, items[i].BinId, flathubId, items[i].PopularityRank)
-			}
-		} else {
-			fmt.Printf("BinId: %s | Flathub Id: %s\n", items[i].BinId, flathubId)
-		}
-
-		// Fallback to name-based matching if no bin_id match is found
-		if !matched {
-			baseName := extractBaseName(items[i].Name)
-			var bestMatch string
-			minDistance := 1000000 // A large number
-
-			for name := range popularityMap {
-				distance := levenshtein.ComputeDistance(strings.ToLower(baseName), strings.ToLower(name))
-				if distance < minDistance {
-					minDistance = distance
-					bestMatch = name
-				}
-			}
-
-			if minDistance <= 3 {
-				items[i].PopularityRank = popularityMap[bestMatch]
-				fmt.Printf("Updated popularity rank for %s (matched with %s, distance: %d): %d\n", items[i].Name, bestMatch, minDistance, items[i].PopularityRank)
-			} else {
-				//fmt.Printf("No reliable match found for %s (closest match: %s, distance: %d)\n", items[i].Name, bestMatch, minDistance)
-			}
-		}
-	}
-}
-
 func main() {
 	validatedArchs := []string{"amd64_linux", "arm64_linux"}
 	realArchs := []string{"x86_64_Linux", "x86_64-Linux", "aarch64_Linux", "aarch64-Linux", "aarch64_arm64_Linux", "aarch64_arm64-Linux", "x86_64", "x64_Windows"}
-
-	// Download Flathub popularity data
-	flathubURL := "https://huggingface.co/datasets/Azathothas/Toolpacks-Extras/resolve/main/FLATPAK_POPULAR.json?raw=true"
-	popularity, err := downloadFlathubPopularity(flathubURL)
-	if err != nil {
-		fmt.Printf("Error downloading Flathub popularity data: %v\n", err)
-		return
-	}
-
-	// Create maps for quick lookup of popularity ranks by name and id
-	popularityMap := make(map[string]int)
-	idMap := make(map[string]string)
-	for _, item := range popularity.Hits {
-		id := strings.ReplaceAll(item.Id, "_", ".")
-		popularityMap[item.Name] = item.InstallsLastMonth
-		idMap[id] = id
-		//fmt.Printf("Flathub item: %s (id: %s), Installs: %d\n", item.Name, id, item.InstallsLastMonth)
-	}
 
 	for i := range validatedArchs {
 		arch := validatedArchs[i]
 
 		repos := []labeledString{
-			{"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
-				"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.json",
+			{"https://bin.pkgforge.dev/" + arch + "/METADATA.WEB.json",
+				"https://pkg.pkgforge.dev/" + arch + "/METADATA.WEB.json",
 				true},
 		}
 
@@ -374,11 +271,6 @@ func main() {
 			metadata.Bin = processItems(metadata.Bin, realArchs, validatedArchs, repo, "bin")
 			metadata.Pkg = processItems(metadata.Pkg, realArchs, validatedArchs, repo, "pkg")
 			metadata.Base = processItems(metadata.Base, realArchs, validatedArchs, repo, "base")
-
-			// Update popularity rank
-			updatePopularityRank(metadata.Pkg, popularityMap, idMap)
-			//updatePopularityRank(metadata.Bin, popularityMap, idMap)
-			//updatePopularityRank(metadata.Base, popularityMap, idMap)
 
 			// Convert Metadata to OutputMetadata
 			outputMetadata := convertMetadata(metadata)
