@@ -207,17 +207,15 @@ func main() {
 			metadata.Base = processItems(metadata.Base, realArchs, validatedArchs, repo, "base")
 
 			// Download additional metadata.json from the specified URL
-			additionalMetadataURL := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json"
-			additionalMetadata, err := downloadJSON(additionalMetadataURL)
+			AppBundleHUBMetadataURL := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json"
+			AppBundleHUBMetadata, err := downloadJSON(AppBundleHUBMetadataURL)
 			if err != nil {
-				fmt.Printf("Error downloading additional metadata from %s: %v\n", additionalMetadataURL, err)
+				fmt.Printf("Error downloading additional metadata from %s: %v\n", AppBundleHUBMetadataURL, err)
 				continue
 			}
 
 			// Merge the additional metadata into the main metadata
-			metadata.Base = mergeItems(metadata.Base, additionalMetadata.Base)
-			metadata.Bin = mergeItems(metadata.Bin, additionalMetadata.Bin)
-			metadata.Pkg = mergeItems(metadata.Pkg, additionalMetadata.Pkg)
+			metadata.Pkg = mergeItems(metadata.Pkg, AppBundleHUBMetadata.Pkg)
 
 			// Save the processed metadata to a JSON file
 			outputFile := fmt.Sprintf("METADATA_AIO_%s.json", arch)
@@ -232,10 +230,14 @@ func main() {
 }
 
 // mergeItems merges two slices of Item, ensuring no duplicates and merging LongDescription
-func mergeItems(mainItems, additionalItems []Item) []Item {
+func mergeItems(mainItems, otherItems []Item) []Item {
 	itemMap := make(map[string]Item)
 
 	for _, item := range mainItems {
+		itemMap[item.RealName] = item
+	}
+
+	for _, item := range otherItems {
 		itemMap[item.RealName] = item
 	}
 
@@ -247,4 +249,3 @@ func mergeItems(mainItems, additionalItems []Item) []Item {
 
 	return mergedItems
 }
-
