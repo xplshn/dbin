@@ -189,8 +189,8 @@ func main() {
 
 	for _, arch := range validatedArchs {
 		repos := []labeledString{
-			{"https://bin.pkgforge.dev/" + arch + "/METADATA.WEB.json",
-				"https://pkg.pkgforge.dev/" + arch + "/METADATA.WEB.json",
+			{"https://bin.pkgforge.dev/" + arch + "/METADATA.AIO.min.json",
+				"https://pkg.pkgforge.dev/" + arch + "/METADATA.AIO.json",
 				true},
 		}
 
