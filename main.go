@@ -141,15 +141,21 @@ dbin run btop`,
 		os.Exit(1)
 	}
 
-	// Fetch the metadata ONLY once
+	// function to fetch the metadata ONCE
 	var metadata map[string]interface{}
+	var alreadyFetched bool
 	fetchMetadata := func() map[string]interface{} {
-		for _, url := range config.MetadataURLs {
-			err := fetchJSON(url, &metadata)
-			if err != nil {
-				fmt.Printf("failed to fetch and decode binary information from %s: %v\n", url, err)
-				continue
+		if alreadyFetched != true {
+			for _, url := range config.MetadataURLs {
+				err := fetchJSON(url, &metadata)
+				if err != nil {
+					fmt.Printf("failed to fetch and decode binary information from %s: %v\n", url, err)
+					continue
+				}
 			}
+			alreadyFetched = true
+		} else {
+			fmt.Println("fetchMetadata was re-triggered.")
 		}
 		return metadata
 	}
@@ -317,49 +323,34 @@ dbin run btop`,
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}
+
+			// Define the fields to print
+			fields := []struct {
+				label string
+				value string
+			}{
+				{"Name", binaryInfo.RealName},
+				{"Description", binaryInfo.Description},
+				{"Note", binaryInfo.Note},
+				{"Version", binaryInfo.Version},
+				{"Download URL", binaryInfo.DownloadURL},
+				{"Size", binaryInfo.Size},
+				{"B3SUM", binaryInfo.Bsum},
+				{"SHA256", binaryInfo.Shasum},
+				{"Build Date", binaryInfo.BuildDate},
+				{"Source URL", binaryInfo.SrcURL},
+				{"Web URL", binaryInfo.WebURL},
+				{"Build Script", binaryInfo.BuildScript},
+				{"Build Log", binaryInfo.BuildLog},
+				{"Category", binaryInfo.Category},
+				{"Extra Bins", binaryInfo.ExtraBins},
+			}
+
 			// Print detailed binary information
-			fmt.Printf("Name: %s\n", binaryInfo.RealName)
-			if binaryInfo.Description != "" {
-				fmt.Printf("Description: %s\n", binaryInfo.Description)
-			}
-			if binaryInfo.Note != "" {
-				fmt.Printf("Note: %s\n", binaryInfo.Note)
-			}
-			if binaryInfo.Version != "" {
-				fmt.Printf("Version: %s\n", binaryInfo.Version)
-			}
-			if binaryInfo.DownloadURL != "" {
-				fmt.Printf("Download URL: %s\n", binaryInfo.DownloadURL)
-			}
-			if binaryInfo.Size != "" {
-				fmt.Printf("Size: %s\n", binaryInfo.Size)
-			}
-			if binaryInfo.Bsum != "" {
-				fmt.Printf("B3SUM: %s\n", binaryInfo.Bsum)
-			}
-			if binaryInfo.Shasum != "" {
-				fmt.Printf("SHA256: %s\n", binaryInfo.Shasum)
-			}
-			if binaryInfo.BuildDate != "" {
-				fmt.Printf("Build Date: %s\n", binaryInfo.BuildDate)
-			}
-			if binaryInfo.SrcURL != "" {
-				fmt.Printf("Source URL: %s\n", binaryInfo.SrcURL)
-			}
-			if binaryInfo.WebURL != "" {
-				fmt.Printf("Web URL: %s\n", binaryInfo.WebURL)
-			}
-			if binaryInfo.BuildScript != "" {
-				fmt.Printf("Build Script: %s\n", binaryInfo.BuildScript)
-			}
-			if binaryInfo.BuildLog != "" {
-				fmt.Printf("Build Log: %s\n", binaryInfo.BuildLog)
-			}
-			if binaryInfo.Category != "" {
-				fmt.Printf("Category: %s\n", binaryInfo.Category)
-			}
-			if binaryInfo.ExtraBins != "" {
-				truncatePrintf(config.DisableTruncation, false, "Extra Bins: %s\n", binaryInfo.ExtraBins)
+			for _, field := range fields {
+				if field.value != "" {
+					truncatePrintf(config.DisableTruncation, "\033[48;5;4m%s\033[0m: %s\n", field.label, field.value)
+				}
 			}
 		}
 	case "run":

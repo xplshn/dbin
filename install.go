@@ -60,9 +60,9 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 				// length of ` {{.Percent}} | <font color="green">{{.Title}}</font>` is (binaryNameMaxlen + 11 + 4*2)
 				// 4*2 is color (\x1b[32mTitle\x1b[0m)
 				progressbar.WithBarTextSchema(`{{.Bar}} {{.Percent}} | <font color="green">{{.Title}}</font>`),
-				progressbar.WithBarWidth(termWidth - (binaryNameMaxlen + 19)),
+				progressbar.WithBarWidth(termWidth-(binaryNameMaxlen+19)),
 			)
-			
+
 		}
 
 		tasks.Add(

@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"strings"
 
-	"golang.org/x/term"
 	"github.com/goccy/go-json"
+	"golang.org/x/term"
 
 	"github.com/pkg/xattr"
 	"github.com/zeebo/blake3"
@@ -169,40 +169,66 @@ func getTerminalWidth() int {
 // 	return false
 // }
 
-// NOTE: \n will always get cut off when using a truncate function, this may also happen to other formatting options
-// truncateSprintf formats the string and truncates it if it exceeds the terminal width.
+// truncateSprintf formats text and truncates to fit the screen's size, preserving escape sequences
 func truncateSprintf(indicator, format string, a ...interface{}) string {
-	// Format the string first
-	formatted := fmt.Sprintf(format, a...)
-
-	// Check if output is piped
+	text := fmt.Sprintf(format, a...)
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
-		return formatted // No truncation if output is being piped to another program
+		return text
 	}
 
-	// Determine the truncation length & truncate the formatted string if it exceeds the available space
-	availableSpace := getTerminalWidth() - len(indicator)
-	if len(formatted) > availableSpace {
-		formatted = formatted[:availableSpace]
-		// Remove trailing punctuation and spaces
-		for strings.HasSuffix(formatted, ",") || strings.HasSuffix(formatted, ".") || strings.HasSuffix(formatted, " ") {
-			formatted = formatted[:len(formatted)-1]
+	width := getTerminalWidth() - len(indicator)
+	if width <= 0 {
+		return text
+	}
+
+	var out bytes.Buffer
+	var visibleCount int
+	var inEscape bool
+	var escBuf bytes.Buffer
+
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+
+		switch {
+		case c == '\x1b':
+			inEscape = true
+			escBuf.Reset()
+			escBuf.WriteByte(c)
+		case inEscape:
+			escBuf.WriteByte(c)
+			if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') {
+				inEscape = false
+				out.Write(escBuf.Bytes())
+			}
+		default:
+			if visibleCount >= width {
+				continue
+			}
+			out.WriteByte(c)
+			visibleCount++
 		}
-		formatted = fmt.Sprintf("%s%s", formatted, indicator) // Add the indicator (the dots)
 	}
 
-	return formatted
+	result := out.String()
+	if strings.HasSuffix(text, "\n") {
+		if visibleCount >= width {
+			return result + indicator + "\n"
+		}
+		return result
+	}
+	if visibleCount >= width {
+		return result + indicator
+	}
+	return result
 }
 
-// truncatePrintf is a drop-in replacement for fmt.Printf that truncates the input string if it exceeds a certain length.
-func truncatePrintf(disableTruncation, addNewLine bool, format string, a ...interface{}) (n int, err error) {
+// truncatePrintf formats and prints text, and offers optional truncation
+func truncatePrintf(disableTruncation bool, format string, a ...interface{}) (n int, err error) {
 	if disableTruncation {
-		return fmt.Println(fmt.Sprintf(format, a...))
+		return fmt.Printf(format, a...)
 	}
-	if addNewLine {
-		return fmt.Println(truncateSprintf(indicator, format, a...))
-	}
-	return fmt.Print(truncateSprintf(indicator, format, a...))
+	text := truncateSprintf(indicator, format, a...)
+	return fmt.Print(text)
 }
 
 // listFilesInDir lists all files in a directory
@@ -223,9 +249,8 @@ func listFilesInDir(dir string) ([]string, error) {
 // getFullName retrieves the full binary name from the extended attributes of the binary file.
 // If the binary does not exist, it returns the basename. If the full name attribute cannot be retrieved, it returns an error.
 func getFullName(binaryPath string) (string, error) {
-	// Check if the binary file exists using the existing isFileExist function
+
 	if !fileExists(binaryPath) {
-		// Return the basename if the file doesn't exist
 		return filepath.Base(binaryPath), nil
 	}
 
@@ -344,3 +369,10 @@ func sanitizeString(input string) string {
 	return sanitized.String()
 }
 
+// ternary
+func ternary[T any](cond bool, vtrue, vfalse T) T {
+	if cond {
+		return vtrue
+	}
+	return vfalse
+}

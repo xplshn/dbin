@@ -1,4 +1,3 @@
-// TODO: Add ability to manage external binaries
 package main
 
 import (
@@ -111,4 +110,3 @@ downloadLoop:
 
 	return destination, nil
 }
-

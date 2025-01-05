@@ -88,10 +88,12 @@ func findBinaryInfo(binaryName string, metadata map[string]interface{}) (BinaryI
 
 // getBinaryInfo retrieves binary metadata for the specified binary name by fetching and searching through the given metadata files
 func getBinaryInfo(config *Config, binaryName string, metadata map[string]interface{}) (*BinaryInfo, error) {
-	// Check the tracker file first
+
 	realBinaryName, err := getFullName(filepath.Join(config.InstallDir, binaryName))
 	if err == nil {
-		binaryName = realBinaryName
+		if filepath.Base(binaryName) != realBinaryName {
+			binaryName = realBinaryName
+		}
 	}
 
 	binInfo, found := findBinaryInfo(binaryName, metadata)

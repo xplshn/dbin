@@ -96,7 +96,7 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 			prefix = "[c]"
 		}
 
-		truncatePrintf(disableTruncation, true, "%s %s - %s ", prefix, RealName, description)
+		truncatePrintf(disableTruncation, "%s %s - %s\n", prefix, RealName, description)
 	}
 
 	return nil
