@@ -161,14 +161,6 @@ func getTerminalWidth() int {
 	return 80
 }
 
-// func inputIsPiped() bool {
-// 	fi, _ := os.Stdin.Stat()
-// 	if (fi.Mode() & os.ModeCharDevice) == 0 {
-// 	    return true
-// 	}
-// 	return false
-// }
-
 // truncateSprintf formats text and truncates to fit the screen's size, preserving escape sequences
 func truncateSprintf(indicator, format string, a ...interface{}) string {
 	text := fmt.Sprintf(format, a...)
@@ -224,11 +216,11 @@ func truncateSprintf(indicator, format string, a ...interface{}) string {
 
 // truncatePrintf formats and prints text, and offers optional truncation
 func truncatePrintf(disableTruncation bool, format string, a ...interface{}) (n int, err error) {
-	if disableTruncation {
-		return fmt.Printf(format, a...)
-	}
-	text := truncateSprintf(indicator, format, a...)
-	return fmt.Print(text)
+    if disableTruncation {
+        return fmt.Printf(format, a...)
+    }
+    text := truncateSprintf(indicator, format, a...)
+    return fmt.Print(text)
 }
 
 // listFilesInDir lists all files in a directory
