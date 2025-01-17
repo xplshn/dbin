@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,18 +15,23 @@ import (
 
 // installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
 func installBinaries(ctx context.Context, config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
-	cursor.Hide()
-	defer cursor.Show()
+	var outputDevice io.Writer
+	if verbosityLevel <= silentVerbosityWithErrors {
+		outputDevice = io.Discard
+	} else {
+		outputDevice = os.Stdout
+		cursor.Hide()
+		defer cursor.Show()
+	}
 
 	var wg sync.WaitGroup
-
 	errChan := make(chan error, len(binaries))
 	urls, checksums, err := findURL(config, binaries, verbosityLevel, metadata)
 	if err != nil {
 		return err
 	}
 
-	bar := progressbar.New()
+	bar := progressbar.New(progressbar.WithOutputDevice(outputDevice))
 	tasks := progressbar.NewTasks(bar)
 	defer tasks.Close()
 
