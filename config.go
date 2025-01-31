@@ -15,7 +15,6 @@ import (
 
 // Config structure holding configuration settings
 type Config struct {
-	RepoURLs            []string        `json:"repo_urls" env:"DBIN_REPO_URLS"`
 	MetadataURLs        []string        `json:"metadata_urls" env:"DBIN_METADATA_URLS"`
 	InstallDir          string          `json:"install_dir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
 	CacheDir            string          `json:"cache_dir" env:"DBIN_CACHEDIR"`
@@ -246,19 +245,10 @@ func setDefaultValues(config *Config) {
 	// Determine architecture and set default repositories and metadata URLs
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 
-	// Set up default repositories if none are provided
-	if len(config.RepoURLs) == 0 {
-		config.RepoURLs = []string{
-			"https://bin.pkgforge.dev/" + arch + "/",
-			"https://bin.pkgforge.dev/" + arch + "/Baseutils/",
-			"https://pkg.pkgforge.dev/" + arch + "/",
-		}
-	}
-
 	// Set up default metadata URLs if none are provided
 	if len(config.MetadataURLs) == 0 {
 		config.MetadataURLs = []string{
-			"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadataAIO-ng/METADATA_AIO_" + arch + ".min.json",
+			"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadata/METADATA_" + arch + ".min.json",
 		}
 	}
 

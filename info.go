@@ -25,65 +25,68 @@ type BinaryInfo struct {
 	BuildLog    string `json:"build_log,omitempty"`
 	Category    string `json:"category,omitempty"`
 	ExtraBins   string `json:"provides,omitempty"`
+	GhcrLink    string `json:"grch_link,omitempty"`
 }
 
 // findBinaryInfo searches for binary metadata across multiple sections in the provided metadata map.
 func findBinaryInfo(binaryName string, metadata map[string]interface{}) (BinaryInfo, bool) {
-	for _, section := range metadata {
-		// Each section is a list of binaries
-		binaries, ok := section.([]interface{})
-		if !ok {
-			continue
-		}
+    for _, section := range metadata {
+        // Each section is a list of binaries
+        binaries, ok := section.([]interface{})
+        if !ok {
+            continue
+        }
 
-		// Iterate through each binary in the section
-		for _, bin := range binaries {
-			binMap, ok := bin.(map[string]interface{})
-			if !ok {
-				continue
-			}
+        // Iterate through each binary in the section
+        for _, bin := range binaries {
+            binMap, ok := bin.(map[string]interface{})
+            if !ok {
+                continue
+            }
 
-			name, nameOk := binMap["pkg_name"].(string)
-			realName, realNameOk := binMap["pkg"].(string)
+            name, nameOk := binMap["pkg_name"].(string)
+            realName, realNameOk := binMap["pkg"].(string)
 
-			if (nameOk && name == binaryName) || (realNameOk && realName == binaryName) {
-				description, _ := binMap["description"].(string)
-				note, _ := binMap["note"].(string)
-				version, _ := binMap["version"].(string)
-				downloadURL, _ := binMap["download_url"].(string)
-				size, _ := binMap["size"].(string)
-				bsum, _ := binMap["bsum"].(string)
-				shasum, _ := binMap["shasum"].(string)
-				buildDate, _ := binMap["build_date"].(string)
-				srcURL, _ := binMap["src_url"].(string)
-				webURL, _ := binMap["homepage"].(string)
-				buildScript, _ := binMap["build_script"].(string)
-				buildLog, _ := binMap["build_log"].(string)
-				category, _ := binMap["category"].(string)
-				extraBins, _ := binMap["provides"].(string)
+            if (nameOk && name == binaryName) || (realNameOk && realName == binaryName) {
+                description, _ := binMap["description"].(string)
+                note, _ := binMap["note"].(string)
+                version, _ := binMap["version"].(string)
+                downloadURL, _ := binMap["download_url"].(string)
+                size, _ := binMap["size"].(string)
+                bsum, _ := binMap["bsum"].(string)
+                shasum, _ := binMap["shasum"].(string)
+                buildDate, _ := binMap["build_date"].(string)
+                srcURL, _ := binMap["src_url"].(string)
+                webURL, _ := binMap["homepage"].(string)
+                buildScript, _ := binMap["build_script"].(string)
+                buildLog, _ := binMap["build_log"].(string)
+                category, _ := binMap["category"].(string)
+                extraBins, _ := binMap["provides"].(string)
+                ghcrLink, _ := binMap["ghcr_link"].(string)
 
-				return BinaryInfo{
-					RealName:    realName,
-					Name:        name,
-					Description: description,
-					Note:        note,
-					Version:     version,
-					DownloadURL: downloadURL,
-					Size:        size,
-					Bsum:        bsum,
-					Shasum:      shasum,
-					BuildDate:   buildDate,
-					SrcURL:      srcURL,
-					WebURL:      webURL,
-					BuildScript: buildScript,
-					BuildLog:    buildLog,
-					Category:    category,
-					ExtraBins:   extraBins,
-				}, true
-			}
-		}
-	}
-	return BinaryInfo{}, false
+                return BinaryInfo{
+                    RealName:    realName,
+                    Name:        name,
+                    Description: description,
+                    Note:        note,
+                    Version:     version,
+                    DownloadURL: downloadURL,
+                    Size:        size,
+                    Bsum:        bsum,
+                    Shasum:      shasum,
+                    BuildDate:   buildDate,
+                    SrcURL:      srcURL,
+                    WebURL:      webURL,
+                    BuildScript: buildScript,
+                    BuildLog:    buildLog,
+                    Category:    category,
+                    ExtraBins:   extraBins,
+                    GhcrLink:    ghcrLink,
+                }, true
+            }
+        }
+    }
+    return BinaryInfo{}, false
 }
 
 // getBinaryInfo retrieves binary metadata for the specified binary name by fetching and searching through the given metadata files
