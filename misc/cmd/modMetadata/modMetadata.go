@@ -225,11 +225,14 @@ func minifyJSON(filename string, jsonData []byte) error {
 }
 
 func main() {
-	realArchs := []string{"x86_64-Linux", "aarch64-Linux"}
+	realArchs := map[string]string{
+		"x86_64-Linux":  "amd64_linux",
+		"aarch64-Linux": "arm64_linux",
+	}
 
 	repositories := []struct {
-		Repo      repository
-		Handler   RepositoryHandler
+		Repo    repository
+		Handler RepositoryHandler
 	}{
 		{
 			Repo: repository{
@@ -249,7 +252,7 @@ func main() {
 		},
 	}
 
-	for _, arch := range realArchs {
+	for arch, outputArch := range realArchs {
 		dbinMetadata := make(DbinMetadata)
 
 		for _, repo := range repositories {
@@ -267,7 +270,7 @@ func main() {
 			dbinMetadata[repo.Repo.Name] = append(dbinMetadata[repo.Repo.Name], items...)
 		}
 
-		outputFile := fmt.Sprintf("METADATA_%s.json", arch)
+		outputFile := fmt.Sprintf("METADATA_%s.json", outputArch)
 		if err := saveJSON(outputFile, dbinMetadata); err != nil {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
 			continue

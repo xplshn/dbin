@@ -48,7 +48,7 @@ func findURL(config *Config, binaryNames []string, verbosityLevel Verbosity, met
 					continue
 				}
 				if binMap["pkg_name"] == binaryName {
-					foundURLs = append(foundURLs, binMap["ghcr_link"].(string))
+					foundURLs = append(foundURLs, binMap["ghcr_url"].(string))
 					foundB3sum = append(foundB3sum, binMap["shasum"].(string))
 					if verbosityLevel >= extraVerbose {
 						fmt.Printf("\033[2K\rFound \"%s\" in section \"%s\"", binaryName, section)
