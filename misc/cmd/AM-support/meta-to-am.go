@@ -58,7 +58,7 @@ func processPkgName(pkgName string) string {
 }
 
 func main() {
-	url := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json"
+	url := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_x86_64-Linux.json"
 
 	resp, err := http.Get(url)
 	if err != nil {
