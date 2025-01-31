@@ -63,7 +63,7 @@ type DbinItem struct {
 	ExtraBins       string   `json:"provides,omitempty"`
 	Note            string   `json:"note,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
-	GhcrLink        string   `json:"ghcr_link,omitempty"`
+	GhcrURL         string   `json:"ghcr_url,omitempty"`
 }
 
 type DbinMetadata map[string][]DbinItem
@@ -172,7 +172,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		Category:    category,
 		ExtraBins:   provides,
 		Note:        note,
-		GhcrLink:    item.GhcrBlob,
+		GhcrURL:    item.GhcrBlob,
 	}
 }
 

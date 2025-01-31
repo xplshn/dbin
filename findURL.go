@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 )
@@ -48,9 +47,9 @@ func findURL(config *Config, binaryNames []string, verbosityLevel Verbosity, met
 				if !ok {
 					continue
 				}
-				if binMap["pkg"] == binaryName {
-					foundURLs = append(foundURLs, binMap["download_url"].(string))
-					foundB3sum = append(foundB3sum, binMap["bsum"].(string))
+				if binMap["pkg_name"] == binaryName {
+					foundURLs = append(foundURLs, binMap["ghcr_link"].(string))
+					foundB3sum = append(foundB3sum, binMap["shasum"].(string))
 					if verbosityLevel >= extraVerbose {
 						fmt.Printf("\033[2K\rFound \"%s\" in section \"%s\"", binaryName, section)
 					}
@@ -60,7 +59,7 @@ func findURL(config *Config, binaryNames []string, verbosityLevel Verbosity, met
 			continue
 		}
 
-		// Try to get binary info from info.go logic
+		// Try to get binary info from info.go
 		fullBinaryName, err := getFullName(binaryName)
 		if err == nil && fullBinaryName != "" {
 			binInfo, err := getBinaryInfo(config, fullBinaryName, metadata)
@@ -75,44 +74,8 @@ func findURL(config *Config, binaryNames []string, verbosityLevel Verbosity, met
 			}
 		}
 
-		// If no valid download_url found, proceed with HEAD requests on repositories
-		found, repoURLs := false, config.RepoURLs
-		for i, repository := range repoURLs {
-			url := fmt.Sprintf("%s%s", repository, binaryName)
-
-			// Show progress only in verbose modes
-			if verbosityLevel >= normalVerbosity {
-				fmt.Printf("\033[2K\r<%d/%d> | Checking \"%s\" in repository \"%s\"\r", i+1, len(repoURLs), binaryName, repository)
-			}
-
-			// Create a new request with the User-Agent header
-			req, err := http.NewRequest("HEAD", url, nil)
-			if err != nil {
-				continue
-			}
-			req.Header.Set("User-Agent", "dbin")
-
-			// Perform the request
-			resp, err := http.DefaultClient.Do(req)
-			if err == nil && resp.StatusCode == http.StatusOK {
-				// If found, print message based on verbosity
-				if verbosityLevel >= extraVerbose {
-					fmt.Printf("\033[2K\r<%d/%d> | Found \"%s\" at %s", i+1, len(repoURLs), binaryName, repository)
-				}
-				foundURLs = append(foundURLs, url)
-				foundB3sum = append(foundB3sum, "!no_warn") // No BLAKE3sum if found this way
-				found = true
-				break
-			}
-		}
-
-		// Cleanup last progress message if no URL was found
-		if verbosityLevel >= normalVerbosity {
-			fmt.Printf("\033[2K\r")
-		}
-
-		// Handle verbosity for error output
-		if !found && verbosityLevel >= silentVerbosityWithErrors {
+		// If no valid download_url found, return an error
+		if verbosityLevel >= silentVerbosityWithErrors {
 			return nil, nil, fmt.Errorf("error: didn't find the DOWNLOAD_URL for [%s]\n", binaryName)
 		}
 	}
