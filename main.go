@@ -344,7 +344,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				{"Web URL", binaryInfo.WebURL},
 				{"Build Script", binaryInfo.BuildScript},
 				{"Build Log", binaryInfo.BuildLog},
-				{"Category", binaryInfo.Category},
+				{"Categories", binaryInfo.Categories},
 				{"Extra Bins", binaryInfo.ExtraBins},
 			}
 
