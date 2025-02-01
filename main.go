@@ -64,7 +64,7 @@ dbin tldr gum
 dbin --verbose run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
 dbin --silent run elinks -no-home "https://fatbuffalo.neocities.org/def"
 dbin --silent run --transparent micro ~/.profile
-dbin run btop`,
+dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE" # Donate?`,
 		},
 	}
 

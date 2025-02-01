@@ -19,11 +19,13 @@ type repository struct {
 }
 
 type PkgForgeItem struct {
-	RealName    string   `json:"pkg"`
-	Name        string   `json:"pkg_name"`
-	Family      string   `json:"pkg_family"`
-	BinId       string   `json:"pkg_id"`
+	Pkg         string   `json:"pkg"`
+	Name        string   `json:"pkg_name,omitempty"`
+	Family      string   `json:"pkg_family,omitempty"`
+	BinId       string   `json:"pkg_id,omitempty"`
+	PkgType     string   `json:"pkg_type,omitempty"`
 	Icon        string   `json:"icon,omitempty"`
+	Screenshots []string `json:"screenshots,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Homepage    []string `json:"homepage,omitempty"`
 	Version     string   `json:"version,omitempty"`
@@ -35,17 +37,19 @@ type PkgForgeItem struct {
 	SrcURL      []string `json:"src_url,omitempty"`
 	BuildScript string   `json:"build_script,omitempty"`
 	BuildLog    string   `json:"build_log,omitempty"`
-	Category    []string `json:"category,omitempty"`
+	Categories  []string `json:"categories,omitempty"`
 	ExtraBins   []string `json:"provides,omitempty"`
 	Note        []string `json:"note,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
+	Rank        string   `json:"rank,omitempty"`
 }
 
 type DbinItem struct {
-	RealName        string   `json:"pkg"`
+	Pkg             string   `json:"pkg"`
 	Name            string   `json:"pkg_name"`
 	BinId           string   `json:"pkg_id,omitempty"`
 	Icon            string   `json:"icon,omitempty"`
+	License         string   `json:"license,omitempty"`
 	Description     string   `json:"description,omitempty"`
 	LongDescription string   `json:"description_long,omitempty"`
 	Screenshots     []string `json:"screenshots,omitempty"`
@@ -59,11 +63,12 @@ type DbinItem struct {
 	WebURL          string   `json:"homepage,omitempty"`
 	BuildScript     string   `json:"build_script,omitempty"`
 	BuildLog        string   `json:"build_log,omitempty"`
-	Category        string   `json:"category,omitempty"`
+	Categories      string   `json:"categories,omitempty"`
 	ExtraBins       string   `json:"provides,omitempty"`
 	Note            string   `json:"note,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
 	GhcrURL         string   `json:"ghcr_url,omitempty"`
+	Rank            string   `json:"rank,omitempty"`
 }
 
 type DbinMetadata map[string][]DbinItem
@@ -84,7 +89,7 @@ func (PkgForgeHandler) FetchMetadata(url string) ([]DbinItem, error) {
 	for _, item := range pkgforgeItems {
 		dbinItem := convertPkgForgeToDbinItem(item)
 		if existingItem, exists := bsumMap[dbinItem.Bsum]; exists {
-			if len(dbinItem.Name) < len(existingItem.Name) {
+			if len(dbinItem.Pkg) < len(existingItem.Pkg) {
 				bsumMap[dbinItem.Bsum] = dbinItem
 			}
 		} else {
@@ -123,6 +128,7 @@ func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
 	return oldAppbundleMetadata.Pkg, nil
 }
 
+// TODO: Make this dynamic. Appbundlehub meta now uses "appbundlehub" as key instead of Pkg
 type OldDbinMetadata struct {
 	Bin  []DbinItem `json:"bin"`
 	Pkg  []DbinItem `json:"pkg"`
@@ -130,7 +136,7 @@ type OldDbinMetadata struct {
 }
 
 func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
-	var webURL, srcURL, category, note string
+	var webURL, srcURL, categories, note string
 
 	if len(item.Homepage) > 0 {
 		webURL = item.Homepage[0]
@@ -140,8 +146,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		srcURL = item.SrcURL[0]
 	}
 
-	if len(item.Category) > 0 {
-		category = item.Category[0]
+	if len(item.Categories) > 0 {
+		categories = strings.Join(item.Categories, ",")
 	}
 
 	if len(item.Note) > 0 {
@@ -154,10 +160,11 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 	}
 
 	return DbinItem{
-		RealName:    t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Name)),
+		Pkg:         fmt.Sprintf("%s%s", t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Name)), t(item.PkgType != "static", "." + item.PkgType, "")),
 		Name:        item.Name,
 		BinId:       item.BinId,
 		Icon:        item.Icon,
+		Screenshots: item.Screenshots,
 		Description: item.Description,
 		Version:     item.Version,
 		DownloadURL: item.DownloadURL,
@@ -169,10 +176,11 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		WebURL:      webURL,
 		BuildScript: item.BuildScript,
 		BuildLog:    item.BuildLog,
-		Category:    category,
+		Categories:  categories,
 		ExtraBins:   provides,
 		Note:        note,
-		GhcrURL:    item.GhcrBlob,
+		GhcrURL:     item.GhcrBlob,
+		Rank:        item.Rank,
 	}
 }
 
@@ -302,6 +310,7 @@ func main() {
 	}
 }
 
+// Ternary
 func t[T any](cond bool, vtrue, vfalse T) T {
 	if cond {
 		return vtrue

@@ -23,7 +23,7 @@ type BinaryInfo struct {
 	WebURL      string `json:"homepage,omitempty"`
 	BuildScript string `json:"build_script,omitempty"`
 	BuildLog    string `json:"build_log,omitempty"`
-	Category    string `json:"category,omitempty"`
+	Categories  string `json:"categories,omitempty"`
 	ExtraBins   string `json:"provides,omitempty"`
 	GhcrURL     string `json:"ghcr_url,omitempty"`
 }
@@ -60,7 +60,7 @@ func findBinaryInfo(binaryName string, metadata map[string]interface{}) (BinaryI
                 webURL, _ := binMap["homepage"].(string)
                 buildScript, _ := binMap["build_script"].(string)
                 buildLog, _ := binMap["build_log"].(string)
-                category, _ := binMap["category"].(string)
+                categories, _ := binMap["categories"].(string)
                 extraBins, _ := binMap["provides"].(string)
                 ghcrURL, _ := binMap["ghcr_url"].(string)
 
@@ -79,7 +79,7 @@ func findBinaryInfo(binaryName string, metadata map[string]interface{}) (BinaryI
                     WebURL:      webURL,
                     BuildScript: buildScript,
                     BuildLog:    buildLog,
-                    Category:    category,
+                    Categories:    categories,
                     ExtraBins:   extraBins,
                     GhcrURL:    ghcrURL,
                 }, true
