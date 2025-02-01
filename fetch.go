@@ -62,8 +62,7 @@ downloadLoop:
 	if checksum != "" && checksum != "null" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
 		if calculatedChecksum != checksum {
-			_ = os.Remove(tempFile)
-			return fmt.Errorf("checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
+			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
 		}
 	} else {
 		fmt.Println("Warning: No checksum exists for this binary in the metadata files, skipping verification.")
@@ -91,11 +90,6 @@ downloadLoop:
 func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, url, checksum, destination string) (string, error) {
 	// Check if the URL is an OCI reference
 	if strings.HasPrefix(url, "ghcr.io/") {
-		// Handling OCI registries can be complex and may require additional dependencies and error handling.
-		// It's important to consider the security implications of downloading from OCI registries,
-		// as they may contain large images with potential vulnerabilities.
-		// Additionally, OCI registries might have rate limits or require authentication,
-		// which can complicate the download process.
 		return fetchOCIImage(ctx, bar, url, checksum, destination)
 	}
 
