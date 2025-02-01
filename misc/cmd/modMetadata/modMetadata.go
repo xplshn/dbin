@@ -244,6 +244,14 @@ func main() {
 		},
 		{
 			Repo: repository{
+				Name:   "pkgforge",
+				URL:    "https://meta.pkgforge.dev/pkgcache/%s.json",
+				Format: "pkgforge",
+			},
+			Handler: PkgForgeHandler{},
+		},
+		{
+			Repo: repository{
 				Name:   "appbundlehub",
 				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json",
 				Format: "dbin",
