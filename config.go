@@ -248,7 +248,7 @@ func setDefaultValues(config *Config) {
 	// Set up default metadata URLs if none are provided
 	if len(config.MetadataURLs) == 0 {
 		config.MetadataURLs = []string{
-			"https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/modMetadata/METADATA_" + arch + ".min.json",
+			"https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/modMetadata/METADATA_bincache_" + arch + ".min.json",
 		}
 	}
 
