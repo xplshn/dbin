@@ -1,7 +1,11 @@
 github.com/goccy/go-json v0.10.4 h1:JSwxQzIqKfmFX1swYPpUThQZp/Ka4wzJdK0LWVytLPM=
 github.com/goccy/go-json v0.10.4/go.mod h1:oq7eo15ShAhp70Anwd5lgX2pLfOS3QCiwU/PULtXL6M=
+github.com/goccy/go-json v0.10.5 h1:Fq85nIqj+gXn/S5ahsiTlK3TmC85qgirsdTP/+DeaC4=
+github.com/goccy/go-json v0.10.5/go.mod h1:oq7eo15ShAhp70Anwd5lgX2pLfOS3QCiwU/PULtXL6M=
 github.com/hedzr/progressbar v1.1.12 h1:OVSc3d4NjwNf3LqjCmouFy84aIj1vLujYPSPXKY01rk=
 github.com/hedzr/progressbar v1.1.12/go.mod h1:/ROUH/I5iSBIbDOdPzhF1FjQaT6WXAwFU5IRS8337q8=
+github.com/hedzr/progressbar v1.2.0 h1:8r1PN0pTbBDzyVMLvyjI4B8fgONYOEkVTm7UPra1Faw=
+github.com/hedzr/progressbar v1.2.0/go.mod h1:SgRZ+RkWhO6H7aotO7cOyfg1F84HDl/e6YMq2rDQ9W4=
 github.com/klauspost/cpuid/v2 v2.2.9 h1:66ze0taIn2H33fBvCkXuv9BmCwDfafmiIVpKV9kKGuY=
 github.com/klauspost/cpuid/v2 v2.2.9/go.mod h1:rqkxqrZ1EhYM9G+hXH7YdowN5R5RGN6NK4QwQ3WMXF8=
 github.com/pkg/xattr v0.4.10 h1:Qe0mtiNFHQZ296vRgUjRCoPHPqH7VdTOrZx3g0T+pGA=
@@ -15,6 +19,8 @@ github.com/tdewolff/test v1.0.11-0.20240106005702-7de5f7df4739 h1:IkjBCtQOOjIn03
 github.com/tdewolff/test v1.0.11-0.20240106005702-7de5f7df4739/go.mod h1:XPuWBzvdUzhCuxWO1ojpXsyzsA5bFoS3tO/Q3kFuTG8=
 github.com/xplshn/a-utils v0.0.0-20250112052359-db9adee53792 h1:Zi1l0j0IdLJDaYTVguqWKtVKZgtW3T8N85QiIpesYH4=
 github.com/xplshn/a-utils v0.0.0-20250112052359-db9adee53792/go.mod h1:VAjGK96YChxsh5YXNE4A+5SylU6H+3d7l5HvQ9VoISg=
+github.com/xplshn/a-utils v0.0.0-20250124065437-73b554cf990b h1:b4pibhAWOPlRwLaUEEAVr6u9CHmAsauxiswbgJSaqCg=
+github.com/xplshn/a-utils v0.0.0-20250124065437-73b554cf990b/go.mod h1:VAjGK96YChxsh5YXNE4A+5SylU6H+3d7l5HvQ9VoISg=
 github.com/zeebo/assert v1.1.0 h1:hU1L1vLTHsnO8x8c9KAR5GmM5QscxHg5RNU5z5qbUWY=
 github.com/zeebo/assert v1.1.0/go.mod h1:Pq9JiuJQpG8JLJdtkwrJESF0Foym2/D9XMU5ciN/wJ0=
 github.com/zeebo/blake3 v0.2.4 h1:KYQPkhpRtcqh0ssGYcKLG1JYvddkEA8QwCM/yBqhaZI=

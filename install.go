@@ -51,7 +51,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 		wg.Add(1)
 		url := urls[i]
 		checksum := checksums[i]
-		destination := filepath.Join(config.InstallDir, filepath.Base(url))
+		destination := filepath.Join(config.InstallDir, filepath.Base(binaryName))
 
 		barTitle := fmt.Sprintf("Installing %s", binaryName)
 		pbarOpts := []progressbar.Opt{

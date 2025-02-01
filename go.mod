@@ -3,11 +3,11 @@ module github.com/xplshn/dbin
 go 1.23.2
 
 require (
-	github.com/goccy/go-json v0.10.4
-	github.com/hedzr/progressbar v1.1.12
+	github.com/goccy/go-json v0.10.5
+	github.com/hedzr/progressbar v1.2.0
 	github.com/pkg/xattr v0.4.10
 	github.com/tdewolff/minify/v2 v2.21.2
-	github.com/xplshn/a-utils v0.0.0-20250112052359-db9adee53792
+	github.com/xplshn/a-utils v0.0.0-20250124065437-73b554cf990b
 	github.com/zeebo/blake3 v0.2.4
 	golang.org/x/term v0.28.0
 )
