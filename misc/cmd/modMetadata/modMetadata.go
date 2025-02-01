@@ -15,7 +15,7 @@ import (
 type repository struct {
 	URL    string
 	Name   string
-	Format string
+	Single bool
 }
 
 type PkgForgeItem struct {
@@ -236,17 +236,17 @@ func main() {
 	}{
 		{
 			Repo: repository{
-				Name:   "pkgforge",
+				Name:   "bincache",
 				URL:    "https://meta.pkgforge.dev/bincache/%s.json",
-				Format: "pkgforge",
+				Single: true,
 			},
 			Handler: PkgForgeHandler{},
 		},
 		{
 			Repo: repository{
-				Name:   "pkgforge",
+				Name:   "pkgcache",
 				URL:    "https://meta.pkgforge.dev/pkgcache/%s.json",
-				Format: "pkgforge",
+				Single: true,
 			},
 			Handler: PkgForgeHandler{},
 		},
@@ -254,7 +254,7 @@ func main() {
 			Repo: repository{
 				Name:   "appbundlehub",
 				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json",
-				Format: "dbin",
+				Single: true,
 			},
 			Handler: DbinHandler{},
 		},
@@ -276,15 +276,29 @@ func main() {
 			}
 
 			dbinMetadata[repo.Repo.Name] = append(dbinMetadata[repo.Repo.Name], items...)
+
+			// If Single is true, save individual metadata file for this repository
+			if repo.Repo.Single {
+				singleMetadata := make(DbinMetadata)
+				singleMetadata[repo.Repo.Name] = items
+				singleOutputFile := fmt.Sprintf("METADATA_%s_%s.json", repo.Repo.Name, outputArch)
+				
+				if err := saveJSON(singleOutputFile, singleMetadata); err != nil {
+					fmt.Printf("Error saving single metadata to %s: %v\n", singleOutputFile, err)
+					continue
+				}
+				fmt.Printf("Successfully saved single metadata to %s\n", singleOutputFile)
+			}
 		}
 
+		// Save combined metadata file
 		outputFile := fmt.Sprintf("METADATA_%s.json", outputArch)
 		if err := saveJSON(outputFile, dbinMetadata); err != nil {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
 			continue
 		}
 
-		fmt.Printf("Successfully processed and saved metadata to %s\n", outputFile)
+		fmt.Printf("Successfully processed and saved combined metadata to %s\n", outputFile)
 	}
 }
 
