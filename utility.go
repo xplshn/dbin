@@ -13,6 +13,8 @@ import (
 	"github.com/goccy/go-json"
 	"golang.org/x/term"
 
+	"github.com/klauspost/compress/gzip"
+
 	"github.com/pkg/xattr"
 	"github.com/zeebo/blake3"
 )
@@ -318,8 +320,17 @@ func fetchJSON(url string, v interface{}) error {
 	}
 	defer response.Body.Close()
 
+	var bodyReader io.Reader = response.Body
+	if strings.HasSuffix(url, ".gz") {
+		bodyReader, err = gzip.NewReader(response.Body)
+		if err != nil {
+			return fmt.Errorf("error creating gzip reader for %s: %v", url, err)
+		}
+		defer bodyReader.(*gzip.Reader).Close()
+	}
+
 	body := &bytes.Buffer{}
-	if _, err := io.Copy(body, response.Body); err != nil {
+	if _, err := io.Copy(body, bodyReader); err != nil {
 		return fmt.Errorf("error reading from %s: %v", url, err)
 	}
 
