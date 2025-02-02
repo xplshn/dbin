@@ -207,7 +207,7 @@ func main() {
 			metadata.Base = processItems(metadata.Base, realArchs, validatedArchs, repo, "base")
 
 			// Download additional metadata.json from the specified URL
-			AppBundleHUBMetadataURL := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json"
+			AppBundleHUBMetadataURL := "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_x86_64-Linux.json"
 			AppBundleHUBMetadata, err := downloadJSON(AppBundleHUBMetadataURL)
 			if err != nil {
 				fmt.Printf("Error downloading additional metadata from %s: %v\n", AppBundleHUBMetadataURL, err)

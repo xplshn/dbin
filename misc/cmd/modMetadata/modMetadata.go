@@ -160,7 +160,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 	}
 
 	return DbinItem{
-		Pkg:         fmt.Sprintf("%s%s", t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Name)), t(item.PkgType != "static", "." + item.PkgType, "")),
+		//Pkg:         strings.TrimSuffix(t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Pkg)), ".static"),
+		Pkg: fmt.Sprintf("%s%s", t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Name)), t(item.PkgType != "static", "."+item.PkgType, "")),
 		Name:        item.Name,
 		BinId:       item.BinId,
 		Icon:        item.Icon,
@@ -261,7 +262,7 @@ func main() {
 		{
 			Repo: repository{
 				Name:   "appbundlehub",
-				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata.json",
+				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_x86_64-Linux.json",
 				Single: true,
 			},
 			Handler: DbinHandler{},
@@ -290,7 +291,7 @@ func main() {
 				singleMetadata := make(DbinMetadata)
 				singleMetadata[repo.Repo.Name] = items
 				singleOutputFile := fmt.Sprintf("METADATA_%s_%s.json", repo.Repo.Name, outputArch)
-				
+
 				if err := saveJSON(singleOutputFile, singleMetadata); err != nil {
 					fmt.Printf("Error saving single metadata to %s: %v\n", singleOutputFile, err)
 					continue
