@@ -38,9 +38,10 @@ type PkgForgeItem struct {
 	BuildScript string   `json:"build_script,omitempty"`
 	BuildLog    string   `json:"build_log,omitempty"`
 	Categories  []string `json:"categories,omitempty"`
-	ExtraBins   []string `json:"provides,omitempty"`
+	Provides    []string `json:"provides,omitempty"`
 	Note        []string `json:"note,omitempty"`
-	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
+	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
+	HfPkg       string   `json:"hf_pkg,omitempty"`
 	Rank        string   `json:"rank,omitempty"`
 }
 
@@ -59,15 +60,15 @@ type DbinItem struct {
 	Bsum            string   `json:"bsum,omitempty"`
 	Shasum          string   `json:"shasum,omitempty"`
 	BuildDate       string   `json:"build_date,omitempty"`
-	SrcURL          string   `json:"src_url,omitempty"`
-	WebURL          string   `json:"homepage,omitempty"`
+	SrcURL          []string `json:"src_url,omitempty"`
+	Homepage        []string `json:"homepage,omitempty"`
 	BuildScript     string   `json:"build_script,omitempty"`
 	BuildLog        string   `json:"build_log,omitempty"`
 	Categories      string   `json:"categories,omitempty"`
-	ExtraBins       string   `json:"provides,omitempty"`
-	Note            string   `json:"note,omitempty"`
+	ExtraBins       []string `json:"provides,omitempty"`
+	Note            []string `json:"note,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
-	GhcrURL         string   `json:"ghcr_url,omitempty"`
+	GhcrPkg         string   `json:"ghcr_url,omitempty"`
 	Rank            string   `json:"rank,omitempty"`
 }
 
@@ -136,31 +137,18 @@ type OldDbinMetadata struct {
 }
 
 func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
-	var webURL, srcURL, categories, note string
-
-	if len(item.Homepage) > 0 {
-		webURL = item.Homepage[0]
-	}
-
-	if len(item.SrcURL) > 0 {
-		srcURL = item.SrcURL[0]
-	}
+	var categories string
 
 	if len(item.Categories) > 0 {
 		categories = strings.Join(item.Categories, ",")
 	}
 
-	if len(item.Note) > 0 {
-		note = item.Note[0]
-	}
-
-	var provides string
-	if len(item.ExtraBins) > 0 {
-		provides = strings.Join(item.ExtraBins, ",")
+	// Check if hf_pkg is present and modify the download URL
+	if item.HfPkg != "" {
+		item.DownloadURL = strings.Replace(item.HfPkg, "/tree/main", "/resolve/main", 1) + "/" + item.Pkg
 	}
 
 	return DbinItem{
-		//Pkg:         strings.TrimSuffix(t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Pkg)), ".static"),
 		Pkg:         fmt.Sprintf("%s%s", t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Name)), t(item.PkgType != "static", "."+item.PkgType, "")),
 		Name:        item.Name,
 		BinId:       item.BinId,
@@ -173,14 +161,14 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		Bsum:        item.Bsum,
 		Shasum:      item.Shasum,
 		BuildDate:   item.BuildDate,
-		SrcURL:      srcURL,
-		WebURL:      webURL,
+		SrcURL:      item.SrcURL,
+		Homepage:    item.Homepage,
 		BuildScript: item.BuildScript,
 		BuildLog:    item.BuildLog,
 		Categories:  categories,
-		ExtraBins:   provides,
-		Note:        note,
-		GhcrURL:     item.GhcrBlob,
+		ExtraBins:   item.Provides,
+		Note:        item.Note,
+		GhcrPkg:     item.GhcrPkg,
 		Rank:        item.Rank,
 	}
 }
