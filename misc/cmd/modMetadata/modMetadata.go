@@ -65,7 +65,7 @@ type DbinItem struct {
 	BuildScript     string   `json:"build_script,omitempty"`
 	BuildLog        string   `json:"build_log,omitempty"`
 	Categories      string   `json:"categories,omitempty"`
-	ExtraBins       []string `json:"provides,omitempty"`
+	Provides        string `json:"provides,omitempty"`
 	Note            []string `json:"note,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
 	GhcrPkg         string   `json:"ghcr_url,omitempty"`
@@ -137,10 +137,14 @@ type OldDbinMetadata struct {
 }
 
 func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
-	var categories string
+	var categories, provides string
 
 	if len(item.Categories) > 0 {
 		categories = strings.Join(item.Categories, ",")
+	}
+
+	if len(item.Provides) > 0 {
+		provides = strings.Join(item.Provides, ",")
 	}
 
 	// Check if hf_pkg is present and modify the download URL
@@ -166,7 +170,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		BuildScript: item.BuildScript,
 		BuildLog:    item.BuildLog,
 		Categories:  categories,
-		ExtraBins:   item.Provides,
+		Provides:    provides,
 		Note:        item.Note,
 		GhcrPkg:     item.GhcrPkg,
 		Rank:        item.Rank,
