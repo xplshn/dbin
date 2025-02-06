@@ -1,5 +1,3 @@
-//usr/bin/env go run findURL.go fsearch.go info.go install.go listBinaries.go main.go remove.go run.go update.go utility.go fetch.go config.go "$@"; exit $?
-// dbin - 📦 Poor man's package manager. The easy to use, easy to get, suckless software distribution system
 package main
 
 import (
@@ -7,17 +5,17 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/xplshn/a-utils/pkg/ccmd"
 )
 
-// Verbosity is used along with >= and <= to determine which messages to hide when using `--silent` and which messages to display when using `--verbose`
 type Verbosity int8
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	indicator                           = "...>"
-	Version                             = "0.8"
+	Version                             = "0.8_exp"
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
 	normalVerbosity           Verbosity = 1
@@ -78,7 +76,6 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		print(helpPage)
 	}
 
-	// Define and parse flags
 	verboseFlag := flag.Bool("verbose", false, "Run in extra verbose mode")
 	silentFlag := flag.Bool("silent", false, "Run in silent mode, only errors will be shown")
 	extraSilentFlag := flag.Bool("extra-silent", false, "Run in extra silent mode, suppressing almost all output")
@@ -91,13 +88,11 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		os.Exit(1)
 	}
 
-	// Check for conflicting flags
 	if (*verboseFlag && *silentFlag) || (*verboseFlag && *extraSilentFlag) || (*silentFlag && *extraSilentFlag) {
 		fmt.Fprintln(os.Stderr, "error: Conflicting verbose flags provided.")
 		os.Exit(1)
 	}
 
-	// determineVerbosity determines the verbosity level based on the flags provided.
 	determineVerbosity := func(
 		silentFlag, verboseFlag, extraSilentFlag bool,
 		normalVerbosity, extraVerbose, silentVerbosityWithErrors, extraSilent Verbosity,
@@ -114,7 +109,6 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		}
 	}
 
-	// Determine verbosity level
 	verbosityLevel := determineVerbosity(
 		*silentFlag,
 		*verboseFlag,
@@ -135,20 +129,17 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 	command := args[0]
 	args = args[1:]
 
-	// Load configuration
 	config, err := LoadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error loading config: %v\n", err)
 		os.Exit(1)
 	}
 
-	// TODO, handle notices, to warn users about deprecations, etc.
-	// function to fetch the metadata ONCE
 	var metadata map[string]interface{}
 	var alreadyFetched bool
 	fetchMetadata := func() map[string]interface{} {
 		if alreadyFetched != true {
-			for _, url := range config.MetadataURLs {
+			for _, url := range config.RepoURLs {
 				err := fetchJSON(url, &metadata)
 				if err != nil {
 					fmt.Printf("failed to fetch and decode binary information from %s: %v\n", url, err)
@@ -168,9 +159,9 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			fmt.Println("No binary names provided for findurl command.")
 			os.Exit(1)
 		}
-		binaryNames := args
+		binaryEntries := removeDuplicates(arrStringToArrBinaryEntry(args))
 		fetchMetadata()
-		urls, _, err := findURL(config, binaryNames, verbosityLevel, metadata)
+		urls, _, err := findURL(config, binaryEntries, verbosityLevel, metadata)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
@@ -179,7 +170,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		}
 		if verbosityLevel >= normalVerbosity {
 			for i, url := range urls {
-				fmt.Printf("URL for %s: %s\n", binaryNames[i], url)
+				fmt.Printf("URL for %s: %s\n", binaryEntries[i].Name, url)
 			}
 		}
 	case "fullname":
@@ -194,14 +185,12 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			fmt.Println("No binary name provided for install command.")
 			os.Exit(1)
 		}
-		binaries := args
 		fetchMetadata()
-		err := installCommand(config, binaries, verbosityLevel, metadata)
+		err := installCommand(config, removeDuplicates(arrStringToArrBinaryEntry(args)), verbosityLevel, metadata)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}
-		// fmt.Println("Installation completed successfully.")
 	case "remove", "del":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for remove command.")
@@ -213,11 +202,9 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}
-		// fmt.Println("Removal completed successfully.")
 	case "list":
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
-				// Call fSearch with an empty query and a large limit to list all described binaries
 				fetchMetadata()
 				fSearch(config, "", metadata)
 			} else {
@@ -230,7 +217,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				fmt.Println("Error listing binaries:", err)
 				os.Exit(1)
 			}
-			for _, binary := range binaries {
+			for _, binary := range binaryEntriesToArrString(binaries, true) {
 				fmt.Println(binary)
 			}
 		}
@@ -245,7 +232,8 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		if len(args) > 0 && (args[queryIndex] == "--limit" || args[queryIndex] == "-l") {
 			if len(args) > queryIndex+1 {
 				var err error
-				config.Limit, err = strconv.Atoi(args[queryIndex+1])
+				limit, err := strconv.Atoi(args[queryIndex+1])
+				config.Limit = uint(limit)
 				if err != nil {
 					fmt.Printf("error: 'limit' value is not an int: %v\n", err)
 					os.Exit(1)
@@ -273,18 +261,16 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		var binaryName string
 		var remote bool
 
-		// Check for flags: --remote or -r
 		for _, arg := range args {
 			if arg == "--remote" || arg == "-r" {
 				remote = true
-			} else if binaryName == "" { // The first non-flag argument is treated as binaryName
+			} else if binaryName == "" {
 				binaryName = arg
 			}
 		}
 
 		if binaryName == "" {
 			if !remote {
-				// Get the list of files in the installation directory
 				files, err := listFilesInDir(config.InstallDir)
 				if err != nil {
 					fmt.Printf("error listing files in %s: %v\n", config.InstallDir, err)
@@ -293,7 +279,6 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 
 				installedPrograms := make([]string, 0)
 
-				// Loop over the files and check if they are installed
 				for _, file := range files {
 					fullBinaryName := listInstalled(file)
 					if fullBinaryName != "" {
@@ -301,39 +286,35 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 					}
 				}
 
-				// Print the installed programs
 				for _, program := range installedPrograms {
 					fmt.Println(program)
 				}
 			} else {
-				// Validate programs from the remote source
 				fetchMetadata()
 				installedPrograms, err := validateProgramsFrom(config, nil, metadata)
 				if err != nil {
 					fmt.Printf("error validating programs: %v\n", err)
 					os.Exit(1)
 				}
-				// Print the installed programs
 				for _, program := range installedPrograms {
 					fmt.Println(program)
 				}
 			}
 		} else {
 			fetchMetadata()
-			binaryInfo, err := getBinaryInfo(config, binaryName, metadata)
+			binaryInfo, err := getBinaryInfo(config, stringToBinaryEntry(binaryName), metadata)
 			if err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}
 
-			// Define the fields to print
 			fields := []struct {
 				label string
 				value string
 			}{
-				{"Name", binaryInfo.RealName},
+				{"Name", binaryInfo.Name},
+				{"Pretty Name", binaryInfo.PrettyName},
 				{"Description", binaryInfo.Description},
-				{"Note", binaryInfo.Note},
 				{"Version", binaryInfo.Version},
 				{"Ghcr URL", binaryInfo.GhcrURL},
 				{"Download URL", binaryInfo.DownloadURL},
@@ -349,10 +330,14 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				{"Extra Bins", binaryInfo.ExtraBins},
 			}
 
-			// Print detailed binary information
 			for _, field := range fields {
 				if field.value != "" {
 					truncatePrintf(config.DisableTruncation, "\033[48;5;4m%s\033[0m: %s\n", field.label, field.value)
+				}
+			}
+			if binaryInfo.Note != "" {
+				for n, str := range strings.Split(binaryInfo.Note, "\n") {
+					truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mNote\033[0m: %s\n", "    %s\n"), str)
 				}
 			}
 		}
@@ -370,25 +355,22 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			transparentMode = true
 		}
 
-		// Ensure binary name is provided
 		if len(flag.Args()) < 1 {
 			fmt.Println("Usage: dbin run <--transparent> [binary] <args>")
 			os.Exit(1)
 		}
 
 		fetchMetadata()
-		RunFromCache(config, flag.Arg(0), flag.Args()[1:], transparentMode, verbosityLevel, metadata)
+		RunFromCache(config, stringToBinaryEntry(flag.Arg(0)), flag.Args()[1:], transparentMode, verbosityLevel, metadata)
 	case "tldr":
-		RunFromCache(config, "tlrc", flag.Args()[1:], true, verbosityLevel, metadata)
+		RunFromCache(config, stringToBinaryEntry("tlrc"), flag.Args()[1:], true, verbosityLevel, metadata)
 	case "eget2":
-		RunFromCache(config, "eget2", flag.Args()[1:], true, verbosityLevel, metadata)
+		RunFromCache(config, stringToBinaryEntry("eget2"), flag.Args()[1:], true, verbosityLevel, metadata)
 	case "update":
-		var programsToUpdate []string
 		if len(os.Args) > 2 {
-			programsToUpdate = os.Args[2:]
 		}
 		fetchMetadata()
-		if err := update(config, programsToUpdate, verbosityLevel, metadata); err != nil {
+		if err := update(config, arrStringToArrBinaryEntry(os.Args[2:]), verbosityLevel, metadata); err != nil {
 			fmt.Println("Update failed:", err)
 		}
 	default:

@@ -1,4 +1,3 @@
-// listBinaries.go // This file implements the listBinaries function //>
 package main
 
 import (
@@ -6,11 +5,10 @@ import (
 	"strings"
 )
 
-// Excluded file types and file names that shall not appear in Lists nor in Search Results
 var excludedFileTypes = []string{
 	".7z", ".bz2", ".json", ".gz", ".xz", ".md",
 	".txt", ".tar", ".zip", ".cfg", ".dir",
-	".test", //".appimage"
+	".dynamic", ".test",
 }
 
 var excludedFileNames = []string{
@@ -23,10 +21,9 @@ var excludedFileNames = []string{
 }
 
 // listBinaries fetches and lists binary names from the given metadata URLs.
-func listBinaries(metadata map[string]interface{}) ([]string, error) {
-	var allBinaries []string
+func listBinaries(metadata map[string]interface{}) ([]binaryEntry, error) {
+	var allBinaries []binaryEntry
 
-	// Iterate over all sections in the metadata
 	for _, section := range metadata {
 		binaries, ok := section.([]interface{})
 		if !ok {
@@ -39,30 +36,37 @@ func listBinaries(metadata map[string]interface{}) ([]string, error) {
 				continue
 			}
 
-			realName, _ := binMap["pkg"].(string)
-			if realName != "" {
-				allBinaries = append(allBinaries, realName)
+			name, _ := binMap["pkg"].(string)
+			pkgId, _ := binMap["pkg_id"].(string)
+			version, _ := binMap["version"].(string)
+			description, _ := binMap["description"].(string)
+			rank, _ := binMap["rank"].(uint16)
+
+			if name != "" {
+				allBinaries = append(allBinaries, binaryEntry{
+					Name:        name,
+					PkgId:       pkgId,
+					Version:     version,
+					Description: description,
+					Rank:        rank,
+				})
 			}
 		}
 	}
 
-	// Filter out excluded file types and file RealNames
 	filteredBinaries := filterBinaries(allBinaries)
-
-	// Return unique binaries
 	return removeDuplicates(filteredBinaries), nil
 }
 
 // filterBinaries filters the list of binaries based on exclusions.
-func filterBinaries(binaries []string) []string {
-	var filtered []string
-	for _, binary := range binaries {
-		ext := strings.ToLower(filepath.Ext(binary))
-		base := filepath.Base(binary)
+func filterBinaries(binaries []binaryEntry) []binaryEntry {
+	var filtered []binaryEntry
+	for _, result := range binaries {
+		ext := strings.ToLower(filepath.Ext(result.Name))
+		base := filepath.Base(result.Name)
 
-		// Check for exclusions
 		if !contains(excludedFileTypes, ext) && !contains(excludedFileNames, base) {
-			filtered = append(filtered, binary)
+			filtered = append(filtered, result)
 		}
 	}
 	return filtered

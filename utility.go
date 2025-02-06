@@ -19,20 +19,20 @@ import (
 	"github.com/zeebo/blake3"
 )
 
-// removeDuplicates removes duplicate binaries from the list (used in ./install.go)
-func removeDuplicates(binaries []string) []string {
-	seen := make(map[string]struct{})
-	result := []string{}
-	for _, binary := range binaries {
-		if _, ok := seen[binary]; !ok {
-			seen[binary] = struct{}{}
-			result = append(result, binary)
+// removeDuplicates removes duplicate elements from the list
+func removeDuplicates[T comparable](elements []T) []T {
+	seen := make(map[T]struct{})
+	result := []T{}
+	for _, element := range elements {
+		if _, ok := seen[element]; !ok {
+			seen[element] = struct{}{}
+			result = append(result, element)
 		}
 	}
 	return result
 }
 
-// contanins will return true if the provided slice of []strings contains the word str
+// contains returns true if the provided slice of []strings contains the word str
 func contains(slice []string, str string) bool {
 	for _, v := range slice {
 		if v == str {
@@ -53,7 +53,7 @@ func isDirectory(path string) (bool, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil // Path does not exist
+			return false, nil
 		}
 		return false, err
 	}
@@ -69,13 +69,68 @@ func isExecutable(filePath string) bool {
 	return info.Mode().IsRegular() && (info.Mode().Perm()&0o111) != 0
 }
 
+// stringToBinaryEntry parses a string in the format "binary", "binary#id" or "binary#id:version"
+func stringToBinaryEntry(input string) binaryEntry {
+	var req binaryEntry
+
+	parts := strings.Split(input, "#")
+	req.Name = parts[0]
+
+	if len(parts) > 1 {
+		idVer := strings.Split(parts[1], ":")
+		req.PkgId = idVer[0]
+		if len(idVer) > 1 {
+			req.Version = idVer[1]
+		}
+	}
+
+	return req
+}
+
+func arrStringToArrBinaryEntry(args []string) []binaryEntry {
+	var entries []binaryEntry
+	for _, arg := range args {
+		entries = append(entries, stringToBinaryEntry(arg))
+	}
+	return entries
+}
+
+// parseBinaryEntry formats a single binaryEntry into a string in the format "name#id"
+func parseBinaryEntry(entry binaryEntry, ansi bool) string {
+	if ansi {
+		return entry.Name + "\033[94m#" + entry.PkgId + "\033[0m"
+	}
+	return entry.Name + "#" + entry.PkgId
+}
+
+// parseBinaryEntries formats a slice of binaryEntry into a slice of strings, each in the format "name#id" or "name#id:version"
+func binaryEntriesToArrString(entries []binaryEntry, ansi bool) []string {
+	var result []string
+	seen := make(map[string]bool)
+
+	for _, entry := range entries {
+		key := parseBinaryEntry(entry, ansi)
+		if !seen[key] {
+			result = append(result, key)
+		} else {
+			seen[key] = true
+			if entry.Version != "" {
+				result = append(result, key, ternary(!ansi, entry.Version, "\033[90m"+entry.Version+"\033[0m"))
+			}
+		}
+	}
+
+	return result
+}
+
 // validateProgramsFrom checks the validity of programs against a remote source
-func validateProgramsFrom(config *Config, programsToValidate []string, metadata map[string]interface{}) ([]string, error) {
+func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, metadata map[string]interface{}) ([]binaryEntry, error) {
 	installDir := config.InstallDir
-	remotePrograms, err := listBinaries(metadata)
+	programsEntries, err := listBinaries(metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list remote binaries: %w", err)
 	}
+	remotePrograms := binaryEntriesToArrString(programsEntries, false)
 
 	files, err := listFilesInDir(installDir)
 	if err != nil {
@@ -83,37 +138,33 @@ func validateProgramsFrom(config *Config, programsToValidate []string, metadata 
 	}
 
 	programsToValidate = removeDuplicates(programsToValidate)
-	validPrograms := make([]string, 0, len(programsToValidate))
+	validPrograms := make([]binaryEntry, 0, len(programsToValidate))
 
-	// Inline function to validate a file against the remote program list
-	validate := func(file string) (string, bool) {
-		fullBinaryName := listInstalled(file) // Get the full binary name of the file
-		if config.RetakeOwnership == true {
+	validate := func(file string) (binaryEntry, bool) {
+		fullBinaryName := listInstalled(file)
+		if config.RetakeOwnership {
 			fullBinaryName = filepath.Base(file)
 			if fullBinaryName == "" {
-				return "", false // If we couldn't get a valid name, return invalid
+				return binaryEntry{}, false
 			}
 		}
-		// Check if the full name exists in the remote programs
 		if contains(remotePrograms, fullBinaryName) {
-			return fullBinaryName, true
+			return stringToBinaryEntry(fullBinaryName), true
 		}
-		return "", false
+		return binaryEntry{}, false
 	}
 
 	if len(programsToValidate) == 0 {
-		// Validate all files in the directory
 		for _, file := range files {
-			if fullName, valid := validate(file); valid {
-				validPrograms = append(validPrograms, fullName)
+			if bEntry, valid := validate(file); valid {
+				validPrograms = append(validPrograms, bEntry)
 			}
 		}
 	} else {
-		// Validate only the specified programs
 		for _, program := range programsToValidate {
-			file := filepath.Join(installDir, program)
-			if fullName, valid := validate(file); valid {
-				validPrograms = append(validPrograms, fullName)
+			file := filepath.Join(installDir, program.Name)
+			if bEntry, valid := validate(file); valid {
+				validPrograms = append(validPrograms, bEntry)
 			}
 		}
 	}
@@ -125,10 +176,9 @@ func listInstalled(binaryPath string) string {
 	if isSymlink(binaryPath) {
 		return ""
 	}
-	// Retrieve the fullName of the binary
 	fullBinaryName, err := getFullName(binaryPath)
 	if err != nil || fullBinaryName == "" {
-		return "" // If we can't get the full name, consider it invalid
+		return ""
 	}
 	return fullBinaryName
 }
@@ -151,15 +201,12 @@ func errorOut(format string, args ...interface{}) {
 	os.Exit(errorEncoder(format, args...))
 }
 
-// GetTerminalWidth attempts to determine the width of the terminal.
-// if failed, it will falls back to  80 columns.
+// getTerminalWidth attempts to determine the width of the terminal.
 func getTerminalWidth() int {
 	w, _, _ := term.GetSize(int(os.Stdout.Fd()))
 	if w != 0 {
 		return w
 	}
-
-	// Fallback to  80 columns
 	return 80
 }
 
@@ -241,17 +288,13 @@ func listFilesInDir(dir string) ([]string, error) {
 }
 
 // getFullName retrieves the full binary name from the extended attributes of the binary file.
-// If the binary does not exist, it returns the basename. If the full name attribute cannot be retrieved, it returns an error.
 func getFullName(binaryPath string) (string, error) {
-
 	if !fileExists(binaryPath) {
 		return filepath.Base(binaryPath), nil
 	}
 
-	// Retrieve the "user.FullName" attribute
 	fullName, err := xattr.Get(binaryPath, "user.FullName")
 	if err != nil {
-		// Return an error if the full name cannot be retrieved but the binary exists
 		return "", fmt.Errorf("full name attribute not found for binary: %s", binaryPath)
 	}
 
@@ -259,9 +302,8 @@ func getFullName(binaryPath string) (string, error) {
 }
 
 // addFullName writes the full binary name to the extended attributes of the binary file.
-func addFullName(binaryPath string, fullName string) error {
-	// Set the "user.FullName" attribute
-	if err := xattr.Set(binaryPath, "user.FullName", []byte(fullName)); err != nil {
+func addFullName(binaryPath string, pkgId string) error {
+	if err := xattr.Set(binaryPath, "user.FullName", []byte(pkgId)); err != nil {
 		return fmt.Errorf("failed to set xattr for %s: %w", binaryPath, err)
 	}
 	return nil
@@ -269,23 +311,19 @@ func addFullName(binaryPath string, fullName string) error {
 
 // removeNixGarbageFoundInTheRepos corrects any /nix/store/ or /bin/ binary path in the file.
 func removeNixGarbageFoundInTheRepos(filePath string) error {
-	// Read the entire file content
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %v", filePath, err)
 	}
-	// Regex to match and remove the /nix/store/.../ prefix in the shebang line, preserving the rest of the path
+
 	nixShebangRegex := regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`)
-	// Regex to match and remove the /nix/store/*/bin/ prefix in other lines
 	nixBinPathRegex := regexp.MustCompile(`/nix/store/[^/]+/bin/`)
-	// Split content by lines
+
 	lines := strings.Split(string(content), "\n")
-	// Flag to track if any corrections were made
 	correctionsMade := false
-	// Handle the shebang line separately if it exists and matches the nix pattern
+
 	if len(lines) > 0 && nixShebangRegex.MatchString(lines[0]) {
 		lines[0] = nixShebangRegex.ReplaceAllString(lines[0], "#!/")
-		// Iterate through the rest of the lines and correct any /nix/store/*/bin/ path
 		for i := 1; i < len(lines); i++ {
 			if nixBinPathRegex.MatchString(lines[i]) {
 				lines[i] = nixBinPathRegex.ReplaceAllString(lines[i], "")
@@ -293,7 +331,7 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 		}
 		correctionsMade = true
 	}
-	// If any corrections were made, write the modified content back to the file
+
 	if correctionsMade {
 		if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
 			return fmt.Errorf("failed to correct nix object [%s]: %v", filepath.Base(filePath), err)
@@ -365,14 +403,14 @@ func isSymlink(filePath string) bool {
 func sanitizeString(input string) string {
 	var sanitized strings.Builder
 	for _, ch := range input {
-		if ch >= 32 && ch <= 126 { // Printable ASCII characters
+		if ch >= 32 && ch <= 126 {
 			sanitized.WriteRune(ch)
 		}
 	}
 	return sanitized.String()
 }
 
-// ternary
+// ternary function
 func ternary[T any](cond bool, vtrue, vfalse T) T {
 	if cond {
 		return vtrue

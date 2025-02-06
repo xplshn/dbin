@@ -8,9 +8,7 @@ import (
 	"sync/atomic"
 )
 
-// update checks for updates to the valid programs and installs any that have changed.
-func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
-	// Initialize counters
+func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	var (
 		skipped, updated, errors uint32
 		checked                  uint32
@@ -19,35 +17,26 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity,
 		padding                  = " "
 	)
 
-	// Call validateProgramsFrom with config and programsToUpdate
 	programsToUpdate, err := validateProgramsFrom(config, programsToUpdate, metadata)
 	if err != nil {
 		return err
 	}
 
-	// Calculate toBeChecked
 	toBeChecked := uint32(len(programsToUpdate))
 
-	// Use a mutex for thread-safe updates to the progress
 	var progressMutex sync.Mutex
-
-	// Use a wait group to wait for all programs to finish updating
 	var wg sync.WaitGroup
 
-	// Separate slice to track programs that need updating
-	var outdatedPrograms []string
+	var outdatedPrograms []binaryEntry
 
-	// Iterate over programsToUpdate and download/update each one concurrently
 	installDir := config.InstallDir
 	for _, program := range programsToUpdate {
-		// Increment the WaitGroup counter
 		wg.Add(1)
 
-		// Launch a goroutine to update the program
-		go func(program string) {
+		go func(program binaryEntry) {
 			defer wg.Done()
 
-			installPath := filepath.Join(installDir, filepath.Base(program))
+			installPath := filepath.Join(installDir, filepath.Base(program.Name))
 			fullName, err := getFullName(installPath)
 
 			if !fileExists(installPath) {
@@ -60,6 +49,7 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity,
 				progressMutex.Unlock()
 				return
 			}
+
 			localB3sum, err := calculateChecksum(installPath)
 			if err != nil {
 				progressMutex.Lock()
@@ -96,7 +86,6 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity,
 			}
 
 			if localB3sum != binaryInfo.Bsum {
-				// Add to outdated programs for bulk installation
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&updated, 1)
@@ -118,14 +107,11 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity,
 		}(program)
 	}
 
-	// Wait for all goroutines to finish
 	wg.Wait()
 
-	// Bulk install outdated programs
 	if len(outdatedPrograms) > 0 {
-		fmt.Print("\033[2K\r") // Clear up any prior messages on this same line, prior to triggering installCommand()
-		err := installCommand(config, outdatedPrograms, 1, metadata)
-		if err != nil {
+		fmt.Print("\033[2K\r")
+		if err := installCommand(config, outdatedPrograms, 1, metadata); err != nil {
 			atomic.AddUint32(&errors, 1)
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Printf("Failed to update programs: %v\n", outdatedPrograms)
@@ -133,13 +119,11 @@ func update(config *Config, programsToUpdate []string, verbosityLevel Verbosity,
 		}
 	}
 
-	// Prepare final counts
 	finalCounts := fmt.Sprintf("\033[2K\rSkipped: %d\tUpdated: %d\tChecked: %d", atomic.LoadUint32(&skipped), atomic.LoadUint32(&updated), uint32(int(atomic.LoadUint32(&checked))))
 	if errors > 0 && verbosityLevel >= silentVerbosityWithErrors {
 		finalCounts += fmt.Sprintf("\tErrors: %d", atomic.LoadUint32(&errors))
 	}
 
-	// Print final counts
 	if verbosityLevel >= normalVerbosity || (errors > 0 && verbosityLevel >= silentVerbosityWithErrors) {
 		fmt.Printf(finalCounts)
 		for _, errorMsg := range strings.Split(errorMessages, "\n") {

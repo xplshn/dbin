@@ -13,8 +13,7 @@ import (
 	"github.com/hedzr/progressbar/cursor"
 )
 
-// installBinaries fetches multiple binaries concurrently, logging based on verbosity levels.
-func installBinaries(ctx context.Context, config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	var outputDevice io.Writer
 	if verbosityLevel <= silentVerbosityWithErrors {
 		outputDevice = io.Discard
@@ -37,38 +36,33 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 
 	var errors []string
 
-	// get max length for binary name
 	binaryNameMaxlen := 0
-	for _, binaryName := range binaries {
-		if binaryNameMaxlen < len(binaryName) {
-			binaryNameMaxlen = len(binaryName)
+	for _, binaryEntry := range binaries {
+		if binaryNameMaxlen < len(binaryEntry.Name) {
+			binaryNameMaxlen = len(binaryEntry.Name)
 		}
 	}
 
 	termWidth := getTerminalWidth()
 
-	for i, binaryName := range binaries {
+	for i, binaryEntry := range binaries {
 		wg.Add(1)
 		url := urls[i]
 		checksum := checksums[i]
-		destination := filepath.Join(config.InstallDir, filepath.Base(binaryName))
+		destination := filepath.Join(config.InstallDir, filepath.Base(binaryEntry.Name))
 
-		barTitle := fmt.Sprintf("Installing %s", binaryName)
+		barTitle := fmt.Sprintf("Installing %s", binaryEntry.Name)
 		pbarOpts := []progressbar.Opt{
 			progressbar.WithBarStepper(config.ProgressbarStyle),
 		}
 
 		if termWidth < 120 {
-			barTitle = binaryName
+			barTitle = binaryEntry.Name
 			pbarOpts = append(
 				pbarOpts,
-				// max length of `{{.Percent}}` is 6
-				// length of ` {{.Percent}} | <font color="green">{{.Title}}</font>` is (binaryNameMaxlen + 11 + 4*2)
-				// 4*2 is color (\x1b[32mTitle\x1b[0m)
 				progressbar.WithBarTextSchema(`{{.Bar}} {{.Percent}} | <font color="green">{{.Title}}</font>`),
 				progressbar.WithBarWidth(termWidth-(binaryNameMaxlen+19)),
 			)
-
 		}
 
 		tasks.Add(
@@ -76,27 +70,24 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 			progressbar.WithTaskAddBarOptions(pbarOpts...),
 			progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
 				defer wg.Done()
-				// Fetch binary and place it at destination
 				_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
 				if fetchErr != nil {
-					errChan <- fmt.Errorf("error fetching binary %s: %v", binaryName, fetchErr)
+					errChan <- fmt.Errorf("error fetching binary %s: %v", binaryEntry.Name, fetchErr)
 					return
 				}
 
-				// Make the binary executable
 				if err := os.Chmod(destination, 0755); err != nil {
 					errChan <- fmt.Errorf("error making binary executable %s: %v", destination, err)
 					return
 				}
 
-				// Run hooks after the file is downloaded and chmod +x
 				if err := runIntegrationHooks(config, destination, verbosityLevel, metadata); err != nil {
-					errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", binaryName, err)
+					errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", binaryEntry.Name, err)
 					return
 				}
 
-				// Add full name to the binary's xattr
-				if err := addFullName(destination, binaryName); err != nil {
+				binInfo, _ := getBinaryInfo(config, binaryEntry, metadata)
+				if err := addFullName(destination, binInfo.PkgId); err != nil {
 					errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
 					return
 				}
@@ -110,7 +101,6 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 		close(errChan)
 	}()
 
-	// Collect errors
 	for err := range errChan {
 		errors = append(errors, err.Error())
 	}
@@ -125,13 +115,10 @@ func installBinaries(ctx context.Context, config *Config, binaries []string, ver
 	return nil
 }
 
-// runIntegrationHooks runs the integration hooks for binaries which need to be integrated
 func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	if config.UseIntegrationHooks {
-		// Infer the file extension from the binaryPath
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
-			// Execute user-defined integration hooks
 			for _, cmd := range hookCommands.IntegrationCommands {
 				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel, metadata); err != nil {
 					return err
@@ -142,7 +129,6 @@ func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbo
 	return nil
 }
 
-// installCommand installs one or more binaries based on the verbosity level.
-func installCommand(config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func installCommand(config *Config, binaries []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	return installBinaries(context.Background(), config, removeDuplicates(binaries), verbosityLevel, metadata)
 }

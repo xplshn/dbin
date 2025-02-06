@@ -161,7 +161,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 
 	return DbinItem{
 		//Pkg:         strings.TrimSuffix(t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Pkg)), ".static"),
-		Pkg: fmt.Sprintf("%s%s", t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Name)), t(item.PkgType != "static", "."+item.PkgType, "")),
+		Pkg:         fmt.Sprintf("%s%s", t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Name)), t(item.PkgType != "static", "."+item.PkgType, "")),
 		Name:        item.Name,
 		BinId:       item.BinId,
 		Icon:        item.Icon,

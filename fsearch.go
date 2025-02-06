@@ -1,4 +1,3 @@
-// fsearch.go // this file implements the search option
 package main
 
 import (
@@ -7,17 +6,19 @@ import (
 	"strings"
 )
 
+type binaryEntry struct {
+	Name        string
+	PkgId       string
+	Version     string
+	Description string
+	Rank        uint16
+}
+
 // fSearch searches for binaries based on the given search term
 func fSearch(config *Config, searchTerm string, metadata map[string]interface{}) error {
-	type tBinary struct {
-		Architecture string `json:"architecture"`
-		RealName     string `json:"pkg"`
-		Description  string `json:"description"`
-	}
+	var results []binaryEntry
 
-	// Fetch metadata
-	var binaries []tBinary
-	// Iterate over all sections and gather binaries
+	// Gather all matching binaries across sections
 	for _, section := range metadata {
 		binList, ok := section.([]interface{})
 		if !ok {
@@ -30,73 +31,74 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 				continue
 			}
 
-			realName, _ := binMap["pkg"].(string)
+			name, _ := binMap["pkg"].(string)
+			pkgId, _ := binMap["pkg_id"].(string)
+			version, _ := binMap["version"].(string)
 			description, _ := binMap["description"].(string)
-			binaries = append(binaries, tBinary{
-				RealName:    realName,
-				Description: description,
-			})
+			rank, _ := binMap["rank"].(uint16)
+
+			// Skip if missing required fields
+			if name == "" || description == "" {
+				continue
+			}
+
+			// Check if matches search term
+			if strings.Contains(strings.ToLower(name), strings.ToLower(searchTerm)) ||
+				strings.Contains(strings.ToLower(description), strings.ToLower(searchTerm)) {
+
+				results = append(results, binaryEntry{
+					Name:        name,
+					PkgId:       pkgId,
+					Version:     version,
+					Description: description,
+					Rank:        rank,
+				})
+			}
 		}
 	}
 
-	// Extract real names for filtering
-	allBinaryNames := make([]string, len(binaries))
-	for i, binary := range binaries {
-		allBinaryNames[i] = binary.RealName
-	}
+	// Filter results
+	filteredResults := make([]binaryEntry, 0)
+	for _, result := range results {
+		ext := strings.ToLower(filepath.Ext(result.Name))
+		base := filepath.Base(result.Name)
 
-	// Filter binaries using the filterBinaries function from list.go
-	filteredBinaryNames := filterBinaries(allBinaryNames)
-
-	// Filter binaries based on the search term and architecture
-	searchResults := make([]string, 0)
-	for _, binary := range binaries {
-		if !contains(filteredBinaryNames, binary.RealName) || binary.Description == "" {
-			continue
-		}
-
-		if strings.Contains(strings.ToLower(binary.RealName), strings.ToLower(searchTerm)) ||
-			strings.Contains(strings.ToLower(binary.Description), strings.ToLower(searchTerm)) {
-			entry := fmt.Sprintf("%s - %s", binary.RealName, binary.Description)
-			searchResults = append(searchResults, entry)
+		if !contains(excludedFileTypes, ext) && !contains(excludedFileNames, base) {
+			filteredResults = append(filteredResults, result)
 		}
 	}
 
-	// Check if no matching binaries found
-	limit := config.Limit
-	if len(searchResults) == 0 {
+	// Check result count
+	if len(filteredResults) == 0 {
 		return fmt.Errorf("no matching binaries found for '%s'", searchTerm)
-	} else if len(searchResults) > limit {
-		return fmt.Errorf("too many matching binaries (+%d. [Use --limit before your query]) found for '%s'", limit, searchTerm)
+	} else if uint(len(filteredResults)) > config.Limit {
+		return fmt.Errorf("too many matching binaries (+%d. [Use --limit before your query]) found for '%s'",
+			config.Limit, searchTerm)
 	}
 
-	// Maps to track installed and cached binaries
-	installedBinaries := make(map[string]bool)
-
-	// Check if the binary exists in the INSTALL_DIR and print results with installation state indicators
+	// Print results
 	installDir := config.InstallDir
 	disableTruncation := config.DisableTruncation
-	for _, line := range searchResults {
-		parts := strings.SplitN(line, " - ", 2)
-		if len(parts) < 2 {
-			return fmt.Errorf("invalid search result format: %s", line)
-		}
-		RealName := parts[0]
-		description := parts[1]
-		baseRealName := filepath.Base(RealName)
 
-		// Determine the prefix based on conditions
+	for _, result := range filteredResults {
+		// Determine installation status
 		prefix := "[-]"
-		_, cachedBinaryRealName, _ := ReturnCachedFile(config, RealName)
-
-		if installPath := filepath.Join(installDir, baseRealName); fileExists(installPath) && !installedBinaries[baseRealName] {
+		if fileExists(filepath.Join(installDir, filepath.Base(result.Name))) {
 			prefix = "[i]"
-			installedBinaries[baseRealName] = true
-		} else if cachedBinaryRealName == RealName {
-			prefix = "[c]"
 		}
 
-		truncatePrintf(disableTruncation, "%s %s - %s\n", prefix, RealName, description)
+		// Format version info in gray
+		versionInfo := ""
+		if result.PkgId != "" {
+			versionInfo = fmt.Sprintf("\033[94m#%s", result.PkgId)
+			if result.Version != "" {
+				versionInfo += fmt.Sprintf("\033[90m:%s", result.Version)
+			}
+			versionInfo += "\033[0m"
+		}
+
+		truncatePrintf(disableTruncation, "%s %s%s - %s\n",
+			prefix, result.Name, versionInfo, result.Description)
 	}
 
 	return nil

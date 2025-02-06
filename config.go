@@ -15,10 +15,10 @@ import (
 
 // Config structure holding configuration settings
 type Config struct {
-	MetadataURLs        []string        `json:"metadata_urls" env:"DBIN_METADATA_URLS"`
+	RepoURLs            []string        `json:"repo_urls" env:"DBIN_REPO_URLS"`
 	InstallDir          string          `json:"install_dir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
 	CacheDir            string          `json:"cache_dir" env:"DBIN_CACHEDIR"`
-	Limit               int             `json:"fsearch_limit"`
+	Limit               uint            `json:"fsearch_limit"`
 	ProgressbarStyle    int             `json:"progressbar_style,omitempty"`
 	DisableTruncation   bool            `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
 	RetakeOwnership     bool            `json:"retake_ownership" env:"DBIN_REOWN"`
@@ -72,7 +72,6 @@ func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension strin
 	// Split command into command name and arguments
 	commandParts := strings.Fields(cmd)
 	if len(commandParts) == 0 {
-		//return fmt.Errorf("no command to execute for extension: %s", extension)
 		return nil
 	}
 
@@ -81,7 +80,7 @@ func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension strin
 
 	if useRunFromCache {
 		// Directly call RunFromCache with the full command string
-		return RunFromCache(config, command, args, true, verbosityLevel, metadata)
+		return RunFromCache(config, stringToBinaryEntry(command), args, true, verbosityLevel, metadata)
 	} else {
 		// Create a new command
 		cmdExec := exec.Command(command, args...)
@@ -220,7 +219,6 @@ func parseBool(s string) (bool, error) {
 	return strconv.ParseBool(s)
 }
 
-// setDefaultValues sets default values for specific configuration entries only if they are not already set.
 func setDefaultValues(config *Config) {
 	// Setting default InstallDir if not defined
 	if config.InstallDir == "" {
@@ -246,24 +244,15 @@ func setDefaultValues(config *Config) {
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 
 	// Set up default metadata URLs if none are provided
-	if len(config.MetadataURLs) == 0 {
-		config.MetadataURLs = []string{
-			"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadata/METADATA_" + arch + ".min.json.gz",
-		}
+	config.RepoURLs = []string{
+		"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadata/METADATA_" + arch + ".min.json.gz",
 	}
 
-	if config.Limit == 0 {
-		config.Limit = 90
-	}
-	if !config.UseIntegrationHooks {
-		config.UseIntegrationHooks = true
-	}
-	if !config.RetakeOwnership {
-		config.RetakeOwnership = false
-	}
-	if config.ProgressbarStyle == 0 {
-		config.ProgressbarStyle = 1
-	}
+	config.DisableTruncation = false
+	config.Limit = 90
+	config.UseIntegrationHooks = true
+	config.RetakeOwnership = false
+	config.ProgressbarStyle = 1
 }
 
 // CreateDefaultConfig creates a default configuration file.
