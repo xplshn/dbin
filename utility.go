@@ -71,26 +71,25 @@ func isExecutable(filePath string) bool {
 
 // stringToBinaryEntry parses a string in the format "binary", "binary#id", "binary#id:version" or "id"
 func stringToBinaryEntry(input string) binaryEntry {
-	var req binaryEntry
+	var bEntry binaryEntry
 
 	// Split the input string by '#' to separate the name and the id/version part
 	parts := strings.SplitN(input, "#", 2)
-	req.Name = parts[0]
+	bEntry.Name = parts[0]
 
 	if len(parts) > 1 {
 		// Further split the id/version part by ':' to separate the id and version
 		idVer := strings.SplitN(parts[1], ":", 2)
-		req.PkgId = idVer[0]
+		bEntry.PkgId = idVer[0]
 		if len(idVer) > 1 {
-			req.Version = idVer[1]
+			bEntry.Version = idVer[1]
 		}
 	} else {
 		// If there's no '#', assume the whole input is the name
-		req.Name = input
+		bEntry.Name = input
 	}
 
-	fmt.Printf("Parsed binaryEntry: Name=%s, PkgId=%s, Version=%s\n", req.Name, req.PkgId, req.Version)
-	return req
+	return bEntry
 }
 
 func arrStringToArrBinaryEntry(args []string) []binaryEntry {

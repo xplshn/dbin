@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/xplshn/a-utils/pkg/ccmd"
 )
@@ -317,29 +316,30 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				{"Pretty Name", binaryInfo.PrettyName},
 				{"Description", binaryInfo.Description},
 				{"Version", binaryInfo.Version},
-				{"Ghcr URL", binaryInfo.GhcrURL},
+				{"Ghcr Blob", binaryInfo.GhcrBlob},
 				{"Download URL", binaryInfo.DownloadURL},
 				{"Size", binaryInfo.Size},
 				{"B3SUM", binaryInfo.Bsum},
 				{"SHA256", binaryInfo.Shasum},
 				{"Build Date", binaryInfo.BuildDate},
-				{"Source URL", binaryInfo.SrcURL},
-				{"Web URL", binaryInfo.WebURL},
 				{"Build Script", binaryInfo.BuildScript},
 				{"Build Log", binaryInfo.BuildLog},
 				{"Categories", binaryInfo.Categories},
 				{"Extra Bins", binaryInfo.ExtraBins},
 			}
-
 			for _, field := range fields {
 				if field.value != "" {
 					truncatePrintf(config.DisableTruncation, "\033[48;5;4m%s\033[0m: %s\n", field.label, field.value)
 				}
 			}
-			if binaryInfo.Note != "" {
-				for n, str := range strings.Split(binaryInfo.Note, "\n") {
-					truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mNote\033[0m: %s\n", "    %s\n"), str)
-				}
+			for n, str := range binaryInfo.Notes {
+				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mNote\033[0m: %s\n", "    %s\n"), str)
+			}
+			for n, str := range binaryInfo.WebURLs {
+				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mWebURLs\033[0m: %s\n", "    %s\n"), str)
+			}
+			for n, str := range binaryInfo.SrcURLs {
+				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mSrcURLs\033[0m: %s\n", "    %s\n"), str)
 			}
 		}
 	case "run":

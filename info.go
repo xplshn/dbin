@@ -6,25 +6,25 @@ import (
 )
 
 type BinaryInfo struct {
-	Name        string `json:"pkg"`
-	PrettyName  string `json:"pkg_name"`
-	PkgId       string `json:"pkg_id"`
-	Description string `json:"description,omitempty"`
-	Note        string `json:"note,omitempty"`
-	Version     string `json:"version,omitempty"`
-	DownloadURL string `json:"download_url,omitempty"`
-	Size        string `json:"size,omitempty"`
-	Bsum        string `json:"bsum,omitempty"`
-	Shasum      string `json:"shasum,omitempty"`
-	BuildDate   string `json:"build_date,omitempty"`
-	SrcURL      string `json:"src_url,omitempty"`
-	WebURL      string `json:"homepage,omitempty"`
-	BuildScript string `json:"build_script,omitempty"`
-	BuildLog    string `json:"build_log,omitempty"`
-	Categories  string `json:"categories,omitempty"`
-	ExtraBins   string `json:"provides,omitempty"`
-	GhcrURL     string `json:"ghcr_url,omitempty"`
-	Rank        uint16 `json:"rank,omitempty"`
+	Name        string   `json:"pkg"`
+	PrettyName  string   `json:"pkg_name"`
+	PkgId       string   `json:"pkg_id"`
+	Description string   `json:"description,omitempty"`
+	Version     string   `json:"version,omitempty"`
+	DownloadURL string   `json:"download_url,omitempty"`
+	Size        string   `json:"size,omitempty"`
+	Bsum        string   `json:"bsum,omitempty"`
+	Shasum      string   `json:"shasum,omitempty"`
+	BuildDate   string   `json:"build_date,omitempty"`
+	BuildScript string   `json:"build_script,omitempty"`
+	BuildLog    string   `json:"build_log,omitempty"`
+	Categories  string   `json:"categories,omitempty"`
+	ExtraBins   string   `json:"provides,omitempty"`
+	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
+	Rank        uint16   `json:"rank,omitempty"`
+	Notes       []string `json:"notes,omitempty"`
+	SrcURLs     []string `json:"src_urls,omitempty"`
+	WebURLs     []string `json:"web_urls,omitempty"`
 }
 
 func findBinaryInfo(bEntry binaryEntry, metadata map[string]interface{}) (BinaryInfo, bool) {
@@ -86,19 +86,19 @@ func findBinaryInfo(bEntry binaryEntry, metadata map[string]interface{}) (Binary
 
 		prettyName, _ := selectedBin["pkg_name"].(string)
 		description, _ := selectedBin["description"].(string)
-		note, _ := selectedBin["note"].(string)
+		notes, _ := selectedBin["notes"].([]string)
 		downloadURL, _ := selectedBin["download_url"].(string)
 		size, _ := selectedBin["size"].(string)
 		bsum, _ := selectedBin["bsum"].(string)
 		shasum, _ := selectedBin["shasum"].(string)
 		buildDate, _ := selectedBin["build_date"].(string)
-		srcURL, _ := selectedBin["src_url"].(string)
-		webURL, _ := selectedBin["homepage"].(string)
+		srcURL, _ := selectedBin["src_url"].([]string)
+		webURL, _ := selectedBin["homepage"].([]string)
 		buildScript, _ := selectedBin["build_script"].(string)
 		buildLog, _ := selectedBin["build_log"].(string)
 		categories, _ := selectedBin["categories"].(string)
 		extraBins, _ := selectedBin["provides"].(string)
-		ghcrURL, _ := selectedBin["ghcr_url"].(string)
+		ghcrBlob, _ := selectedBin["ghcr_blob"].(string)
 		rank, _ := selectedBin["rank"].(uint16)
 
 		return BinaryInfo{
@@ -106,20 +106,20 @@ func findBinaryInfo(bEntry binaryEntry, metadata map[string]interface{}) (Binary
 			PrettyName:  prettyName,
 			PkgId:       selectedBin["pkg_id"].(string),
 			Description: description,
-			Note:        note,
+			Notes:       notes,
 			Version:     selectedBin["version"].(string),
 			DownloadURL: downloadURL,
 			Size:        size,
 			Bsum:        bsum,
 			Shasum:      shasum,
 			BuildDate:   buildDate,
-			SrcURL:      srcURL,
-			WebURL:      webURL,
+			SrcURLs:     srcURL,
+			WebURLs:     webURL,
 			BuildScript: buildScript,
 			BuildLog:    buildLog,
 			Categories:  categories,
 			ExtraBins:   extraBins,
-			GhcrURL:     ghcrURL,
+			GhcrBlob:    ghcrBlob,
 			Rank:        rank,
 		}, true
 	}

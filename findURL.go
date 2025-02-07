@@ -43,12 +43,12 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, m
 				if bEntry.Name != "" && binMap["pkg"].(string) != bEntry.Name {
 					continue
 				}
-	
+
 				// If ID specified, check ID match
 				if bEntry.PkgId != "" && binMap["pkg_id"].(string) != bEntry.PkgId {
 					continue
 				}
-	
+
 				// If version specified, check version match
 				if bEntry.Version != "" && binMap["version"].(string) != bEntry.Version {
 					continue
@@ -79,7 +79,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, m
 				}
 			}
 
-			foundURLs = append(foundURLs, selectedBin["ghcr_url"].(string))
+			foundURLs = append(foundURLs, selectedBin["ghcr_blob"].(string))
 			foundB3sum = append(foundB3sum, selectedBin["shasum"].(string))
 
 			if verbosityLevel >= extraVerbose {
