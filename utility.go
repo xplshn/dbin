@@ -69,21 +69,27 @@ func isExecutable(filePath string) bool {
 	return info.Mode().IsRegular() && (info.Mode().Perm()&0o111) != 0
 }
 
-// stringToBinaryEntry parses a string in the format "binary", "binary#id" or "binary#id:version"
+// stringToBinaryEntry parses a string in the format "binary", "binary#id", "binary#id:version" or "id"
 func stringToBinaryEntry(input string) binaryEntry {
 	var req binaryEntry
 
-	parts := strings.Split(input, "#")
+	// Split the input string by '#' to separate the name and the id/version part
+	parts := strings.SplitN(input, "#", 2)
 	req.Name = parts[0]
 
 	if len(parts) > 1 {
-		idVer := strings.Split(parts[1], ":")
+		// Further split the id/version part by ':' to separate the id and version
+		idVer := strings.SplitN(parts[1], ":", 2)
 		req.PkgId = idVer[0]
 		if len(idVer) > 1 {
 			req.Version = idVer[1]
 		}
+	} else {
+		// If there's no '#', assume the whole input is the name
+		req.Name = input
 	}
 
+	fmt.Printf("Parsed binaryEntry: Name=%s, PkgId=%s, Version=%s\n", req.Name, req.PkgId, req.Version)
 	return req
 }
 
@@ -100,7 +106,7 @@ func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 	if ansi {
 		return entry.Name + "\033[94m#" + entry.PkgId + "\033[0m"
 	}
-	return entry.Name + ternary(entry.PkgId != "", "#" + entry.PkgId, entry.PkgId)
+	return entry.Name + ternary(entry.PkgId != "", "#"+entry.PkgId, entry.PkgId)
 }
 
 // parseBinaryEntries formats a slice of binaryEntry into a slice of strings, each in the format "name#id" or "name#id:version"

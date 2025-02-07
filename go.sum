@@ -1,5 +1,7 @@
 github.com/goccy/go-json v0.10.5 h1:Fq85nIqj+gXn/S5ahsiTlK3TmC85qgirsdTP/+DeaC4=
 github.com/goccy/go-json v0.10.5/go.mod h1:oq7eo15ShAhp70Anwd5lgX2pLfOS3QCiwU/PULtXL6M=
+github.com/hedzr/progressbar v1.2.0 h1:8r1PN0pTbBDzyVMLvyjI4B8fgONYOEkVTm7UPra1Faw=
+github.com/hedzr/progressbar v1.2.0/go.mod h1:SgRZ+RkWhO6H7aotO7cOyfg1F84HDl/e6YMq2rDQ9W4=
 github.com/hedzr/progressbar v1.2.1 h1:qKuBxiy11abGRVYkjlBqFDbF1eQw8Ep+DhUocWQ5sJ4=
 github.com/hedzr/progressbar v1.2.1/go.mod h1:riyH9fpOdIDCX5uYvCINnQ1k4+EBueOgT1vJYtLvHRg=
 github.com/klauspost/compress v1.17.11 h1:In6xLpyWOi1+C7tXUUWv2ot1QvBjxevKAaI6IXrJmUc=

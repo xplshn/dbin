@@ -96,7 +96,6 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 	}
 
 	go func() {
-		tasks.Wait()
 		wg.Wait()
 		close(errChan)
 	}()
