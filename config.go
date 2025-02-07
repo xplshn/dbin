@@ -78,10 +78,11 @@ func executeHookCommand(config *Config, cmdTemplate, binaryPath, extension strin
 }
 
 func loadConfig() (*Config, error) {
-	cfg := &Config{}
+	cfg := Config{}
 
-	if noConfig, _ := strconv.ParseBool(os.Getenv("DBIN_NOCONFIG")); noConfig {
-		return cfg, nil
+	if noConfig, _ := strconv.ParseBool(os.Getenv("DBIN_NO_CONFIG")); noConfig {
+		setDefaultValues(&cfg)
+		return &cfg, nil
 	}
 
 	configFilePath := os.Getenv("DBIN_CONFIG_FILE")
@@ -99,11 +100,11 @@ func loadConfig() (*Config, error) {
 		}
 	}
 
-	if err := loadJSON(configFilePath, cfg); err != nil {
+	if err := loadJSON(configFilePath, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to load JSON file: %v", err)
 	}
-	overrideWithEnv(cfg)
-	return cfg, nil
+	overrideWithEnv(&cfg)
+	return &cfg, nil
 }
 
 func loadJSON(filePath string, cfg *Config) error {
@@ -159,17 +160,13 @@ func overrideWithEnv(cfg *Config) {
 }
 
 func setDefaultValues(config *Config) {
-	// Setting default InstallDir if not defined
-	if config.InstallDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Printf("failed to get user's Home directory: %v\n", err)
-			return
-		}
-		config.InstallDir = filepath.Join(homeDir, ".local/bin")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("failed to get user's Home directory: %v\n", err)
+		return
 	}
+	config.InstallDir = filepath.Join(homeDir, ".local/bin")
 
-	// Load cache dir from the user's cache directory
 	tempDir, err := os.UserCacheDir()
 	if err != nil {
 		fmt.Printf("failed to get user's Cache directory: %v\n", err)
@@ -179,10 +176,8 @@ func setDefaultValues(config *Config) {
 		config.CacheDir = filepath.Join(tempDir, "dbin_cache")
 	}
 
-	// Determine architecture and set default repositories and metadata URLs
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 
-	// Set up default metadata URLs if none are provided
 	config.RepoURLs = []string{
 		"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadata/METADATA_" + arch + ".lite.min.json.gz",
 	}
@@ -196,7 +191,8 @@ func setDefaultValues(config *Config) {
 
 // createDefaultConfig creates a default configuration file.
 func createDefaultConfig() error {
-	cfg := &Config{}
+	cfg := Config{}
+	setDefaultValues(&cfg)
 
 	// Set default hooks
 	cfg.Hooks = Hooks{

@@ -349,6 +349,11 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 }
 
 func fetchJSON(url string, v interface{}) error {
+	// Check if the URL is empty
+	if url == "" {
+		return fmt.Errorf("This repository index URL is empty. Please check your configuration or remove it.")
+	}
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request for %s: %v", url, err)
@@ -361,7 +366,7 @@ func fetchJSON(url string, v interface{}) error {
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("error fetching from %s: %v", url, err)
+		return fmt.Errorf("error fetching from %s: %v. Please check your configuration's repo_urls. Ensure your network has access to the internet.", url, err)
 	}
 	defer response.Body.Close()
 
