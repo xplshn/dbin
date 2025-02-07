@@ -21,118 +21,111 @@ type BinaryInfo struct {
 	Categories  string   `json:"categories,omitempty"`
 	ExtraBins   string   `json:"provides,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
-	Rank        uint16   `json:"rank,omitempty"`
+	Rank        uint8   `json:"rank,omitempty"`
 	Notes       []string `json:"notes,omitempty"`
 	SrcURLs     []string `json:"src_urls,omitempty"`
 	WebURLs     []string `json:"web_urls,omitempty"`
 }
 
 func findBinaryInfo(bEntry binaryEntry, metadata map[string]interface{}) (BinaryInfo, bool) {
-	var matchingBins []map[string]interface{}
-	var highestRank uint16 = 0
+	matchingBins, highestRank := findMatchingBins(bEntry, metadata)
 
-	// Search through all sections
-	for _, section := range metadata {
-		binaries, ok := section.([]interface{})
-		if !ok {
-			continue
-		}
-
-		for _, bin := range binaries {
-			binMap, ok := bin.(map[string]interface{})
-			if !ok {
-				continue
-			}
-
-			// Check if binary matches name
-			if bEntry.Name != "" && binMap["pkg"].(string) != bEntry.Name {
-				continue
-			}
-
-			// If ID specified, check ID match
-			if bEntry.PkgId != "" && binMap["pkg_id"].(string) != bEntry.PkgId {
-				continue
-			}
-
-			// If version specified, check version match
-			if bEntry.Version != "" && binMap["version"].(string) != bEntry.Version {
-				continue
-			}
-
-			matchingBins = append(matchingBins, binMap)
-
-			// Track highest rank
-			if rank, ok := binMap["rank"].(uint16); ok && rank > highestRank {
-				highestRank = rank
-			}
-		}
+	if len(matchingBins) == 0 {
+		return BinaryInfo{}, false
 	}
 
-	// If matches found, select appropriate one
-	if len(matchingBins) > 0 {
-		var selectedBin map[string]interface{}
+	selectedBin := selectHighestRankedBin(matchingBins, highestRank)
 
-		if len(matchingBins) == 1 {
-			selectedBin = matchingBins[0]
-		} else {
-			// Multiple matches - select highest rank
-			for _, bin := range matchingBins {
-				if rank, ok := bin["rank"].(uint16); ok && rank == highestRank {
-					selectedBin = bin
-					break
+	return populateBinaryInfo(selectedBin), true
+}
+
+func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]map[string]interface{}, uint8) {
+	var matchingBins []map[string]interface{}
+	var highestRank uint8
+
+	for _, section := range metadata {
+		if binaries, ok := section.([]interface{}); ok {
+			for _, bin := range binaries {
+				if binMap, ok := bin.(map[string]interface{}); ok && matchesEntry(bEntry, binMap) {
+					matchingBins = append(matchingBins, binMap)
+					if rank, ok := binMap["rank"].(uint8); ok && rank > highestRank {
+						highestRank = rank
+					}
 				}
 			}
 		}
-
-		prettyName, _ := selectedBin["pkg_name"].(string)
-		description, _ := selectedBin["description"].(string)
-		notes, _ := selectedBin["notes"].([]string)
-		downloadURL, _ := selectedBin["download_url"].(string)
-		size, _ := selectedBin["size"].(string)
-		bsum, _ := selectedBin["bsum"].(string)
-		shasum, _ := selectedBin["shasum"].(string)
-		buildDate, _ := selectedBin["build_date"].(string)
-		srcURL, _ := selectedBin["src_url"].([]string)
-		webURL, _ := selectedBin["homepage"].([]string)
-		buildScript, _ := selectedBin["build_script"].(string)
-		buildLog, _ := selectedBin["build_log"].(string)
-		categories, _ := selectedBin["categories"].(string)
-		extraBins, _ := selectedBin["provides"].(string)
-		ghcrBlob, _ := selectedBin["ghcr_blob"].(string)
-		rank, _ := selectedBin["rank"].(uint16)
-
-		return BinaryInfo{
-			Name:        selectedBin["pkg"].(string),
-			PrettyName:  prettyName,
-			PkgId:       selectedBin["pkg_id"].(string),
-			Description: description,
-			Notes:       notes,
-			Version:     selectedBin["version"].(string),
-			DownloadURL: downloadURL,
-			Size:        size,
-			Bsum:        bsum,
-			Shasum:      shasum,
-			BuildDate:   buildDate,
-			SrcURLs:     srcURL,
-			WebURLs:     webURL,
-			BuildScript: buildScript,
-			BuildLog:    buildLog,
-			Categories:  categories,
-			ExtraBins:   extraBins,
-			GhcrBlob:    ghcrBlob,
-			Rank:        rank,
-		}, true
 	}
 
-	return BinaryInfo{}, false
+	return matchingBins, highestRank
+}
+
+func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank uint8) map[string]interface{} {
+	if len(matchingBins) == 1 {
+		return matchingBins[0]
+	}
+
+	for _, bin := range matchingBins {
+		if rank, ok := bin["rank"].(uint8); ok && rank == highestRank {
+			return bin
+		}
+	}
+
+	if highestRank == 0 {
+		return matchingBins[0]
+	}
+
+	return nil
+}
+
+func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
+	getString := func(key string) string {
+		if val, ok := binMap[key].(string); ok {
+			return val
+		}
+		return ""
+	}
+
+	getStringSlice := func(key string) []string {
+		if val, ok := binMap[key].([]string); ok {
+			return val
+		}
+		return []string{}
+	}
+
+	getuint8 := func(key string) uint8 {
+		if val, ok := binMap[key].(uint8); ok {
+			return val
+		}
+		return 0
+	}
+
+	return BinaryInfo{
+		Name:        getString("pkg"),
+		PrettyName:  getString("pkg_name"),
+		PkgId:       getString("pkg_id"),
+		Description: getString("description"),
+		Version:     getString("version"),
+		DownloadURL: getString("download_url"),
+		Size:        getString("size"),
+		Bsum:        getString("bsum"),
+		Shasum:      getString("shasum"),
+		BuildDate:   getString("build_date"),
+		BuildScript: getString("build_script"),
+		BuildLog:    getString("build_log"),
+		Categories:  getString("categories"),
+		ExtraBins:   getString("provides"),
+		GhcrBlob:    getString("ghcr_blob"),
+		SrcURLs:     getStringSlice("src_urls"),
+		WebURLs:     getStringSlice("web_urls"),
+		Notes:       getStringSlice("notes"),
+		Rank:        getuint8("rank"),
+	}
 }
 
 func getBinaryInfo(config *Config, bEntry binaryEntry, metadata map[string]interface{}) (*BinaryInfo, error) {
 	realBinaryName, err := getFullName(filepath.Join(config.InstallDir, bEntry.Name))
-	if err == nil {
-		if filepath.Base(bEntry.Name) != realBinaryName {
-			bEntry.Name = realBinaryName
-		}
+	if err == nil && filepath.Base(bEntry.Name) != realBinaryName {
+		bEntry.Name = realBinaryName
 	}
 
 	binInfo, found := findBinaryInfo(bEntry, metadata)

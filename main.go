@@ -128,7 +128,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 	command := args[0]
 	args = args[1:]
 
-	config, err := LoadConfig()
+	config, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error loading config: %v\n", err)
 		os.Exit(1)
@@ -306,6 +306,8 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}
+
+			fmt.Println(binaryInfo.Notes, binaryInfo.WebURLs, binaryInfo.SrcURLs)
 
 			fields := []struct {
 				label string

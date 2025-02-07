@@ -42,7 +42,7 @@ type PkgForgeItem struct {
 	Note        []string `json:"note,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
-	Rank        string   `json:"rank,omitempty"`
+	Rank        uint8   `json:"rank,omitempty"`
 }
 
 type DbinItem struct {
@@ -69,7 +69,7 @@ type DbinItem struct {
 	Note            []string `json:"notes,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
 	GhcrBlob        string   `json:"ghcr_blob,omitempty"`
-	Rank            string   `json:"rank,omitempty"`
+	Rank            uint8    `json:"rank,omitempty"`
 }
 
 type DbinMetadata map[string][]DbinItem

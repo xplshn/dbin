@@ -89,6 +89,8 @@ func stringToBinaryEntry(input string) binaryEntry {
 		bEntry.Name = input
 	}
 
+
+	//fmt.Printf("Parsed binaryEntry: Name=%s, PkgId=%s, Version=%s\n", bEntry.Name, bEntry.PkgId, bEntry.Version)
 	return bEntry
 }
 
