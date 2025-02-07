@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"strconv"
 
 	"github.com/goccy/go-json"
 	minify "github.com/tdewolff/minify/v2"
@@ -42,7 +43,7 @@ type PkgForgeItem struct {
 	Note        []string `json:"note,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
-	Rank        uint8   `json:"rank,omitempty"`
+	Rank        string   `json:"rank,omitempty"`
 }
 
 type DbinItem struct {
@@ -179,7 +180,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		Provides:    provides,
 		Note:        item.Note,
 		GhcrBlob:    item.GhcrBlob,
-		Rank:        item.Rank,
+		Rank:        strconv.ParseUint(item.Rank, 10, 8),
 	}
 }
 
