@@ -6,7 +6,6 @@ require (
 	github.com/goccy/go-json v0.10.5
 	github.com/hedzr/progressbar v1.2.1
 	github.com/klauspost/compress v1.17.11
-	github.com/klauspost/pgzip v1.2.6
 	github.com/pkg/xattr v0.4.10
 	github.com/tdewolff/minify/v2 v2.21.2
 	github.com/xplshn/a-utils v0.0.0-20250124065437-73b554cf990b
