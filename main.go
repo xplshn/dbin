@@ -312,7 +312,8 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				label string
 				value string
 			}{
-				{"Name", binaryInfo.Name},
+				{"Name", binaryInfo.Name + "#" + binaryInfo.PkgId},
+				{"Pkg ID", binaryInfo.PkgId},
 				{"Pretty Name", binaryInfo.PrettyName},
 				{"Description", binaryInfo.Description},
 				{"Version", binaryInfo.Version},

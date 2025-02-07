@@ -100,7 +100,7 @@ func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 	if ansi {
 		return entry.Name + "\033[94m#" + entry.PkgId + "\033[0m"
 	}
-	return entry.Name + "#" + entry.PkgId
+	return entry.Name + ternary(entry.PkgId != "", "#" + entry.PkgId, entry.PkgId)
 }
 
 // parseBinaryEntries formats a slice of binaryEntry into a slice of strings, each in the format "name#id" or "name#id:version"

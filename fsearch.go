@@ -88,17 +88,17 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 		}
 
 		// Format version info in gray
-		versionInfo := ""
-		if result.PkgId != "" {
-			versionInfo = fmt.Sprintf("\033[94m#%s", result.PkgId)
-			if result.Version != "" {
-				versionInfo += fmt.Sprintf("\033[90m:%s", result.Version)
-			}
-			versionInfo += "\033[0m"
-		}
+		//versionInfo := ""
+		//if result.PkgId != "" {
+		//	versionInfo = fmt.Sprintf("\033[94m#%s", result.PkgId)
+		//	if result.Version != "" {
+		//		versionInfo += fmt.Sprintf("\033[90m:%s", result.Version)
+		//	}
+		//	versionInfo += "\033[0m"
+		//}
 
-		truncatePrintf(disableTruncation, "%s %s%s - %s\n",
-			prefix, result.Name, versionInfo, result.Description)
+		truncatePrintf(disableTruncation, "%s %s - %s\n",
+			prefix, parseBinaryEntry(result, true), result.Description)
 	}
 
 	return nil

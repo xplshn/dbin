@@ -6,6 +6,8 @@ github.com/hedzr/progressbar v1.1.12 h1:OVSc3d4NjwNf3LqjCmouFy84aIj1vLujYPSPXKY0
 github.com/hedzr/progressbar v1.1.12/go.mod h1:/ROUH/I5iSBIbDOdPzhF1FjQaT6WXAwFU5IRS8337q8=
 github.com/hedzr/progressbar v1.2.0 h1:8r1PN0pTbBDzyVMLvyjI4B8fgONYOEkVTm7UPra1Faw=
 github.com/hedzr/progressbar v1.2.0/go.mod h1:SgRZ+RkWhO6H7aotO7cOyfg1F84HDl/e6YMq2rDQ9W4=
+github.com/hedzr/progressbar v1.2.1 h1:qKuBxiy11abGRVYkjlBqFDbF1eQw8Ep+DhUocWQ5sJ4=
+github.com/hedzr/progressbar v1.2.1/go.mod h1:riyH9fpOdIDCX5uYvCINnQ1k4+EBueOgT1vJYtLvHRg=
 github.com/klauspost/compress v1.17.11 h1:In6xLpyWOi1+C7tXUUWv2ot1QvBjxevKAaI6IXrJmUc=
 github.com/klauspost/compress v1.17.11/go.mod h1:pMDklpSncoRMuLFrf1W9Ss9KT+0rH90U12bZKk7uwG0=
 github.com/klauspost/cpuid/v2 v2.2.9 h1:66ze0taIn2H33fBvCkXuv9BmCwDfafmiIVpKV9kKGuY=

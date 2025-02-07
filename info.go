@@ -30,77 +30,71 @@ type BinaryInfo struct {
 
 // findBinaryInfo searches for binary metadata across multiple sections in the provided metadata map.
 func findBinaryInfo(req binaryEntry, metadata map[string]interface{}) (BinaryInfo, bool) {
-	for _, section := range metadata {
-		binaries, ok := section.([]interface{})
-		if !ok {
-			continue
-		}
+    var highestRank uint16 = 0
+    var selectedBin BinaryInfo
+    var found bool
 
-		for _, bin := range binaries {
-			binMap, ok := bin.(map[string]interface{})
-			if !ok {
-				continue
-			}
+    for _, section := range metadata {
+        binaries, ok := section.([]interface{})
+        if !ok {
+            continue
+        }
 
-			name, nameOk := binMap["pkg"].(string)
-			pkgId, pkgIdOk := binMap["pkg_id"].(string)
-			version, _ := binMap["version"].(string)
+        for _, bin := range binaries {
+            binMap, ok := bin.(map[string]interface{})
+            if !ok {
+                continue
+            }
 
-			if !nameOk || name != req.Name {
-				continue
-			}
+            name, _ := binMap["pkg"].(string)
+            pkgId, _ := binMap["pkg_id"].(string)
+            version, _ := binMap["version"].(string)
 
-			if req.PkgId != "" {
-				if !pkgIdOk || pkgId != req.PkgId {
-					continue
-				}
-			}
+            // Check if binary matches name
+            if req.Name != "" && name != req.Name {
+                continue
+            }
 
-			if req.Version != "" && version != req.Version {
-				continue
-			}
+            // If ID specified, check ID match
+            if req.PkgId != "" && pkgId != req.PkgId {
+                continue
+            }
 
-			prettyName, _ := binMap["pkg_name"].(string)
-			description, _ := binMap["description"].(string)
-			note, _ := binMap["note"].(string)
-			downloadURL, _ := binMap["download_url"].(string)
-			size, _ := binMap["size"].(string)
-			bsum, _ := binMap["bsum"].(string)
-			shasum, _ := binMap["shasum"].(string)
-			buildDate, _ := binMap["build_date"].(string)
-			srcURL, _ := binMap["src_url"].(string)
-			webURL, _ := binMap["homepage"].(string)
-			buildScript, _ := binMap["build_script"].(string)
-			buildLog, _ := binMap["build_log"].(string)
-			categories, _ := binMap["categories"].(string)
-			extraBins, _ := binMap["provides"].(string)
-			ghcrURL, _ := binMap["ghcr_url"].(string)
-			rank, _ := binMap["rank"].(uint16)
+            // If version specified, check version match
+            if req.Version != "" && version != req.Version {
+                continue
+            }
 
-			return BinaryInfo{
-				Name:        name,
-				PrettyName:  prettyName,
-				PkgId:       pkgId,
-				Description: description,
-				Note:        note,
-				Version:     version,
-				DownloadURL: downloadURL,
-				Size:        size,
-				Bsum:        bsum,
-				Shasum:      shasum,
-				BuildDate:   buildDate,
-				SrcURL:      srcURL,
-				WebURL:      webURL,
-				BuildScript: buildScript,
-				BuildLog:    buildLog,
-				Categories:  categories,
-				ExtraBins:   extraBins,
-				GhcrURL:     ghcrURL,
-				Rank:        rank,
-			}, true
-		}
-	}
-	return BinaryInfo{}, false
+            // Track highest rank
+            if rank, ok := binMap["rank"].(uint16); ok && rank > highestRank {
+                highestRank = rank
+                selectedBin = BinaryInfo{
+                    Name:        name,
+                    PrettyName:  binMap["pkg_name"].(string),
+                    PkgId:       pkgId,
+                    Description: binMap["description"].(string),
+                    Note:        binMap["note"].(string),
+                    Version:     version,
+                    DownloadURL: binMap["download_url"].(string),
+                    Size:        binMap["size"].(string),
+                    Bsum:        binMap["bsum"].(string),
+                    Shasum:      binMap["shasum"].(string),
+                    BuildDate:   binMap["build_date"].(string),
+                    SrcURL:      binMap["src_url"].(string),
+                    WebURL:      binMap["homepage"].(string),
+                    BuildScript: binMap["build_script"].(string),
+                    BuildLog:    binMap["build_log"].(string),
+                    Categories:  binMap["categories"].(string),
+                    ExtraBins:   binMap["provides"].(string),
+                    GhcrURL:     binMap["ghcr_url"].(string),
+                    Rank:        rank,
+                }
+                found = true
+            }
+        }
+    }
+
+    return selectedBin, found
 }
 
 // getBinaryInfo retrieves binary metadata for the specified binary name by fetching and searching through the given metadata files.
