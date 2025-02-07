@@ -37,7 +37,7 @@ type PkgForgeItem struct {
 	SrcURL      []string `json:"src_url,omitempty"`
 	BuildScript string   `json:"build_script,omitempty"`
 	BuildLog    string   `json:"build_log,omitempty"`
-	Categories  []string `json:"categories,omitempty"`
+	Category    []string `json:"categories,omitempty"`
 	Provides    []string `json:"provides,omitempty"`
 	Note        []string `json:"note,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
@@ -81,14 +81,30 @@ type RepositoryHandler interface {
 type PkgForgeHandler struct{}
 
 func (PkgForgeHandler) FetchMetadata(url string) ([]DbinItem, error) {
-	pkgforgeItems, err := downloadJSON(url)
+	return fetchAndConvertMetadata(url, downloadJSON, convertPkgForgeToDbinItem)
+}
+
+type DbinHandler struct{}
+
+func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
+	return fetchOldAppbundleMetadata(url)
+}
+
+type OldDbinMetadata struct {
+	Bin  []DbinItem `json:"bin"`
+	Pkg  []DbinItem `json:"pkg"`
+	Base []DbinItem `json:"base"`
+}
+
+func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem) DbinItem) ([]DbinItem, error) {
+	items, err := downloadFunc(url)
 	if err != nil {
 		return nil, err
 	}
 
 	bsumMap := make(map[string]DbinItem)
-	for _, item := range pkgforgeItems {
-		dbinItem := convertPkgForgeToDbinItem(item)
+	for _, item := range items {
+		dbinItem := convertFunc(item)
 		if existingItem, exists := bsumMap[dbinItem.Bsum]; exists {
 			if len(dbinItem.Pkg) < len(existingItem.Pkg) {
 				bsumMap[dbinItem.Bsum] = dbinItem
@@ -106,9 +122,7 @@ func (PkgForgeHandler) FetchMetadata(url string) ([]DbinItem, error) {
 	return dbinItems, nil
 }
 
-type DbinHandler struct{}
-
-func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
+func fetchOldAppbundleMetadata(url string) ([]DbinItem, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -129,25 +143,17 @@ func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
 	return oldAppbundleMetadata.Pkg, nil
 }
 
-// TODO: Make this dynamic. Appbundlehub meta now uses "appbundlehub" as key instead of Pkg
-type OldDbinMetadata struct {
-	Bin  []DbinItem `json:"bin"`
-	Pkg  []DbinItem `json:"pkg"`
-	Base []DbinItem `json:"base"`
-}
-
 func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 	var categories, provides string
 
-	if len(item.Categories) > 0 {
-		categories = strings.Join(item.Categories, ",")
+	if len(item.Category) > 0 {
+		categories = strings.Join(item.Category, ",")
 	}
 
 	if len(item.Provides) > 0 {
 		provides = strings.Join(item.Provides, ",")
 	}
 
-	// Check if hf_pkg is present and modify the download URL
 	if item.HfPkg != "" {
 		item.DownloadURL = strings.Replace(item.HfPkg, "/tree/main", "/resolve/main", 1) + "/" + item.Pkg
 	}
@@ -209,7 +215,11 @@ func saveJSON(filename string, metadata DbinMetadata) error {
 		return err
 	}
 
-	return minifyJSON(filename, jsonData)
+	if err := minifyJSON(filename, jsonData); err != nil {
+		return err
+	}
+
+	return saveLiteMinJSON(filename, metadata)
 }
 
 func minifyJSON(filename string, jsonData []byte) error {
@@ -223,6 +233,31 @@ func minifyJSON(filename string, jsonData []byte) error {
 
 	minFilename := strings.TrimSuffix(filename, ".json") + ".min.json"
 	return os.WriteFile(minFilename, minifiedData, 0644)
+}
+
+func saveLiteMinJSON(filename string, metadata DbinMetadata) error {
+	for _, items := range metadata {
+		for i := range items {
+			items[i].Icon = ""
+			items[i].Provides = ""
+		}
+	}
+
+	jsonData, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	m := minify.New()
+	m.AddFunc("application/json", mjson.Minify)
+
+	minifiedData, err := m.Bytes("application/json", jsonData)
+	if err != nil {
+		return err
+	}
+
+	liteMinFilename := strings.TrimSuffix(filename, ".json") + ".lite.min.json"
+	return os.WriteFile(liteMinFilename, minifiedData, 0644)
 }
 
 func main() {
@@ -278,7 +313,6 @@ func main() {
 
 			dbinMetadata[repo.Repo.Name] = append(dbinMetadata[repo.Repo.Name], items...)
 
-			// If Single is true, save individual metadata file for this repository
 			if repo.Repo.Single {
 				singleMetadata := make(DbinMetadata)
 				singleMetadata[repo.Repo.Name] = items
@@ -292,7 +326,6 @@ func main() {
 			}
 		}
 
-		// Save combined metadata file
 		outputFile := fmt.Sprintf("METADATA_%s.json", outputArch)
 		if err := saveJSON(outputFile, dbinMetadata); err != nil {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
