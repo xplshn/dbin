@@ -307,8 +307,6 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				os.Exit(1)
 			}
 
-			fmt.Println(binaryInfo.Notes, binaryInfo.WebURLs, binaryInfo.SrcURLs)
-
 			fields := []struct {
 				label string
 				value string
@@ -335,13 +333,13 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				}
 			}
 			for n, str := range binaryInfo.Notes {
-				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mNote\033[0m: %s\n", "    %s\n"), str)
+				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mNote\033[0m: %s\n", "      %s\n"), str)
 			}
 			for n, str := range binaryInfo.WebURLs {
-				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mWebURLs\033[0m: %s\n", "    %s\n"), str)
+				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mWebURLs\033[0m: %s\n", "         %s\n"), str)
 			}
 			for n, str := range binaryInfo.SrcURLs {
-				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mSrcURLs\033[0m: %s\n", "    %s\n"), str)
+				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mSrcURLs\033[0m: %s\n", "         %s\n"), str)
 			}
 		}
 	case "run":

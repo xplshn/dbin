@@ -21,7 +21,7 @@ type BinaryInfo struct {
 	Categories  string   `json:"categories,omitempty"`
 	ExtraBins   string   `json:"provides,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
-	Rank        uint8   `json:"rank,omitempty"`
+	Rank        uint16   `json:"rank,omitempty"`
 	Notes       []string `json:"notes,omitempty"`
 	SrcURLs     []string `json:"src_urls,omitempty"`
 	WebURLs     []string `json:"web_urls,omitempty"`
@@ -39,16 +39,16 @@ func findBinaryInfo(bEntry binaryEntry, metadata map[string]interface{}) (Binary
 	return populateBinaryInfo(selectedBin), true
 }
 
-func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]map[string]interface{}, uint8) {
+func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]map[string]interface{}, uint16) {
 	var matchingBins []map[string]interface{}
-	var highestRank uint8
+	var highestRank uint16
 
 	for _, section := range metadata {
 		if binaries, ok := section.([]interface{}); ok {
 			for _, bin := range binaries {
 				if binMap, ok := bin.(map[string]interface{}); ok && matchesEntry(bEntry, binMap) {
 					matchingBins = append(matchingBins, binMap)
-					if rank, ok := binMap["rank"].(uint8); ok && rank > highestRank {
+					if rank, ok := binMap["rank"].(uint16); ok && rank > highestRank {
 						highestRank = rank
 					}
 				}
@@ -59,13 +59,13 @@ func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]ma
 	return matchingBins, highestRank
 }
 
-func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank uint8) map[string]interface{} {
+func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank uint16) map[string]interface{} {
 	if len(matchingBins) == 1 {
 		return matchingBins[0]
 	}
 
 	for _, bin := range matchingBins {
-		if rank, ok := bin["rank"].(uint8); ok && rank == highestRank {
+		if rank, ok := bin["rank"].(uint16); ok && rank == highestRank {
 			return bin
 		}
 	}
@@ -86,14 +86,24 @@ func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
 	}
 
 	getStringSlice := func(key string) []string {
-		if val, ok := binMap[key].([]string); ok {
-			return val
+		if val, ok := binMap[key]; ok {
+			switch v := val.(type) {
+				case []interface{}:
+					// If the value is a slice of interfaces, convert each to a string
+					strSlice := make([]string, len(v))
+					for i, item := range v {
+						if str, ok := item.(string); ok {
+							strSlice[i] = str
+						}
+					}
+					return strSlice
+			}
 		}
 		return []string{}
 	}
 
-	getuint8 := func(key string) uint8 {
-		if val, ok := binMap[key].(uint8); ok {
+	getUint16 := func(key string) uint16 {
+		if val, ok := binMap[key].(uint16); ok {
 			return val
 		}
 		return 0
@@ -118,7 +128,7 @@ func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
 		SrcURLs:     getStringSlice("src_urls"),
 		WebURLs:     getStringSlice("web_urls"),
 		Notes:       getStringSlice("notes"),
-		Rank:        getuint8("rank"),
+		Rank:        getUint16("rank"),
 	}
 }
 
