@@ -88,15 +88,15 @@ func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
 	getStringSlice := func(key string) []string {
 		if val, ok := binMap[key]; ok {
 			switch v := val.(type) {
-				case []interface{}:
-					// If the value is a slice of interfaces, convert each to a string
-					strSlice := make([]string, len(v))
-					for i, item := range v {
-						if str, ok := item.(string); ok {
-							strSlice[i] = str
-						}
+			case []interface{}:
+				// If the value is a slice of interfaces, convert each to a string
+				strSlice := make([]string, len(v))
+				for i, item := range v {
+					if str, ok := item.(string); ok {
+						strSlice[i] = str
 					}
-					return strSlice
+				}
+				return strSlice
 			}
 		}
 		return []string{}
@@ -133,9 +133,9 @@ func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
 }
 
 func getBinaryInfo(config *Config, bEntry binaryEntry, metadata map[string]interface{}) (*BinaryInfo, error) {
-	realBinaryName, err := getFullName(filepath.Join(config.InstallDir, bEntry.Name))
-	if err == nil && filepath.Base(bEntry.Name) != realBinaryName {
-		bEntry.Name = realBinaryName
+	instBEntry, err := readEmbeddedBEntry(filepath.Join(config.InstallDir, bEntry.Name))
+	if err == nil && filepath.Base(bEntry.Name) != instBEntry.Name {
+		bEntry = instBEntry
 	}
 
 	binInfo, found := findBinaryInfo(bEntry, metadata)

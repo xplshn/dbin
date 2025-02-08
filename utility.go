@@ -89,8 +89,6 @@ func stringToBinaryEntry(input string) binaryEntry {
 		bEntry.Name = input
 	}
 
-
-	//fmt.Printf("Parsed binaryEntry: Name=%s, PkgId=%s, Version=%s\n", bEntry.Name, bEntry.PkgId, bEntry.Version)
 	return bEntry
 }
 
@@ -148,15 +146,15 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, meta
 	validPrograms := make([]binaryEntry, 0, len(programsToValidate))
 
 	validate := func(file string) (binaryEntry, bool) {
-		fullBinaryName := listInstalled(file)
+		trackedBEntry := isInstalled(file)
 		if config.RetakeOwnership {
-			fullBinaryName = filepath.Base(file)
-			if fullBinaryName == "" {
+			trackedBEntry.Name = filepath.Base(file)
+			if trackedBEntry.Name == "" {
 				return binaryEntry{}, false
 			}
 		}
-		if contains(remotePrograms, fullBinaryName) {
-			return stringToBinaryEntry(fullBinaryName), true
+		if contains(remotePrograms, trackedBEntry.Name) {
+			return trackedBEntry, true
 		}
 		return binaryEntry{}, false
 	}
@@ -179,15 +177,15 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, meta
 	return validPrograms, nil
 }
 
-func listInstalled(binaryPath string) string {
+func isInstalled(binaryPath string) binaryEntry {
 	if isSymlink(binaryPath) {
-		return ""
+		return binaryEntry{}
 	}
-	fullBinaryName, err := getFullName(binaryPath)
-	if err != nil || fullBinaryName == "" {
-		return ""
+	trackedBEntry, err := readEmbeddedBEntry(binaryPath)
+	if err != nil || trackedBEntry.Name == "" {
+		return binaryEntry{}
 	}
-	return fullBinaryName
+	return trackedBEntry
 }
 
 // errorEncoder generates a unique error code based on the sum of ASCII values of the error message.
@@ -294,26 +292,26 @@ func listFilesInDir(dir string) ([]string, error) {
 	return files, nil
 }
 
-// getFullName retrieves the full binary name from the extended attributes of the binary file.
-func getFullName(binaryPath string) (string, error) {
+// embedBEntry writes the full binary name to the extended attributes of the binary file.
+func embedBEntry(binaryPath string, fName string) error {
+	if err := xattr.Set(binaryPath, "user.FullName", []byte(fName)); err != nil {
+		return fmt.Errorf("failed to set xattr for %s: %w", binaryPath, err)
+	}
+	return nil
+}
+
+// readEmbeddedBEntry retrieves the full binary name from the extended attributes of the binary file.
+func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	if !fileExists(binaryPath) {
-		return filepath.Base(binaryPath), nil
+		return binaryEntry{}, nil
 	}
 
 	fullName, err := xattr.Get(binaryPath, "user.FullName")
 	if err != nil {
-		return "", fmt.Errorf("full name attribute not found for binary: %s", binaryPath)
+		return binaryEntry{}, fmt.Errorf("full name attribute not found for binary: %s", binaryPath)
 	}
 
-	return string(fullName), nil
-}
-
-// addFullName writes the full binary name to the extended attributes of the binary file.
-func addFullName(binaryPath string, pkgId string) error {
-	if err := xattr.Set(binaryPath, "user.FullName", []byte(pkgId)); err != nil {
-		return fmt.Errorf("failed to set xattr for %s: %w", binaryPath, err)
-	}
-	return nil
+	return stringToBinaryEntry(string(fullName)), nil
 }
 
 // removeNixGarbageFoundInTheRepos corrects any /nix/store/ or /bin/ binary path in the file.

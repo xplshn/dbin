@@ -22,20 +22,17 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity,
 
 			installPath := filepath.Join(installDir, filepath.Base(binaryName))
 
-			fullBinaryName, err := getFullName(installPath)
+			bEntry, err := readEmbeddedBEntry(installPath)
 			if err != nil {
 				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s'. Skipping removal.\n", binaryName)
+					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s#%s'. Skipping removal.\n", bEntry.Name, bEntry.PkgId)
 				}
 				return
 			}
 
-			if filepath.Base(binaryName) != filepath.Base(fullBinaryName) {
-				installPath = filepath.Join(installDir, filepath.Base(fullBinaryName))
+			if filepath.Base(binaryName) != filepath.Base(bEntry.Name) {
+				installPath = filepath.Join(installDir, filepath.Base(bEntry.Name))
 			}
-
-			parts := strings.SplitN(installPath, "#", 2)
-			installPath = parts[0]
 
 			if !fileExists(installPath) {
 				if verbosityLevel >= normalVerbosity {
@@ -44,7 +41,7 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity,
 				return
 			}
 
-			if fullBinaryName == "" {
+			if bEntry.Name == "" {
 				if verbosityLevel >= normalVerbosity {
 					fmt.Fprintf(os.Stderr, "Skipping '%s': it was not installed by dbin\n", binaryName)
 				}

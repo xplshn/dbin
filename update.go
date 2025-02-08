@@ -37,14 +37,14 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 			defer wg.Done()
 
 			installPath := filepath.Join(installDir, filepath.Base(program.Name))
-			fullName, err := getFullName(installPath)
+			trackedBEntry, _ := readEmbeddedBEntry(installPath)
 
 			if !fileExists(installPath) {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, "\033[2K\r<%d/%d> %s | Warning: Tried to update a non-existent program %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
+					truncatePrintf(false, "\033[2K\r<%d/%d> %s | Warning: Tried to update a non-existent program %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, parseBinaryEntry(trackedBEntry, false))
 				}
 				progressMutex.Unlock()
 				return
@@ -56,7 +56,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, "\033[2K\r<%d/%d> %s | Warning: Failed to get B3sum for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
+					truncatePrintf(false, "\033[2K\r<%d/%d> %s | Warning: Failed to get B3sum for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, parseBinaryEntry(trackedBEntry, false))
 				}
 				progressMutex.Unlock()
 				return
@@ -68,7 +68,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, "\033[2K\r<%d/%d> %s | Warning: Failed to get metadata for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
+					truncatePrintf(false, "\033[2K\r<%d/%d> %s | Warning: Failed to get metadata for %s. Skipping.", atomic.LoadUint32(&checked), toBeChecked, padding, parseBinaryEntry(trackedBEntry, false))
 				}
 				progressMutex.Unlock()
 				return
@@ -79,7 +79,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, "\033[2K\r<%d/%d> %s | Skipping %s because the B3sum field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
+					truncatePrintf(false, "\033[2K\r<%d/%d> %s | Skipping %s because the B3sum field is null.", atomic.LoadUint32(&checked), toBeChecked, padding, parseBinaryEntry(trackedBEntry, false))
 				}
 				progressMutex.Unlock()
 				return
@@ -90,7 +90,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&updated, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, "\033[2K\r<%d/%d> %s | %s is outdated and will be updated.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
+					truncatePrintf(false, "\033[2K\r<%d/%d> %s | %s is outdated and will be updated.", atomic.LoadUint32(&checked), toBeChecked, padding, parseBinaryEntry(trackedBEntry, false))
 				}
 				errorMessagesMutex.Lock()
 				outdatedPrograms = append(outdatedPrograms, program)
@@ -100,7 +100,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				if verbosityLevel >= normalVerbosity {
-					truncatePrintf(false, "\033[2K\r<%d/%d> %s | No updates available for %s.", atomic.LoadUint32(&checked), toBeChecked, padding, fullName)
+					truncatePrintf(false, "\033[2K\r<%d/%d> %s | No updates available for %s.", atomic.LoadUint32(&checked), toBeChecked, padding, parseBinaryEntry(trackedBEntry, false))
 				}
 				progressMutex.Unlock()
 			}

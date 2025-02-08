@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -12,19 +11,19 @@ import (
 	"time"
 )
 
-func ReturnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBinaryName string, err error) {
+func ReturnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBEntry binaryEntry, err error) {
 	cachedBinary = filepath.Join(config.CacheDir, filepath.Base(binaryName))
 
-	trackedBinaryName, err = getFullName(cachedBinary)
+	trackedBEntry, err = readEmbeddedBEntry(cachedBinary)
 	if err != nil {
-		return "", "", err
+		return "", trackedBEntry, err
 	}
 
 	if !fileExists(cachedBinary) {
-		return "", "", errors.New("cached binary not found")
+		return "", trackedBEntry, fmt.Errorf("cached binary not found")
 	}
 
-	return cachedBinary, trackedBinaryName, nil
+	return cachedBinary, trackedBEntry, nil
 }
 
 func RunFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity, metadata map[string]interface{}) error {
@@ -42,11 +41,11 @@ func RunFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 	baseName := filepath.Base(bEntry.Name)
 	cachedFile := filepath.Join(config.CacheDir, baseName)
 	if fileExists(cachedFile) && isExecutable(cachedFile) {
-		trackedBinaryName, err := getFullName(cachedFile)
-		if err != nil || trackedBinaryName != bEntry.Name {
+		trackedBEntry, err := readEmbeddedBEntry(cachedFile)
+		if err != nil || trackedBEntry.PkgId != bEntry.PkgId {
 			if verbosityLevel >= normalVerbosity {
-				if trackedBinaryName != "" {
-					fmt.Printf("Cached binary '%s' does not match requested binary '%s'. Fetching a new one...\n", trackedBinaryName, bEntry.Name)
+				if trackedBEntry.Name != "" {
+					fmt.Printf("Cached binary '%s' does not match requested binary '%s'. Fetching a new one...\n", parseBinaryEntry(trackedBEntry, false), parseBinaryEntry(bEntry, false))
 				}
 			}
 

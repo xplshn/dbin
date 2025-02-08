@@ -87,7 +87,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 				}
 
 				binInfo, _ := getBinaryInfo(config, binaryEntry, metadata)
-				if err := addFullName(destination, binInfo.PkgId); err != nil {
+				if err := embedBEntry(destination, binInfo.Name+"#"+binInfo.PkgId); err != nil {
 					errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
 					return
 				}

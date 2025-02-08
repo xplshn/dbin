@@ -153,32 +153,6 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 	}
 
 	switch command {
-	case "findurl":
-		if len(args) < 1 {
-			fmt.Println("No binary names provided for findurl command.")
-			os.Exit(1)
-		}
-		binaryEntries := removeDuplicates(arrStringToArrBinaryEntry(args))
-		fetchMetadata()
-		urls, _, err := findURL(config, binaryEntries, verbosityLevel, metadata)
-		if err != nil {
-			if verbosityLevel >= silentVerbosityWithErrors {
-				fmt.Fprintf(os.Stderr, "%v", err)
-			}
-			os.Exit(1)
-		}
-		if verbosityLevel >= normalVerbosity {
-			for i, url := range urls {
-				fmt.Printf("URL for %s: %s\n", binaryEntries[i].Name, url)
-			}
-		}
-	case "fullname":
-		if len(args) < 1 {
-			fmt.Println("No binary name was provided for fullname")
-			os.Exit(1)
-		}
-		fullName, _ := getFullName(args[0])
-		fmt.Println("fullName of", args[0], "is", fullName)
 	case "install", "add":
 		if len(args) < 1 {
 			fmt.Println("No binary name provided for install command.")
@@ -279,9 +253,9 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				installedPrograms := make([]string, 0)
 
 				for _, file := range files {
-					fullBinaryName := listInstalled(file)
-					if fullBinaryName != "" {
-						installedPrograms = append(installedPrograms, fullBinaryName)
+					trackedBEntry := isInstalled(file)
+					if trackedBEntry.Name != "" {
+						installedPrograms = append(installedPrograms, trackedBEntry.Name)
 					}
 				}
 
@@ -374,6 +348,32 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		if err := update(config, arrStringToArrBinaryEntry(os.Args[2:]), verbosityLevel, metadata); err != nil {
 			fmt.Println("Update failed:", err)
 		}
+	case "findurl":
+		if len(args) < 1 {
+			fmt.Println("No binary names provided for findurl command.")
+			os.Exit(1)
+		}
+		binaryEntries := removeDuplicates(arrStringToArrBinaryEntry(args))
+		fetchMetadata()
+		urls, _, err := findURL(config, binaryEntries, verbosityLevel, metadata)
+		if err != nil {
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "%v", err)
+			}
+			os.Exit(1)
+		}
+		if verbosityLevel >= normalVerbosity {
+			for i, url := range urls {
+				fmt.Printf("URL for %s: %s\n", binaryEntries[i].Name, url)
+			}
+		}
+	case "readEmbeddedMetadata":
+		if len(args) < 1 {
+			fmt.Println("No binary name was provided for fullname")
+			os.Exit(1)
+		}
+		trackedBEntry, _ := readEmbeddedBEntry(args[0])
+		fmt.Println("BEntry of installed ", args[0], "is", parseBinaryEntry(trackedBEntry, false))
 	default:
 		print(helpPage)
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)

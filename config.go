@@ -6,23 +6,23 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
-	"runtime"
 
 	"github.com/goccy/go-json"
 )
 
 type Config struct {
-	RepoURLs            []string        `json:"repo_urls" env:"DBIN_REPO_URLS"`
-	InstallDir          string          `json:"install_dir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
-	CacheDir            string          `json:"cache_dir" env:"DBIN_CACHEDIR"`
-	Limit               uint            `json:"fsearch_limit"`
-	ProgressbarStyle    int             `json:"progressbar_style,omitempty"`
-	DisableTruncation   bool            `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
-	RetakeOwnership     bool            `json:"retake_ownership" env:"DBIN_REOWN"`
-	UseIntegrationHooks bool            `json:"use_integration_hooks" env:"DBIN_USEHOOKS"`
-	Hooks               Hooks           `json:"integration_hooks,omitempty"`
+	RepoURLs            []string `json:"repo_urls" env:"DBIN_REPO_URLS"`
+	InstallDir          string   `json:"install_dir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
+	CacheDir            string   `json:"cache_dir" env:"DBIN_CACHEDIR"`
+	Limit               uint     `json:"fsearch_limit"`
+	ProgressbarStyle    int      `json:"progressbar_style,omitempty"`
+	DisableTruncation   bool     `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
+	RetakeOwnership     bool     `json:"retake_ownership" env:"DBIN_REOWN"`
+	UseIntegrationHooks bool     `json:"use_integration_hooks" env:"DBIN_USEHOOKS"`
+	Hooks               Hooks    `json:"integration_hooks,omitempty"`
 }
 
 type Hooks struct {
