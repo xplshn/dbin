@@ -41,7 +41,8 @@ type PkgForgeItem struct {
 	Category    []string `json:"categories,omitempty"`
 	Provides    []string `json:"provides,omitempty"`
 	Note        []string `json:"note,omitempty"`
-	GhcrBlob    string   `json:"ghcr_pkg,omitempty"`
+	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
+	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
 	Rank        string   `json:"rank,omitempty"`
 }
@@ -69,6 +70,7 @@ type DbinItem struct {
 	Provides        string   `json:"provides,omitempty"`
 	Notes           []string `json:"notes,omitempty"`
 	Appstream       string   `json:"appstream,omitempty"`
+	GhcrPkg         string   `json:"ghcr_pkg,omitempty"`
 	GhcrBlob        string   `json:"ghcr_blob,omitempty"`
 	Rank            uint16   `json:"rank,omitempty"`
 }
@@ -181,7 +183,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		Categories:  categories,
 		Provides:    provides,
 		Notes:       item.Note,
-		GhcrBlob:    item.GhcrBlob,
+		GhcrPkg:     "oci://" + item.GhcrPkg,
+		GhcrBlob:    "oci://" + item.GhcrBlob,
 		Rank:        uint16(rank),
 	}
 }
