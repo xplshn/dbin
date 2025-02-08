@@ -23,7 +23,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, m
 				fmt.Printf("\033[2K\rFound \"%s\" is already a valid URL", bEntry.Name)
 			}
 			foundURLs = append(foundURLs, bEntry.Name)
-			foundB3sum = append(foundB3sum, "null")
+			foundB3sum = append(foundB3sum, "!no_check")
 			continue
 		}
 
@@ -38,8 +38,8 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, m
 
 		selectedBin := selectHighestRankedBin(matchingBins, highestRank)
 
-		foundURLs = append(foundURLs, selectedBin["ghcr_blob"].(string))
-		foundB3sum = append(foundB3sum, selectedBin["shasum"].(string))
+		foundURLs = append(foundURLs, selectedBin["ghcr_pkg"].(string))
+		foundB3sum = append(foundB3sum, selectedBin["bsum"].(string))
 
 		if verbosityLevel >= extraVerbose {
 			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s",

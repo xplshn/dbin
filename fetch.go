@@ -59,7 +59,7 @@ downloadLoop:
 	}
 
 	// Checksum verification
-	if checksum != "" && checksum != "null" {
+	if checksum != "" && checksum != "!no_check" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
 		if calculatedChecksum != checksum {
 			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
@@ -88,8 +88,9 @@ downloadLoop:
 }
 
 func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, url, checksum, destination string) (string, error) {
-	// Check if the URL is an OCI reference
-	if strings.HasPrefix(url, "ghcr.io/") {
+	// Check if the URL is an OCI reference (We assume it is oci://)
+	if strings.HasPrefix(url, "oci://") {
+		url = strings.TrimPrefix(url, "oci://")
 		return fetchOCIImage(ctx, bar, url, checksum, destination)
 	}
 
