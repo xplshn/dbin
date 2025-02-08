@@ -41,7 +41,7 @@ type PkgForgeItem struct {
 	Category    []string `json:"categories,omitempty"`
 	Provides    []string `json:"provides,omitempty"`
 	Note        []string `json:"note,omitempty"`
-	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
+	GhcrBlob    string   `json:"ghcr_url,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
 	Rank        string   `json:"rank,omitempty"`
 }
