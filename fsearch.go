@@ -14,7 +14,7 @@ type binaryEntry struct {
 	Rank        uint16
 }
 
-func fSearch(config *Config, searchTerm string, metadata map[string]interface{}) error {
+func fSearch(config *Config, searchTerms []string, metadata map[string]interface{}) error {
 	var results []binaryEntry
 
 	for _, section := range metadata {
@@ -39,9 +39,17 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 				continue
 			}
 
-			if strings.Contains(strings.ToLower(name), strings.ToLower(searchTerm)) ||
-				strings.Contains(strings.ToLower(description), strings.ToLower(searchTerm)) {
+			// Check if all search terms are contained in either name or description
+			match := true
+			for _, term := range searchTerms {
+				if !strings.Contains(strings.ToLower(name), strings.ToLower(term)) &&
+					!strings.Contains(strings.ToLower(description), strings.ToLower(term)) {
+					match = false
+					break
+				}
+			}
 
+			if match {
 				results = append(results, binaryEntry{
 					Name:        name,
 					PkgId:       pkgId,
@@ -64,10 +72,10 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 	}
 
 	if len(filteredResults) == 0 {
-		return fmt.Errorf("no matching binaries found for '%s'", searchTerm)
+		return fmt.Errorf("no matching binaries found for '%s'", strings.Join(searchTerms, " "))
 	} else if uint(len(filteredResults)) > config.Limit {
 		return fmt.Errorf("too many matching binaries (+%d. [Use --limit before your query]) found for '%s'",
-			config.Limit, searchTerm)
+			config.Limit, strings.Join(searchTerms, " "))
 	}
 
 	installDir := config.InstallDir
@@ -75,7 +83,7 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 
 	for _, result := range filteredResults {
 		prefix := "[-]"
-		if bEntryOfinstalledBinary(filepath.Join(installDir, filepath.Base(result.Name))) .PkgId == result.PkgId {
+		if bEntryOfinstalledBinary(filepath.Join(installDir, filepath.Base(result.Name))).PkgId == result.PkgId {
 			prefix = "[i]"
 		}
 

@@ -179,7 +179,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
 				fetchMetadata()
-				fSearch(config, "", metadata)
+				fSearch(config, []string{""}, metadata)
 			} else {
 				errorOut("dbin: Unknown command.\n")
 			}
@@ -198,7 +198,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		queryIndex := 0
 
 		if len(args) < queryIndex+1 {
-			fmt.Println("Usage: dbin search <--limit||-l [int]> [query]")
+			fmt.Println("Usage: dbin search <--limit||-l [int]> [query...]")
 			os.Exit(1)
 		}
 
@@ -219,11 +219,12 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		}
 
 		if len(args) <= queryIndex {
-			fmt.Println("Usage: dbin search <--limit||-l [int]> [query]")
+			fmt.Println("Usage: dbin search <--limit||-l [int]> [query...]")
 			os.Exit(1)
 		}
 
-		query := args[queryIndex]
+		// Collect all remaining arguments as search terms
+		query := args[queryIndex:]
 		fetchMetadata()
 		err := fSearch(config, query, metadata)
 		if err != nil {
