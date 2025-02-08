@@ -20,7 +20,6 @@ var excludedFileNames = []string{
 	"firefox-nightly.appimage",
 }
 
-// listBinaries fetches and lists binary names from the given metadata URLs.
 func listBinaries(metadata map[string]interface{}) ([]binaryEntry, error) {
 	var allBinaries []binaryEntry
 
@@ -58,7 +57,6 @@ func listBinaries(metadata map[string]interface{}) ([]binaryEntry, error) {
 	return removeDuplicates(filteredBinaries), nil
 }
 
-// filterBinaries filters the list of binaries based on exclusions.
 func filterBinaries(binaries []binaryEntry) []binaryEntry {
 	var filtered []binaryEntry
 	for _, result := range binaries {

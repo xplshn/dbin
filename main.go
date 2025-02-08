@@ -169,8 +169,8 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			fmt.Println("No binary name provided for remove command.")
 			os.Exit(1)
 		}
-		binaries := args
-		err := removeBinaries(config, binaries, verbosityLevel, metadata)
+		bEntries := arrStringToArrBinaryEntry(args)
+		err := removeBinaries(config, bEntries, verbosityLevel, metadata)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -185,12 +185,12 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			}
 		} else {
 			fetchMetadata()
-			binaries, err := listBinaries(metadata)
+			bEntries, err := listBinaries(metadata)
 			if err != nil {
 				fmt.Println("Error listing binaries:", err)
 				os.Exit(1)
 			}
-			for _, binary := range binaryEntriesToArrString(binaries, true) {
+			for _, binary := range binaryEntriesToArrString(bEntries, true) {
 				fmt.Println(binary)
 			}
 		}
@@ -231,18 +231,18 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			os.Exit(1)
 		}
 	case "info":
-		var binaryName string
+		var bEntry binaryEntry
 		var remote bool
 
 		for _, arg := range args {
 			if arg == "--remote" || arg == "-r" {
 				remote = true
-			} else if binaryName == "" {
-				binaryName = arg
+			} else if bEntry.Name == "" {
+				bEntry = stringToBinaryEntry(arg)
 			}
 		}
 
-		if binaryName == "" {
+		if bEntry.Name == "" {
 			if !remote {
 				files, err := listFilesInDir(config.InstallDir)
 				if err != nil {
@@ -253,7 +253,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				installedPrograms := make([]string, 0)
 
 				for _, file := range files {
-					trackedBEntry := isInstalled(file)
+					trackedBEntry := bEntryOfinstalledBinary(file)
 					if trackedBEntry.Name != "" {
 						installedPrograms = append(installedPrograms, trackedBEntry.Name)
 					}
@@ -275,7 +275,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			}
 		} else {
 			fetchMetadata()
-			binaryInfo, err := getBinaryInfo(config, stringToBinaryEntry(binaryName), metadata)
+			binaryInfo, err := getBinaryInfo(config, bEntry, metadata)
 			if err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
@@ -353,9 +353,9 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			fmt.Println("No binary names provided for findurl command.")
 			os.Exit(1)
 		}
-		binaryEntries := removeDuplicates(arrStringToArrBinaryEntry(args))
+		bEntries := removeDuplicates(arrStringToArrBinaryEntry(args))
 		fetchMetadata()
-		urls, _, err := findURL(config, binaryEntries, verbosityLevel, metadata)
+		urls, _, err := findURL(config, bEntries, verbosityLevel, metadata)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)
@@ -364,7 +364,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		}
 		if verbosityLevel >= normalVerbosity {
 			for i, url := range urls {
-				fmt.Printf("URL for %s: %s\n", binaryEntries[i].Name, url)
+				fmt.Printf("URL for %s: %s\n", bEntries[i].Name, url)
 			}
 		}
 	case "readEmbeddedMetadata":

@@ -14,11 +14,9 @@ type binaryEntry struct {
 	Rank        uint16
 }
 
-// fSearch searches for binaries based on the given search term
 func fSearch(config *Config, searchTerm string, metadata map[string]interface{}) error {
 	var results []binaryEntry
 
-	// Gather all matching binaries across sections
 	for _, section := range metadata {
 		binList, ok := section.([]interface{})
 		if !ok {
@@ -37,12 +35,10 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 			description, _ := binMap["description"].(string)
 			rank, _ := binMap["rank"].(uint16)
 
-			// Skip if missing required fields
 			if name == "" || description == "" {
 				continue
 			}
 
-			// Check if matches search term
 			if strings.Contains(strings.ToLower(name), strings.ToLower(searchTerm)) ||
 				strings.Contains(strings.ToLower(description), strings.ToLower(searchTerm)) {
 
@@ -57,7 +53,6 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 		}
 	}
 
-	// Filter results
 	filteredResults := make([]binaryEntry, 0)
 	for _, result := range results {
 		ext := strings.ToLower(filepath.Ext(result.Name))
@@ -68,7 +63,6 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 		}
 	}
 
-	// Check result count
 	if len(filteredResults) == 0 {
 		return fmt.Errorf("no matching binaries found for '%s'", searchTerm)
 	} else if uint(len(filteredResults)) > config.Limit {
@@ -76,26 +70,14 @@ func fSearch(config *Config, searchTerm string, metadata map[string]interface{})
 			config.Limit, searchTerm)
 	}
 
-	// Print results
 	installDir := config.InstallDir
 	disableTruncation := config.DisableTruncation
 
 	for _, result := range filteredResults {
-		// Determine installation status
 		prefix := "[-]"
-		if fileExists(filepath.Join(installDir, filepath.Base(result.Name))) {
+		if bEntryOfinstalledBinary(filepath.Join(installDir, filepath.Base(result.Name))) .PkgId == result.PkgId {
 			prefix = "[i]"
 		}
-
-		// Format version info in gray
-		//versionInfo := ""
-		//if result.PkgId != "" {
-		//	versionInfo = fmt.Sprintf("\033[94m#%s", result.PkgId)
-		//	if result.Version != "" {
-		//		versionInfo += fmt.Sprintf("\033[90m:%s", result.Version)
-		//	}
-		//	versionInfo += "\033[0m"
-		//}
 
 		truncatePrintf(disableTruncation, "%s %s - %s\n",
 			prefix, parseBinaryEntry(result, true), result.Description)

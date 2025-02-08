@@ -15,7 +15,6 @@ import (
 	"github.com/zeebo/blake3"
 )
 
-// downloadWithProgress handles the common download logic with progress tracking and checksum verification
 func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination, checksum string) error {
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return fmt.Errorf("failed to create parent directories for %s: %v", destination, err)
@@ -23,7 +22,6 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 
 	bar.UpdateRange(0, resp.ContentLength)
 
-	// Create temp file
 	tempFile := destination + ".tmp"
 	out, err := os.Create(tempFile)
 	if err != nil {
@@ -58,7 +56,6 @@ downloadLoop:
 		}
 	}
 
-	// Checksum verification
 	if checksum != "" && checksum != "!no_check" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
 		if calculatedChecksum != checksum {
@@ -68,7 +65,6 @@ downloadLoop:
 		fmt.Println("Warning: No checksum exists for this binary in the metadata files, skipping verification.")
 	}
 
-	// Handle nix objects
 	if err := removeNixGarbageFoundInTheRepos(tempFile); err != nil {
 		_ = os.Remove(tempFile)
 		return err
@@ -88,7 +84,6 @@ downloadLoop:
 }
 
 func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, url, checksum, destination string) (string, error) {
-	// Check if the URL is an OCI reference (We assume it is oci://)
 	if strings.HasPrefix(url, "oci://") {
 		url = strings.TrimPrefix(url, "oci://")
 		return fetchOCIImage(ctx, bar, url, checksum, destination)
@@ -103,7 +98,6 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, url, chec
 	req.Header.Set("Expires", "0")
 	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%s", Version))
 
-	// Perform the request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {

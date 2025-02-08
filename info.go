@@ -39,44 +39,6 @@ func findBinaryInfo(bEntry binaryEntry, metadata map[string]interface{}) (Binary
 	return populateBinaryInfo(selectedBin), true
 }
 
-func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]map[string]interface{}, uint16) {
-	var matchingBins []map[string]interface{}
-	var highestRank uint16
-
-	for _, section := range metadata {
-		if binaries, ok := section.([]interface{}); ok {
-			for _, bin := range binaries {
-				if binMap, ok := bin.(map[string]interface{}); ok && matchesEntry(bEntry, binMap) {
-					matchingBins = append(matchingBins, binMap)
-					if rank, ok := binMap["rank"].(uint16); ok && rank > highestRank {
-						highestRank = rank
-					}
-				}
-			}
-		}
-	}
-
-	return matchingBins, highestRank
-}
-
-func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank uint16) map[string]interface{} {
-	if len(matchingBins) == 1 {
-		return matchingBins[0]
-	}
-
-	for _, bin := range matchingBins {
-		if rank, ok := bin["rank"].(uint16); ok && rank == highestRank {
-			return bin
-		}
-	}
-
-	if highestRank == 0 {
-		return matchingBins[0]
-	}
-
-	return nil
-}
-
 func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
 	getString := func(key string) string {
 		if val, ok := binMap[key].(string); ok {
@@ -89,7 +51,6 @@ func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
 		if val, ok := binMap[key]; ok {
 			switch v := val.(type) {
 			case []interface{}:
-				// If the value is a slice of interfaces, convert each to a string
 				strSlice := make([]string, len(v))
 				for i, item := range v {
 					if str, ok := item.(string); ok {

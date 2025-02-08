@@ -37,27 +37,27 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 	var errors []string
 
 	binaryNameMaxlen := 0
-	for _, binaryEntry := range binaries {
-		if binaryNameMaxlen < len(binaryEntry.Name) {
-			binaryNameMaxlen = len(binaryEntry.Name)
+	for _, bEntry := range binaries {
+		if binaryNameMaxlen < len(bEntry.Name) {
+			binaryNameMaxlen = len(bEntry.Name)
 		}
 	}
 
 	termWidth := getTerminalWidth()
 
-	for i, binaryEntry := range binaries {
+	for i, bEntry := range binaries {
 		wg.Add(1)
 		url := urls[i]
 		checksum := checksums[i]
-		destination := filepath.Join(config.InstallDir, filepath.Base(binaryEntry.Name))
+		destination := filepath.Join(config.InstallDir, filepath.Base(bEntry.Name))
 
-		barTitle := fmt.Sprintf("Installing %s", binaryEntry.Name)
+		barTitle := fmt.Sprintf("Installing %s", bEntry.Name)
 		pbarOpts := []progressbar.Opt{
 			progressbar.WithBarStepper(config.ProgressbarStyle),
 		}
 
 		if termWidth < 120 {
-			barTitle = binaryEntry.Name
+			barTitle = bEntry.Name
 			pbarOpts = append(
 				pbarOpts,
 				progressbar.WithBarTextSchema(`{{.Bar}} {{.Percent}} | <font color="green">{{.Title}}</font>`),
@@ -72,7 +72,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 				defer wg.Done()
 				_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
 				if fetchErr != nil {
-					errChan <- fmt.Errorf("error fetching binary %s: %v", binaryEntry.Name, fetchErr)
+					errChan <- fmt.Errorf("error fetching binary %s: %v", bEntry.Name, fetchErr)
 					return
 				}
 
@@ -82,11 +82,11 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 				}
 
 				if err := runIntegrationHooks(config, destination, verbosityLevel, metadata); err != nil {
-					errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", binaryEntry.Name, err)
+					errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err)
 					return
 				}
 
-				binInfo, _ := getBinaryInfo(config, binaryEntry, metadata)
+				binInfo, _ := getBinaryInfo(config, bEntry, metadata)
 				if err := embedBEntry(destination, binInfo.Name+"#"+binInfo.PkgId); err != nil {
 					errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
 					return

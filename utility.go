@@ -146,7 +146,7 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, meta
 	validPrograms := make([]binaryEntry, 0, len(programsToValidate))
 
 	validate := func(file string) (binaryEntry, bool) {
-		trackedBEntry := isInstalled(file)
+		trackedBEntry := bEntryOfinstalledBinary(file)
 		if config.RetakeOwnership {
 			trackedBEntry.Name = filepath.Base(file)
 			if trackedBEntry.Name == "" {
@@ -177,7 +177,7 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, meta
 	return validPrograms, nil
 }
 
-func isInstalled(binaryPath string) binaryEntry {
+func bEntryOfinstalledBinary(binaryPath string) binaryEntry {
 	if isSymlink(binaryPath) {
 		return binaryEntry{}
 	}

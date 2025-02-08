@@ -3,7 +3,69 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"strings"
 )
+
+func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]map[string]interface{}, uint16) {
+	var matchingBins []map[string]interface{}
+	var highestRank uint16
+
+	for _, section := range metadata {
+		if binaries, ok := section.([]interface{}); ok {
+			for _, bin := range binaries {
+				if binMap, ok := bin.(map[string]interface{}); ok && matchesEntry(bEntry, binMap) {
+					matchingBins = append(matchingBins, binMap)
+					if rank, ok := binMap["rank"].(uint16); ok && rank > highestRank {
+						highestRank = rank
+					}
+				}
+			}
+		}
+	}
+
+	return matchingBins, highestRank
+}
+
+func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank uint16) map[string]interface{} {
+	if len(matchingBins) == 1 {
+		return matchingBins[0]
+	}
+
+	var nonGlibcBins []map[string]interface{}
+
+	// Collect all bins that do not contain "glibc" in their PkgId
+	for _, bin := range matchingBins {
+		if pkgId, ok := bin["PkgId"].(string); ok && !strings.Contains(pkgId, "glibc") {
+			nonGlibcBins = append(nonGlibcBins, bin)
+		}
+	}
+
+	// If there are non-glibc bins, select the one with the highest rank
+	if len(nonGlibcBins) > 0 {
+		var selectedBin map[string]interface{}
+		var highestNonGlibcRank uint16
+		for _, bin := range nonGlibcBins {
+			if rank, ok := bin["rank"].(uint16); ok && rank > highestNonGlibcRank {
+				highestNonGlibcRank = rank
+				selectedBin = bin
+			}
+		}
+		return selectedBin
+	}
+
+	// If no non-glibc bins, select the highest ranked bin overall
+	for _, bin := range matchingBins {
+		if rank, ok := bin["rank"].(uint16); ok && rank == highestRank {
+			return bin
+		}
+	}
+
+	if highestRank == 0 {
+		return matchingBins[0]
+	}
+
+	return nil
+}
 
 func matchesEntry(bEntry binaryEntry, binMap map[string]interface{}) bool {
 	return (bEntry.Name == "" || binMap["pkg"].(string) == bEntry.Name) &&
@@ -11,7 +73,6 @@ func matchesEntry(bEntry binaryEntry, binMap map[string]interface{}) bool {
 		(bEntry.Version == "" || binMap["version"].(string) == bEntry.Version)
 }
 
-// findURL fetches the URLs and BLAKE3sum for the specified binaries
 func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) ([]string, []string, error) {
 	var foundURLs []string
 	var foundB3sum []string

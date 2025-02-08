@@ -8,21 +8,21 @@ import (
 	"sync"
 )
 
-func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) error {
 	var wg sync.WaitGroup
 	var removeErrors []string
 	var mutex sync.Mutex
 
 	installDir := config.InstallDir
 
-	for _, binaryName := range binaries {
+	for _, bEntry := range bEntries {
 		wg.Add(1)
-		go func(binaryName string) {
+		go func(bEntry binaryEntry) {
 			defer wg.Done()
 
-			installPath := filepath.Join(installDir, filepath.Base(binaryName))
+			installPath := filepath.Join(installDir, filepath.Base(bEntry.Name))
 
-			bEntry, err := readEmbeddedBEntry(installPath)
+			trackedBEntry, err := readEmbeddedBEntry(installPath)
 			if err != nil {
 				if verbosityLevel >= normalVerbosity {
 					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s#%s'. Skipping removal.\n", bEntry.Name, bEntry.PkgId)
@@ -30,20 +30,20 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity,
 				return
 			}
 
-			if filepath.Base(binaryName) != filepath.Base(bEntry.Name) {
-				installPath = filepath.Join(installDir, filepath.Base(bEntry.Name))
+			if filepath.Base(bEntry.Name) != filepath.Base(trackedBEntry.Name) {
+				installPath = filepath.Join(installDir, filepath.Base(trackedBEntry.Name))
 			}
 
 			if !fileExists(installPath) {
 				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s. Skipping removal.\n", binaryName, installDir)
+					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s. Skipping removal.\n", bEntry.Name, installDir)
 				}
 				return
 			}
 
-			if bEntry.Name == "" {
+			if trackedBEntry.PkgId == "" {
 				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Skipping '%s': it was not installed by dbin\n", binaryName)
+					fmt.Fprintf(os.Stderr, "Skipping '%s': it was not installed by dbin\n", bEntry.Name)
 				}
 				return
 			}
@@ -61,15 +61,15 @@ func removeBinaries(config *Config, binaries []string, verbosityLevel Verbosity,
 			err = os.Remove(installPath)
 			if err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
-					fmt.Fprintf(os.Stderr, "error: failed to remove '%s' from %s. %v\n", binaryName, installDir, err)
+					fmt.Fprintf(os.Stderr, "error: failed to remove '%s' from %s. %v\n", bEntry.Name, installDir, err)
 				}
 				mutex.Lock()
-				removeErrors = append(removeErrors, fmt.Sprintf("failed to remove '%s' from %s: %v", binaryName, installDir, err))
+				removeErrors = append(removeErrors, fmt.Sprintf("failed to remove '%s' from %s: %v", bEntry.Name, installDir, err))
 				mutex.Unlock()
 			} else if verbosityLevel <= extraVerbose {
-				fmt.Printf("'%s' removed from %s\n", binaryName, installDir)
+				fmt.Printf("'%s' removed from %s\n", bEntry.Name, installDir)
 			}
-		}(binaryName)
+		}(bEntry)
 	}
 
 	wg.Wait()
@@ -86,7 +86,7 @@ func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Ver
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			for _, cmd := range hookCommands.DeintegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel, metadata); err != nil {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, false, verbosityLevel, metadata); err != nil {
 					return err
 				}
 			}
