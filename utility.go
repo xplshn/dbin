@@ -309,7 +309,7 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 
 	fullName, err := xattr.Get(binaryPath, "user.FullName")
 	if err != nil {
-		return binaryEntry{}, fmt.Errorf("full name attribute not found for binary: %s", binaryPath)
+		return binaryEntry{}, fmt.Errorf("xattr: user.FullName attribute not found for binary: %s", binaryPath)
 	}
 
 	return stringToBinaryEntry(string(fullName)), nil

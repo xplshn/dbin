@@ -37,7 +37,10 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 			defer wg.Done()
 
 			installPath := filepath.Join(installDir, filepath.Base(program.Name))
-			trackedBEntry, _ := readEmbeddedBEntry(installPath)
+			trackedBEntry, err := readEmbeddedBEntry(installPath)
+			if err != nil {
+				return
+			}
 
 			if !fileExists(installPath) {
 				progressMutex.Lock()
