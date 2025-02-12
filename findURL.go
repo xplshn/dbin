@@ -68,7 +68,7 @@ func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank u
 }
 
 func matchesEntry(bEntry binaryEntry, binMap map[string]interface{}) bool {
-	return (bEntry.Name == "" || binMap["pkg"].(string) == bEntry.Name) &&
+	return (binMap["pkg"].(string) == bEntry.Name) &&
 		(bEntry.PkgId == "" || binMap["pkg_id"].(string) == bEntry.PkgId) &&
 		(bEntry.Version == "" || binMap["version"].(string) == bEntry.Version)
 }

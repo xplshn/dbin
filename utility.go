@@ -304,7 +304,7 @@ func embedBEntry(binaryPath string, fName string) error {
 // readEmbeddedBEntry retrieves the full binary name from the extended attributes of the binary file.
 func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	if !fileExists(binaryPath) {
-		return binaryEntry{}, nil
+		return binaryEntry{}, fmt.Errorf("Error: Tried to get EmbeddedBEntry of non-existant file: %s", binaryPath)
 	}
 
 	fullName, err := xattr.Get(binaryPath, "user.FullName")

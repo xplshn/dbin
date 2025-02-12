@@ -239,7 +239,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			remote = true
 		}
 
-		if args[0] != "" {
+		if len(args) == 1 && args[0] != "" {
 			bEntry = stringToBinaryEntry(args[0])
 		}
 
