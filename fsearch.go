@@ -11,6 +11,7 @@ type binaryEntry struct {
 	PkgId       string
 	Version     string
 	Description string
+	Path        string
 	Rank        uint16
 }
 
@@ -43,7 +44,8 @@ func fSearch(config *Config, searchTerms []string, metadata map[string]interface
 			match := true
 			for _, term := range searchTerms {
 				if !strings.Contains(strings.ToLower(name), strings.ToLower(term)) &&
-					!strings.Contains(strings.ToLower(description), strings.ToLower(term)) {
+				   !strings.Contains(strings.ToLower(description), strings.ToLower(term)) &&
+				   !strings.Contains(strings.ToLower(pkgId), strings.ToLower(term)) {
 					match = false
 					break
 				}
@@ -55,6 +57,7 @@ func fSearch(config *Config, searchTerms []string, metadata map[string]interface
 					PkgId:       pkgId,
 					Version:     version,
 					Description: description,
+					Path:        filepath.Join(config.InstallDir, filepath.Base(name)),
 					Rank:        rank,
 				})
 			}
@@ -78,12 +81,11 @@ func fSearch(config *Config, searchTerms []string, metadata map[string]interface
 			config.Limit, strings.Join(searchTerms, " "))
 	}
 
-	installDir := config.InstallDir
 	disableTruncation := config.DisableTruncation
 
 	for _, result := range filteredResults {
 		prefix := "[-]"
-		if bEntryOfinstalledBinary(filepath.Join(installDir, filepath.Base(result.Name))).PkgId == result.PkgId {
+		if bEntryOfinstalledBinary(result.Path).PkgId == result.PkgId {
 			prefix = "[i]"
 		}
 

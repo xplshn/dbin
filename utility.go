@@ -130,16 +130,14 @@ func binaryEntriesToArrString(entries []binaryEntry, ansi bool) []string {
 
 // validateProgramsFrom checks the validity of programs against a remote source
 func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, metadata map[string]interface{}) ([]binaryEntry, error) {
-	installDir := config.InstallDir
 	programsEntries, err := listBinaries(metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list remote binaries: %w", err)
 	}
-	remotePrograms := binaryEntriesToArrString(programsEntries, false)
 
-	files, err := listFilesInDir(installDir)
+	files, err := listFilesInDir(config.InstallDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list files in %s: %w", installDir, err)
+		return nil, fmt.Errorf("failed to list files in %s: %w", config.InstallDir, err)
 	}
 
 	programsToValidate = removeDuplicates(programsToValidate)
@@ -149,12 +147,15 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, meta
 		trackedBEntry := bEntryOfinstalledBinary(file)
 		if config.RetakeOwnership {
 			trackedBEntry.Name = filepath.Base(file)
-			if trackedBEntry.Name == "" {
-				return binaryEntry{}, false
+			if trackedBEntry.PkgId == "" {
+				trackedBEntry.PkgId = "!retake"
 			}
 		}
-		if contains(remotePrograms, trackedBEntry.Name) {
-			return trackedBEntry, true
+		// Check if trackedBEntry exists in the remote programsEntries
+		for _, remoteEntry := range programsEntries {
+			if remoteEntry.Name == trackedBEntry.Name && (remoteEntry.PkgId == trackedBEntry.PkgId || trackedBEntry.PkgId == "!retake" ) {
+				return trackedBEntry, true
+			}
 		}
 		return binaryEntry{}, false
 	}
@@ -167,7 +168,7 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, meta
 		}
 	} else {
 		for _, program := range programsToValidate {
-			file := filepath.Join(installDir, program.Name)
+			file := filepath.Join(config.InstallDir, program.Name)
 			if bEntry, valid := validate(file); valid {
 				validPrograms = append(validPrograms, bEntry)
 			}

@@ -235,12 +235,12 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		var bEntry binaryEntry
 		var remote bool
 
-		for _, arg := range args {
-			if arg == "--remote" || arg == "-r" {
-				remote = true
-			} else if bEntry.Name == "" {
-				bEntry = stringToBinaryEntry(arg)
-			}
+		if config.RetakeOwnership {
+			remote = true
+		}
+
+		if args[0] != "" {
+			bEntry = stringToBinaryEntry(args[0])
 		}
 
 		if bEntry.Name == "" {
@@ -271,7 +271,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 					os.Exit(1)
 				}
 				for _, program := range installedPrograms {
-					fmt.Println(program)
+					fmt.Println(program.Name)
 				}
 			}
 		} else {
