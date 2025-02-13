@@ -26,7 +26,7 @@ dbin is a simple, Golang-based rewrite of the original [BDL](https://github.com/
 ```
 $ dbin --help
 
-  Copyright (c) 2024: xplshn and contributors
+ Copyright (c) 2025: xplshn and contributors
  For more details refer to https://github.com/xplshn/dbin
 
   Synopsis
@@ -50,7 +50,7 @@ $ dbin --help
     DBIN_CACHEDIR      If present, it must contain a valid directory path
     DBIN_INSTALL_DIR   If present, it must contain a valid directory path
     DBIN_NOTRUNCATION  If present, and set to ONE (1), string truncation will be disabled
-    DBIN_TRACKERFILE   If present, it must point to a valid file path, in an existing directory
+    DBIN_REOWN         If present, and set to ONE (1), it makes dbin update programs that may not have been installed by dbin
     DBIN_REPO_URLS     If present, it must contain one or more repository URLS ended in / separated by ;
     DBIN_METADATA_URLS If present, it must contain one or more repository's metadata url separated by ;
 
@@ -61,7 +61,6 @@ $ dbin --help
     dbin search editor
     dbin install micro.upx
     dbin install lux kakoune aretext shfmt
-    dbin add https://github.com/xplshn/a-utils/releases/download/0.0.5/a-utils-arm64-linux.upx # Add an external binary to your installDir
     dbin --silent install bed && echo "[bed] was installed to $INSTALL_DIR/bed"
     dbin del bed
     dbin del orbiton tgpt lux
@@ -73,7 +72,7 @@ $ dbin --help
     dbin --verbose run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
     dbin --silent run elinks -no-home "https://fatbuffalo.neocities.org/def"
     dbin --silent run --transparent micro ~/.profile
-    dbin run btop
+    dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE" # Donate?
 ```
 
 #### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
