@@ -147,7 +147,7 @@ func fetchOldAppbundleMetadata(url string) ([]DbinItem, error) {
 }
 
 func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
-	var categories, provides string
+	var categories, provides, downloadURL string
 
 	if len(item.Category) > 0 {
 		categories = strings.Join(item.Category, ",")
@@ -158,7 +158,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 	}
 
 	if item.HfPkg != "" {
-		item.DownloadURL = strings.Replace(item.HfPkg, "/tree/main", "/resolve/main", 1) + "/" + item.Pkg
+		downloadURL = strings.Replace(item.HfPkg, "/tree/main", "/resolve/main", 1) + "/" + item.Pkg
 	}
 
 	rank, _ := strconv.ParseUint(item.Rank, 10, 16)
@@ -171,7 +171,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		Screenshots: item.Screenshots,
 		Description: item.Description,
 		Version:     item.Version,
-		DownloadURL: item.DownloadURL,
+		DownloadURL: downloadURL,
 		Size:        item.Size,
 		Bsum:        item.Bsum,
 		Shasum:      item.Shasum,
