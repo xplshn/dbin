@@ -160,6 +160,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, familyCount map[string]int) Db
 
 	rank, _ := strconv.Atoi(item.Rank)
 
+	// PkgTypes we discard, completely
 	if item.PkgType == "archive" {
 		return DbinItem{}
 	}
@@ -168,9 +169,12 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, familyCount map[string]int) Db
 	if familyCount[item.Family] > 1 {
 		pkgName = fmt.Sprintf("%s/%s", item.Family, item.Name)
 	}
+	if item.PkgType == "static" {
+		pkgName = strings.TrimSuffix(pkgName, ".static")
+	}
 
 	return DbinItem{
-		Pkg:         fmt.Sprintf("%s%s", pkgName, t(item.PkgType != "static", "."+item.PkgType, "")),
+		Pkg:         pkgName,
 		Name:        item.Name,
 		BinId:       item.BinId,
 		Icon:        item.Icon,
