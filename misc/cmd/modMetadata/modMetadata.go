@@ -123,27 +123,33 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 	return dbinItems, nil
 }*/
 
-func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem, map[string]int) DbinItem) ([]DbinItem, error) {
+func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem, map[string]int, map[string]string) DbinItem) ([]DbinItem, error) {
 	items, err := downloadFunc(url)
 	if err != nil {
 		return nil, err
 	}
 
 	familyCount := make(map[string]int)
+	familyNames := make(map[string]string)
 	for _, item := range items {
 		familyCount[item.Family]++
+		if familyNames[item.Family] == "" {
+			familyNames[item.Family] = item.Name
+		} else if familyNames[item.Family] != item.Name {
+			familyNames[item.Family] = ""
+		}
 	}
 
 	var dbinItems []DbinItem
 	for _, item := range items {
-		dbinItem := convertFunc(item, familyCount)
+		dbinItem := convertFunc(item, familyCount, familyNames)
 		dbinItems = append(dbinItems, dbinItem)
 	}
 
 	return dbinItems, nil
 }
 
-func convertPkgForgeToDbinItem(item PkgForgeItem, familyCount map[string]int) DbinItem {
+func convertPkgForgeToDbinItem(item PkgForgeItem, familyCount map[string]int, familyNames map[string]string) DbinItem {
 	var categories, provides, downloadURL string
 
 	if len(item.Category) > 0 {
@@ -165,8 +171,9 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, familyCount map[string]int) Db
 		return DbinItem{}
 	}
 
+	// Determine the package name format
 	pkgName := item.Pkg
-	if familyCount[item.Family] > 1 {
+	if familyCount[item.Family] > 1 && familyNames[item.Family] != item.Name {
 		pkgName = fmt.Sprintf("%s/%s", item.Family, item.Name)
 	}
 	if item.PkgType == "static" {
