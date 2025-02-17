@@ -123,7 +123,7 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 	return dbinItems, nil
 }*/
 
-func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem, map[string]int, map[string]string) DbinItem) ([]DbinItem, error) {
+func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem, map[string]bool) DbinItem) ([]DbinItem, error) {
 	items, err := downloadFunc(url)
 	if err != nil {
 		return nil, err
@@ -131,25 +131,27 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 
 	familyCount := make(map[string]int)
 	familyNames := make(map[string]string)
+	useFamilyFormat := make(map[string]bool)
+
 	for _, item := range items {
 		familyCount[item.Family]++
 		if familyNames[item.Family] == "" {
 			familyNames[item.Family] = item.Name
 		} else if familyNames[item.Family] != item.Name {
-			familyNames[item.Family] = ""
+			useFamilyFormat[item.Family] = true
 		}
 	}
 
 	var dbinItems []DbinItem
 	for _, item := range items {
-		dbinItem := convertFunc(item, familyCount, familyNames)
+		dbinItem := convertFunc(item, useFamilyFormat)
 		dbinItems = append(dbinItems, dbinItem)
 	}
 
 	return dbinItems, nil
 }
 
-func convertPkgForgeToDbinItem(item PkgForgeItem, familyCount map[string]int, familyNames map[string]string) DbinItem {
+func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]bool) DbinItem {
 	var categories, provides, downloadURL string
 
 	if len(item.Category) > 0 {
@@ -171,9 +173,14 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, familyCount map[string]int, fa
 		return DbinItem{}
 	}
 
-	// Determine the package name format
-	pkgName := item.Pkg
-	if familyCount[item.Family] > 1 && familyNames[item.Family] != item.Name {
+	// - Determine the package name format
+	//   | - If all packages in a family have the same name (e.g., "bwrap" in the "bubblewrap" family),
+	//   |   the package name will be just the package name (e.g., "bwrap").
+	//   | - If there are multiple packages with different names in a family, the format will be
+	//   |   "family/package_name" (e.g., "a-utils/ccat").
+	// - Applies to all occurrences
+	pkgName := item.Name
+	if useFamilyFormat[item.Family] {
 		pkgName = fmt.Sprintf("%s/%s", item.Family, item.Name)
 	}
 	if item.PkgType == "static" {
