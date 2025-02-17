@@ -14,7 +14,7 @@ type Verbosity int8
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	indicator                           = "...>"
-	Version                             = "0.9"
+	Version                             = "1.0"
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
 	normalVerbosity           Verbosity = 1
@@ -347,8 +347,6 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 	case "eget2":
 		RunFromCache(config, stringToBinaryEntry("eget2"), flag.Args()[1:], true, verbosityLevel, metadata)
 	case "update":
-		if len(os.Args) > 2 {
-		}
 		fetchMetadata()
 		if err := update(config, arrStringToArrBinaryEntry(os.Args[2:]), verbosityLevel, metadata); err != nil {
 			fmt.Println("Update failed:", err)
