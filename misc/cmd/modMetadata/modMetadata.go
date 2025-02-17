@@ -185,6 +185,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	}
 	if item.PkgType == "static" {
 		pkgName = strings.TrimSuffix(pkgName, ".static")
+	} else if item.PkgType != "" {
+		pkgName = pkgName + "." + item.PkgType
 	}
 
 	return DbinItem{
