@@ -90,13 +90,7 @@ func (PkgForgeHandler) FetchMetadata(url string) ([]DbinItem, error) {
 type DbinHandler struct{}
 
 func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
-	return fetchOldAppbundleMetadata(url)
-}
-
-type OldDbinMetadata struct {
-	Bin  []DbinItem `json:"bin"`
-	Pkg  []DbinItem `json:"pkg"`
-	Base []DbinItem `json:"base"`
+	return fetchAndConvertMetadata(url, downloadJSON, convertPkgForgeToDbinItem)
 }
 
 func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem) DbinItem) ([]DbinItem, error) {
@@ -105,45 +99,13 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 		return nil, err
 	}
 
-	bsumMap := make(map[string]DbinItem)
+	var dbinItems []DbinItem
 	for _, item := range items {
 		dbinItem := convertFunc(item)
-		if existingItem, exists := bsumMap[dbinItem.Bsum]; exists {
-			if len(dbinItem.Pkg) < len(existingItem.Pkg) {
-				bsumMap[dbinItem.Bsum] = dbinItem
-			}
-		} else {
-			bsumMap[dbinItem.Bsum] = dbinItem
-		}
-	}
-
-	var dbinItems []DbinItem
-	for _, item := range bsumMap {
-		dbinItems = append(dbinItems, item)
+		dbinItems = append(dbinItems, dbinItem)
 	}
 
 	return dbinItems, nil
-}
-
-func fetchOldAppbundleMetadata(url string) ([]DbinItem, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var oldAppbundleMetadata OldDbinMetadata
-	err = json.Unmarshal(body, &oldAppbundleMetadata)
-	if err != nil {
-		return nil, err
-	}
-
-	return oldAppbundleMetadata.Pkg, nil
 }
 
 func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {

@@ -92,7 +92,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, m
 
 		if len(matchingBins) == 0 {
 			if verbosityLevel >= silentVerbosityWithErrors {
-				return nil, nil, fmt.Errorf("error: didn't find download URL for [%s]", bEntry.Name)
+				return nil, nil, fmt.Errorf("error: didn't find download URL for [%s]\n", bEntry.Name)
 			}
 			continue
 		}
