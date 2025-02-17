@@ -73,7 +73,7 @@ type DbinItem struct {
 	Appstream       string   `json:"appstream,omitempty"`
 	GhcrPkg         string   `json:"ghcr_pkg,omitempty"`
 	GhcrBlob        string   `json:"ghcr_blob,omitempty"`
-	Rank            uint16   `json:"rank,omitempty"`
+	Rank            uint   `json:"rank,omitempty"`
 }
 
 type DbinMetadata map[string][]DbinItem
@@ -137,7 +137,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		downloadURL = strings.Replace(item.HfPkg, "/tree/main", "/resolve/main", 1) + "/" + item.Pkg
 	}
 
-	rank, _ := strconv.ParseUint(item.Rank, 10, 16)
+	rank, _ := strconv.Atoi(item.Rank)
 
 	if item.PkgType == "archive" {
 		return DbinItem{}
@@ -165,7 +165,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 		Notes:       item.Note,
 		GhcrPkg:     "oci://" + item.GhcrPkg,
 		GhcrBlob:    "oci://" + item.GhcrBlob,
-		Rank:        uint16(rank),
+		Rank:        uint(rank),
 	}
 }
 
