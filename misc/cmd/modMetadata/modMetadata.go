@@ -102,8 +102,8 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 
 	var dbinItems []DbinItem
 	for _, item := range items {
-		if item.Name != "" {
-			dbinItem := convertFunc(item)
+		dbinItem := convertFunc(item)
+		if dbinItem.Name != "" {
 			dbinItems = append(dbinItems, dbinItem)
 		}
 	}
