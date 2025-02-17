@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -99,8 +100,16 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 		return nil, err
 	}
 
-	var dbinItems []DbinItem
+	// Remove duplicates based on PkgId
+	uniqueItems := make(map[string]PkgForgeItem)
 	for _, item := range items {
+		if _, exists := uniqueItems[item.BinId]; !exists {
+			uniqueItems[item.BinId] = item
+		}
+	}
+
+	var dbinItems []DbinItem
+	for _, item := range uniqueItems {
 		dbinItem := convertFunc(item)
 		dbinItems = append(dbinItems, dbinItem)
 	}
@@ -124,6 +133,10 @@ func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 	}
 
 	rank, _ := strconv.ParseUint(item.Rank, 10, 16)
+
+	if item.PkgType == "archive" {
+		return DbinItem{}
+	}
 
 	return DbinItem{
 		Pkg:         fmt.Sprintf("%s%s", t(item.Family == item.Name, item.Name, fmt.Sprintf("%s/%s", item.Family, item.Name)), t(item.PkgType != "static", "."+item.PkgType, "")),
@@ -173,6 +186,22 @@ func downloadJSON(url string) ([]PkgForgeItem, error) {
 }
 
 func saveJSON(filename string, metadata DbinMetadata) error {
+	// Replace "musl" with "AAA111Musl"
+	for repo, items := range metadata {
+		for i := range items {
+			items[i].BinId = strings.ReplaceAll(items[i].BinId, "musl", "AAA111Musl")
+		}
+		// Sort items alphabetically by BinId
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].BinId < items[j].BinId
+		})
+		// Replace "AAA111Musl" back to "musl"
+		for i := range items {
+			items[i].BinId = strings.ReplaceAll(items[i].BinId, "AAA111Musl", "musl")
+		}
+		metadata[repo] = items
+	}
+
 	jsonData, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
 		return err
