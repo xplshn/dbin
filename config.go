@@ -80,7 +80,7 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 func loadConfig() (*Config, error) {
 	cfg := Config{}
 
-	if noConfig, _ := strconv.ParseBool(os.Getenv("DBIN_NO_CONFIG")); noConfig {
+	if noConfig, _ := strconv.ParseBool(os.Getenv("DBIN_NOCONFIG")); noConfig {
 		setDefaultValues(&cfg)
 		return &cfg, nil
 	}

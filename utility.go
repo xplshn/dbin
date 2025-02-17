@@ -102,7 +102,7 @@ func arrStringToArrBinaryEntry(args []string) []binaryEntry {
 
 // parseBinaryEntry formats a single binaryEntry into a string in the format "name#id"
 func parseBinaryEntry(entry binaryEntry, ansi bool) string {
-	if ansi {
+	if ansi && term.IsTerminal(int(os.Stdout.Fd())) {
 		return entry.Name + "\033[94m#" + entry.PkgId + "\033[0m"
 	}
 	return entry.Name + ternary(entry.PkgId != "", "#"+entry.PkgId, entry.PkgId)

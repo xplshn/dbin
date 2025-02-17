@@ -14,7 +14,7 @@ type Verbosity int8
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	indicator                           = "...>"
-	Version                             = "0.8"
+	Version                             = "0.9"
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
 	normalVerbosity           Verbosity = 1
@@ -39,14 +39,15 @@ remove, del       Remove a binary
 update            Update binaries, by checking their SHA against the repo's SHA
 run               Run a specified binary from cache
 info              Show information about a specific binary OR display installed binaries
-search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
-tldr              Equivalent to "--silent run --transparent tlrc"
-eget2             Equivalent to "--silent run --transparent eget2"`,
+search            Search for a binary by suppliyng one or more search terms
+tldr              Equivalent to "--silent run --transparent tlrc"`,
 			"3_Variables": `DBIN_CACHEDIR      If present, it must contain a valid directory path
 DBIN_INSTALL_DIR   If present, it must contain a valid directory path
+DBIN_CONFIG_FILE   If present, it must contain a valid file path, pointing to a valid dbin config file
 DBIN_REPO_URLS     If present, it must contain one or more repository URLS ended in / separated by ;
 DBIN_METADATA_URLS If present, it must contain one or more repository's metadata url separated by ;
 DBIN_NOTRUNCATION  If present, and set to ONE (1), string truncation will be disabled
+DBIN_NOCONFIG      If present, and set to ONE (1), dbin will not create nor read its config. Using default values instead
 DBIN_REOWN         If present, and set to ONE (1), it makes dbin update programs that may not have been installed by dbin`,
 			"4_Examples": `dbin search editor
 dbin install micro.upx
@@ -256,7 +257,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				for _, file := range files {
 					trackedBEntry := bEntryOfinstalledBinary(file)
 					if trackedBEntry.Name != "" {
-						installedPrograms = append(installedPrograms, trackedBEntry.Name)
+						installedPrograms = append(installedPrograms, parseBinaryEntry(trackedBEntry, true))
 					}
 				}
 

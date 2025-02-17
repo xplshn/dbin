@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"path/filepath"
 )
 
 func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]map[string]interface{}, uint16) {
@@ -26,6 +27,8 @@ func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]ma
 	return matchingBins, highestRank
 }
 
+// Selects the best available candidate, avoids Glibc and uses "rank"
+// It will choose a glibc match if there isn't a non-glibc one tho
 func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank uint16) map[string]interface{} {
 	if len(matchingBins) == 1 {
 		return matchingBins[0]
@@ -86,6 +89,11 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, m
 			foundURLs = append(foundURLs, bEntry.Name)
 			foundB3sum = append(foundB3sum, "!no_check")
 			continue
+		}
+
+		// Check if the package is installed
+		if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); instBEntry.Name != "" {
+			bEntry = instBEntry
 		}
 
 		matchingBins, highestRank := findMatchingBins(bEntry, metadata)

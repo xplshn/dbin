@@ -94,8 +94,8 @@ func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
 }
 
 func getBinaryInfo(config *Config, bEntry binaryEntry, metadata map[string]interface{}) (*BinaryInfo, error) {
-	instBEntry, err := readEmbeddedBEntry(filepath.Join(config.InstallDir, bEntry.Name))
-	if err == nil && filepath.Base(bEntry.Name) != instBEntry.Name {
+	// Check if the package is installed, prioritize info of a installed version.
+	if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); bEntry.PkgId == "" && instBEntry.PkgId != "" {
 		bEntry = instBEntry
 	}
 
