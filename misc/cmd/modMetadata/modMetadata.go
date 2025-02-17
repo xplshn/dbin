@@ -94,6 +94,7 @@ func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
 	return fetchAndConvertMetadata(url, downloadJSON, convertPkgForgeToDbinItem)
 }
 
+/*
 func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem) DbinItem) ([]DbinItem, error) {
 	items, err := downloadFunc(url)
 	if err != nil {
@@ -117,6 +118,21 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 		if item.Name != "" {
 			dbinItems = append(dbinItems, item)
 		}
+	}
+
+	return dbinItems, nil
+}*/
+
+func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem) DbinItem) ([]DbinItem, error) {
+	items, err := downloadFunc(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var dbinItems []DbinItem
+	for _, item := range items {
+		dbinItem := convertFunc(item)
+		dbinItems = append(dbinItems, dbinItem)
 	}
 
 	return dbinItems, nil
