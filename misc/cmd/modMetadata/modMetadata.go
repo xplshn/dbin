@@ -100,23 +100,6 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 		return nil, err
 	}
 
-	var dbinItems []DbinItem
-	for _, item := range items {
-		dbinItem := convertFunc(item)
-		if dbinItem.Name != "" {
-			dbinItems = append(dbinItems, dbinItem)
-		}
-	}
-
-	return dbinItems, nil
-}
-/* With bsum enforced:
-func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem) DbinItem) ([]DbinItem, error) {
-	items, err := downloadFunc(url)
-	if err != nil {
-		return nil, err
-	}
-
 	bsumMap := make(map[string]DbinItem)
 	for _, item := range items {
 		dbinItem := convertFunc(item)
@@ -131,12 +114,13 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 
 	var dbinItems []DbinItem
 	for _, item := range bsumMap {
-		dbinItems = append(dbinItems, item)
+		if item.Name != "" {
+			dbinItems = append(dbinItems, item)
+		}
 	}
 
 	return dbinItems, nil
 }
-*/
 
 func convertPkgForgeToDbinItem(item PkgForgeItem) DbinItem {
 	var categories, provides, downloadURL string
