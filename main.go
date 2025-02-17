@@ -285,7 +285,7 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 
 			fields := []struct {
 				label string
-				value string
+				value interface{}
 			}{
 				{"Name", binaryInfo.Name + "#" + binaryInfo.PkgId},
 				{"Pkg ID", binaryInfo.PkgId},
@@ -301,21 +301,24 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				{"Build Script", binaryInfo.BuildScript},
 				{"Build Log", binaryInfo.BuildLog},
 				{"Categories", binaryInfo.Categories},
+				{"Rank", binaryInfo.Rank},
 				{"Extra Bins", binaryInfo.ExtraBins},
 			}
 			for _, field := range fields {
-				if field.value != "" {
-					truncatePrintf(config.DisableTruncation, "\033[48;5;4m%s\033[0m: %s\n", field.label, field.value)
+				switch v := field.value.(type) {
+				case []string:
+					for n, str := range v {
+						prefix := "\033[48;5;4m" + field.label + "\033[0m"
+						if n > 0 {
+							prefix = "         "
+						}
+						fmt.Printf("%s: %s\n", prefix, str)
+					}
+				default:
+					if v != "" && v != 0 {
+						fmt.Printf("\033[48;5;4m%s\033[0m: %v\n", field.label, v)
+					}
 				}
-			}
-			for n, str := range binaryInfo.Notes {
-				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mNote\033[0m: %s\n", "      %s\n"), str)
-			}
-			for n, str := range binaryInfo.WebURLs {
-				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mWebURLs\033[0m: %s\n", "         %s\n"), str)
-			}
-			for n, str := range binaryInfo.SrcURLs {
-				truncatePrintf(config.DisableTruncation, ternary(n == 0, "\033[48;5;4mSrcURLs\033[0m: %s\n", "         %s\n"), str)
 			}
 		}
 	case "run":

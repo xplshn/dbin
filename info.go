@@ -64,8 +64,8 @@ func populateBinaryInfo(binMap map[string]interface{}) BinaryInfo {
 	}
 
 	getUint16 := func(key string) uint16 {
-		if val, ok := binMap[key].(uint16); ok {
-			return val
+		if val, ok := binMap[key]; ok {
+			return uint16(val.(float64))
 		}
 		return 0
 	}
