@@ -100,16 +100,8 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 		return nil, err
 	}
 
-	// Remove duplicates based on PkgId
-	uniqueItems := make(map[string]PkgForgeItem)
-	for _, item := range items {
-		if _, exists := uniqueItems[item.BinId]; !exists {
-			uniqueItems[item.BinId] = item
-		}
-	}
-
 	var dbinItems []DbinItem
-	for _, item := range uniqueItems {
+	for _, item := range items {
 		dbinItem := convertFunc(item)
 		dbinItems = append(dbinItems, dbinItem)
 	}
