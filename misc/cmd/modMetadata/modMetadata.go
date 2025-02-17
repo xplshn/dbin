@@ -73,7 +73,7 @@ type DbinItem struct {
 	Appstream       string   `json:"appstream,omitempty"`
 	GhcrPkg         string   `json:"ghcr_pkg,omitempty"`
 	GhcrBlob        string   `json:"ghcr_blob,omitempty"`
-	Rank            uint   `json:"rank,omitempty"`
+	Rank            uint     `json:"rank,omitempty"`
 }
 
 type DbinMetadata map[string][]DbinItem
