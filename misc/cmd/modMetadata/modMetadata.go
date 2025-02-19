@@ -381,6 +381,7 @@ func main() {
 					continue
 				}
 				fmt.Printf("Successfully saved single metadata to %s\n", singleOutputFile)
+				genAMMeta(fmt.Sprintf("AM_METADATA_%s_%s", repo.Repo.Name, outputArch), dbinMetadata)
 			}
 		}
 
@@ -389,7 +390,7 @@ func main() {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
 			continue
 		}
-		genAMMeta(outputFile, dbinMetadata)
+		genAMMeta(fmt.Sprintf("AM_METADATA_%s", outputArch), dbinMetadata)
 
 		fmt.Printf("Successfully processed and saved combined metadata to %s\n", outputFile)
 	}
@@ -426,7 +427,7 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 		return value
 	}
 
-	file, err := os.Create(filename + ".md")
+	file, err := os.Create(filename + ".txt")
 	if err != nil {
 		fmt.Println("Error creating output file:", err)
 		return
