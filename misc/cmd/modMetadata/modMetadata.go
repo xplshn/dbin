@@ -9,9 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+
 	"github.com/goccy/go-json"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
+
+	"github.com/fxamacker/cbor/v2"
 )
 
 type repository struct {
@@ -236,7 +239,8 @@ func downloadJSON(url string) ([]PkgForgeItem, error) {
 	return items, nil
 }
 
-func saveJSON(filename string, metadata DbinMetadata) error {
+// Save metadata in both JSON and CBOR formats
+func saveMetadata(filename string, metadata DbinMetadata) error {
 	// Replace "musl" with "AAA111Musl"
 	for repo, items := range metadata {
 		for i := range items {
@@ -253,59 +257,63 @@ func saveJSON(filename string, metadata DbinMetadata) error {
 		metadata[repo] = items
 	}
 
-	jsonData, err := json.MarshalIndent(metadata, "", "  ")
-	if err != nil {
+	// Save the standard JSON and CBOR files
+	if err := saveJSON(filename, metadata); err != nil {
+		return err
+	}
+	if err := saveCBOR(filename, metadata); err != nil {
 		return err
 	}
 
-	err = os.WriteFile(filename, jsonData, 0644)
-	if err != nil {
-		return err
-	}
-
-	if err := minifyJSON(filename, jsonData); err != nil {
-		return err
-	}
-
-	return saveLiteMinJSON(filename, metadata)
-}
-
-func minifyJSON(filename string, jsonData []byte) error {
-	m := minify.New()
-	m.AddFunc("application/json", mjson.Minify)
-
-	minifiedData, err := m.Bytes("application/json", jsonData)
-	if err != nil {
-		return err
-	}
-
-	minFilename := strings.TrimSuffix(filename, ".json") + ".min.json"
-	return os.WriteFile(minFilename, minifiedData, 0644)
-}
-
-func saveLiteMinJSON(filename string, metadata DbinMetadata) error {
+	// Remove non-essential items to create a "lite" version
 	for _, items := range metadata {
 		for i := range items {
 			items[i].Icon = ""
 			items[i].Provides = ""
 		}
 	}
+	// Save the lite JSON and CBOR files
+	if err := saveJSON(filename+".lite", metadata); err != nil {
+		return err
+	}
+	return saveCBOR(filename+".lite", metadata)
+}
 
-	jsonData, err := json.MarshalIndent(metadata, "", "  ")
+
+// Save JSON file with integrated minified and lite logic
+func saveJSON(filename string, metadata DbinMetadata) error {
+	// Marshal the JSON data
+	jsonData, err := json.MarshalIndent(metadata, "", " ")
 	if err != nil {
 		return err
 	}
 
+	// Save the standard JSON file
+	if err := os.WriteFile(filename+".json", jsonData, 0644); err != nil {
+		return err
+	}
+
+	// Minify JSON
 	m := minify.New()
 	m.AddFunc("application/json", mjson.Minify)
+	if jsonData, err = m.Bytes("application/json", jsonData); err != nil {
+		return err
+	} else if err := os.WriteFile(filename+".min.json", jsonData, 0644); err != nil {
+		return err
+	}
 
-	minifiedData, err := m.Bytes("application/json", jsonData)
+	return nil
+}
+
+// Save CBOR file
+func saveCBOR(filename string, metadata DbinMetadata) error {
+	cborData, err := cbor.Marshal(metadata)
 	if err != nil {
 		return err
 	}
 
-	liteMinFilename := strings.TrimSuffix(filename, ".json") + ".lite.min.json"
-	return os.WriteFile(liteMinFilename, minifiedData, 0644)
+	// Save the normal CBOR file
+	return os.WriteFile(filename + ".cbor", cborData, 0644)
 }
 
 func main() {
@@ -364,9 +372,9 @@ func main() {
 			if repo.Repo.Single {
 				singleMetadata := make(DbinMetadata)
 				singleMetadata[repo.Repo.Name] = items
-				singleOutputFile := fmt.Sprintf("METADATA_%s_%s.json", repo.Repo.Name, outputArch)
+				singleOutputFile := fmt.Sprintf("METADATA_%s_%s", repo.Repo.Name, outputArch)
 
-				if err := saveJSON(singleOutputFile, singleMetadata); err != nil {
+				if err := saveMetadata(singleOutputFile, singleMetadata); err != nil {
 					fmt.Printf("Error saving single metadata to %s: %v\n", singleOutputFile, err)
 					continue
 				}
@@ -374,8 +382,8 @@ func main() {
 			}
 		}
 
-		outputFile := fmt.Sprintf("METADATA_%s.json", outputArch)
-		if err := saveJSON(outputFile, dbinMetadata); err != nil {
+		outputFile := fmt.Sprintf("METADATA_%s", outputArch)
+		if err := saveMetadata(outputFile, dbinMetadata); err != nil {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
 			continue
 		}
