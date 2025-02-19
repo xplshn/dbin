@@ -264,7 +264,6 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	if err := saveCBOR(filename, metadata); err != nil {
 		return err
 	}
-
 	// Remove non-essential items to create a "lite" version
 	for _, items := range metadata {
 		for i := range items {
