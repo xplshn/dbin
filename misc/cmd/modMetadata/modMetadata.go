@@ -10,11 +10,11 @@ import (
 	"strings"
 
 
+	"github.com/fxamacker/cbor/v2"
+	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-json"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
-
-	"github.com/fxamacker/cbor/v2"
 )
 
 type repository struct {
@@ -52,31 +52,31 @@ type PkgForgeItem struct {
 }
 
 type DbinItem struct {
-	Pkg             string   `json:"pkg"`
-	Name            string   `json:"pkg_name"`
-	BinId           string   `json:"pkg_id,omitempty"`
-	Icon            string   `json:"icon,omitempty"`
-	License         string   `json:"license,omitempty"`
-	Description     string   `json:"description,omitempty"`
-	LongDescription string   `json:"description_long,omitempty"`
-	Screenshots     []string `json:"screenshots,omitempty"`
-	Version         string   `json:"version,omitempty"`
-	DownloadURL     string   `json:"download_url,omitempty"`
-	Size            string   `json:"size,omitempty"`
-	Bsum            string   `json:"bsum,omitempty"`
-	Shasum          string   `json:"shasum,omitempty"`
-	BuildDate       string   `json:"build_date,omitempty"`
-	SrcURLs         []string `json:"src_urls,omitempty"`
-	WebURLs         []string `json:"web_urls,omitempty"`
-	BuildScript     string   `json:"build_script,omitempty"`
-	BuildLog        string   `json:"build_log,omitempty"`
-	Categories      string   `json:"categories,omitempty"`
-	Provides        string   `json:"provides,omitempty"`
-	Notes           []string `json:"notes,omitempty"`
-	Appstream       string   `json:"appstream,omitempty"`
-	GhcrPkg         string   `json:"ghcr_pkg,omitempty"`
-	GhcrBlob        string   `json:"ghcr_blob,omitempty"`
-	Rank            uint     `json:"rank,omitempty"`
+	Pkg             string   `json:"pkg"                        cbor:"pkg"                        yaml:"pkg"                       `
+	Name            string   `json:"pkg_name"                   cbor:"pkg_name"                   yaml:"pkg_name"                  `
+	BinId           string   `json:"pkg_id,omitempty"           cbor:"pkg_id,omitempty"           yaml:"pkg_id,omitempty"          `
+	Icon            string   `json:"icon,omitempty"             cbor:"icon,omitempty"             yaml:"icon,omitempty"            `
+	License         string   `json:"license,omitempty"          cbor:"license,omitempty"          yaml:"license,omitempty"         `
+	Description     string   `json:"description,omitempty"      cbor:"description,omitempty"      yaml:"description,omitempty"     `
+	LongDescription string   `json:"description_long,omitempty" cbor:"description_long,omitempty" yaml:"description_long,omitempty"`
+	Screenshots     []string `json:"screenshots,omitempty"      cbor:"screenshots,omitempty"      yaml:"screenshots,omitempty"     `
+	Version         string   `json:"version,omitempty"          cbor:"version,omitempty"          yaml:"version,omitempty"         `
+	DownloadURL     string   `json:"download_url,omitempty"     cbor:"download_url,omitempty"     yaml:"download_url,omitempty"    `
+	Size            string   `json:"size,omitempty"             cbor:"size,omitempty"             yaml:"size,omitempty"            `
+	Bsum            string   `json:"bsum,omitempty"             cbor:"bsum,omitempty"             yaml:"bsum,omitempty"            `
+	Shasum          string   `json:"shasum,omitempty"           cbor:"shasum,omitempty"           yaml:"shasum,omitempty"          `
+	BuildDate       string   `json:"build_date,omitempty"       cbor:"build_date,omitempty"       yaml:"build_date,omitempty"      `
+	SrcURLs         []string `json:"src_urls,omitempty"         cbor:"src_urls,omitempty"         yaml:"src_urls,omitempty"        `
+	WebURLs         []string `json:"web_urls,omitempty"         cbor:"web_urls,omitempty"         yaml:"web_urls,omitempty"        `
+	BuildScript     string   `json:"build_script,omitempty"     cbor:"build_script,omitempty"     yaml:"build_script,omitempty"    `
+	BuildLog        string   `json:"build_log,omitempty"        cbor:"build_log,omitempty"        yaml:"build_log,omitempty"       `
+	Categories      string   `json:"categories,omitempty"       cbor:"categories,omitempty"       yaml:"categories,omitempty"      `
+	Provides        string   `json:"provides,omitempty"         cbor:"provides,omitempty"         yaml:"provides,omitempty"        `
+	Notes           []string `json:"notes,omitempty"            cbor:"notes,omitempty"            yaml:"notes,omitempty"           `
+	Appstream       string   `json:"appstream,omitempty"        cbor:"appstream,omitempty"        yaml:"appstream,omitempty"       `
+	GhcrPkg         string   `json:"ghcr_pkg,omitempty"         cbor:"ghcr_pkg,omitempty"         yaml:"ghcr_pkg,omitempty"        `
+	GhcrBlob        string   `json:"ghcr_blob,omitempty"        cbor:"ghcr_blob,omitempty"        yaml:"ghcr_blob,omitempty"       `
+	Rank            uint     `json:"rank,omitempty"             cbor:"rank,omitempty"             yaml:"rank,omitempty"            `
 }
 
 type DbinMetadata map[string][]DbinItem
@@ -257,41 +257,56 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 		metadata[repo] = items
 	}
 
-	// Save the standard JSON and CBOR files
 	if err := saveJSON(filename, metadata); err != nil {
 		return err
 	}
 	if err := saveCBOR(filename, metadata); err != nil {
 		return err
 	}
-	// Remove non-essential items to create a "lite" version
+	if err := saveYAML(filename, metadata); err != nil {
+		return err
+	}
+
+	// "lite" version
 	for _, items := range metadata {
 		for i := range items {
 			items[i].Icon = ""
 			items[i].Provides = ""
 		}
 	}
-	// Save the lite JSON and CBOR files
-	if err := saveJSON(filename+".lite", metadata); err != nil {
+	filename += ".lite"
+
+	if err := saveJSON(filename, metadata); err != nil {
 		return err
 	}
-	return saveCBOR(filename+".lite", metadata)
+	if err := saveCBOR(filename, metadata); err != nil {
+		return err
+	}
+	return saveYAML(filename, metadata)
 }
 
-
-// Save JSON file with integrated minified and lite logic
+func saveCBOR(filename string, metadata DbinMetadata) error {
+	cborData, err := cbor.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename + ".cbor", cborData, 0644)
+}
+func saveYAML(filename string, metadata DbinMetadata) error {
+	yamlData, err := yaml.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename + ".yaml", yamlData, 0644)
+}
 func saveJSON(filename string, metadata DbinMetadata) error {
-	// Marshal the JSON data
 	jsonData, err := json.MarshalIndent(metadata, "", " ")
 	if err != nil {
 		return err
 	}
-
-	// Save the standard JSON file
 	if err := os.WriteFile(filename+".json", jsonData, 0644); err != nil {
 		return err
 	}
-
 	// Minify JSON
 	m := minify.New()
 	m.AddFunc("application/json", mjson.Minify)
@@ -300,19 +315,7 @@ func saveJSON(filename string, metadata DbinMetadata) error {
 	} else if err := os.WriteFile(filename+".min.json", jsonData, 0644); err != nil {
 		return err
 	}
-
 	return nil
-}
-
-// Save CBOR file
-func saveCBOR(filename string, metadata DbinMetadata) error {
-	cborData, err := cbor.Marshal(metadata)
-	if err != nil {
-		return err
-	}
-
-	// Save the normal CBOR file
-	return os.WriteFile(filename + ".cbor", cborData, 0644)
 }
 
 func main() {
@@ -386,6 +389,7 @@ func main() {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
 			continue
 		}
+		genAMMeta(outputFile, dbinMetadata)
 
 		fmt.Printf("Successfully processed and saved combined metadata to %s\n", outputFile)
 	}
@@ -397,4 +401,64 @@ func t[T any](cond bool, vtrue, vfalse T) T {
 		return vtrue
 	}
 	return vfalse
+}
+
+/* The following is a _favor_ I'm doing to ivan-hc and everyone that contributes 
+ *  And actively endorses or uses AM
+ *  They are a tremendous help to the Portable Linux Apps community!
+ */
+
+const pipeRepl = "ǀ" // Replacement for `|` to avoid breaking the MD table
+func replacePipeFields(pkg *DbinItem) {
+	pkg.Name = strings.ReplaceAll(pkg.Name, "|", pipeRepl)
+	pkg.Description = strings.ReplaceAll(pkg.Description, "|", pipeRepl)
+	pkg.DownloadURL = strings.ReplaceAll(pkg.DownloadURL, "|", pipeRepl)
+	for i := range pkg.WebURLs {
+		pkg.WebURLs[i] = strings.ReplaceAll(pkg.WebURLs[i], "|", pipeRepl)
+	}
+}
+
+func genAMMeta(filename string, metadata DbinMetadata) {
+	replaceEmptyWithNil := func(value string) string {
+		if value == "" {
+			return "nil"
+		}
+		return value
+	}
+
+	file, err := os.Create(filename + ".md")
+	if err != nil {
+		fmt.Println("Error creating output file:", err)
+		return
+	}
+	defer file.Close()
+
+	for _, items := range metadata {
+		for _, pkg := range items {
+			pkg.Name = replaceEmptyWithNil(pkg.Name)
+			pkg.Description = replaceEmptyWithNil(pkg.Description)
+			pkg.DownloadURL = replaceEmptyWithNil(pkg.DownloadURL)
+
+			webURL := pkg.DownloadURL
+			if webURL == "nil" && len(pkg.WebURLs) > 0 {
+				webURL = pkg.WebURLs[0]
+			}
+
+			replacePipeFields(&pkg)
+
+			pkgName := pkg.Name
+			strings.ToLower(pkgName)
+			strings.ReplaceAll(pkgName, " ", "-")
+
+			bsum := pkg.Bsum
+			if len(bsum) > 12 {
+				bsum = bsum[:12]
+			} else {
+				bsum = "nil"
+			}
+
+			file.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
+				pkgName, pkg.Description, webURL, pkg.DownloadURL, bsum))
+		}
+	}
 }
