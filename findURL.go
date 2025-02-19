@@ -76,6 +76,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 			continue
 		}
 
+		// Check if the package is installed
 		if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); instBEntry.Name != "" {
 			bEntry = instBEntry
 		}
@@ -91,7 +92,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 
 		selectedBin := selectHighestRankedBin(matchingBins, highestRank)
 
-		foundURLs = append(foundURLs, selectedBin.DownloadURL)
+		foundURLs = append(foundURLs, ternary(selectedBin.GhcrPkg != "", selectedBin.GhcrPkg, selectedBin.DownloadURL))
 		foundB3sum = append(foundB3sum, selectedBin.Bsum)
 
 		if verbosityLevel >= extraVerbose {

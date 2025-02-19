@@ -16,6 +16,7 @@ type binaryEntry struct {
 	Categories  string   `json:"categories,omitempty"  `
 	ExtraBins   string   `json:"provides,omitempty"    `
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"   `
+	GhcrPkg     string   `json:"ghcr_pkg,omitempty"    `
 	Rank        uint16   `json:"rank,omitempty"        `
 	Notes       []string `json:"notes,omitempty"       `
 	SrcURLs     []string `json:"src_urls,omitempty"    `
