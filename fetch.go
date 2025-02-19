@@ -62,7 +62,7 @@ downloadLoop:
 			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
 		}
 	} else {
-		fmt.Println("Warning: No checksum exists for this binary in the metadata files, skipping verification.")
+		fmt.Println("Warning: No checksum exists for this binary in the repository index, skipping verification.")
 	}
 
 	if err := removeNixGarbageFoundInTheRepos(tempFile); err != nil {

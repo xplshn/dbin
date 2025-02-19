@@ -26,7 +26,7 @@ func ReturnCachedFile(config *Config, binaryName string) (cachedBinary string, t
 	return cachedBinary, trackedBEntry, nil
 }
 
-func RunFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func RunFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	flagsAndBinaryName := append(strings.Fields(bEntry.Name), args...)
 	flag.CommandLine.Parse(flagsAndBinaryName)
 
@@ -51,7 +51,7 @@ func RunFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 
 			config.UseIntegrationHooks = false
 			config.InstallDir = config.CacheDir
-			if err := installCommand(config, []binaryEntry{bEntry}, silentVerbosityWithErrors, metadata); err != nil {
+			if err := installCommand(config, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
 					fmt.Fprintf(os.Stderr, "Error: could not fetch and cache the binary: %v\n", err)
 				}
@@ -79,7 +79,7 @@ func RunFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 
 	config.UseIntegrationHooks = false
 	config.InstallDir = config.CacheDir
-	if err := installCommand(config, []binaryEntry{bEntry}, silentVerbosityWithErrors, metadata); err != nil {
+	if err := installCommand(config, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
 		if verbosityLevel >= silentVerbosityWithErrors {
 			fmt.Fprintf(os.Stderr, "error: could not cache the binary: %v\n", err)
 		}

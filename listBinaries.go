@@ -20,41 +20,24 @@ var excludedFileNames = []string{
 	"firefox-nightly.appimage",
 }
 
-func listBinaries(metadata map[string]interface{}) ([]binaryEntry, error) {
+func listBinaries(uRepoIndex []binaryEntry) ([]binaryEntry, error) {
 	var allBinaries []binaryEntry
 
-	for _, section := range metadata {
-		binaries, ok := section.([]interface{})
-		if !ok {
-			continue
-		}
+	for _, bin := range uRepoIndex {
+		name, pkgId, version, description, rank := bin.Name, bin.PkgId, bin.Version, bin.Description, bin.Rank
 
-		for _, item := range binaries {
-			binMap, ok := item.(map[string]interface{})
-			if !ok {
-				continue
-			}
-
-			name, _ := binMap["pkg"].(string)
-			pkgId, _ := binMap["pkg_id"].(string)
-			version, _ := binMap["version"].(string)
-			description, _ := binMap["description"].(string)
-			rank, _ := binMap["rank"].(uint16)
-
-			if name != "" {
-				allBinaries = append(allBinaries, binaryEntry{
-					Name:        name,
-					PkgId:       pkgId,
-					Version:     version,
-					Description: description,
-					Rank:        rank,
-				})
-			}
+		if name != "" {
+			allBinaries = append(allBinaries, binaryEntry{
+				Name:        name,
+				PkgId:       pkgId,
+				Version:     version,
+				Description: description,
+				Rank:        rank,
+			})
 		}
 	}
 
-	filteredBinaries := filterBinaries(allBinaries)
-	return removeDuplicates(filteredBinaries), nil
+	return filterBinaries(allBinaries), nil
 }
 
 func filterBinaries(binaries []binaryEntry) []binaryEntry {

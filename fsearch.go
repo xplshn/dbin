@@ -6,61 +6,34 @@ import (
 	"strings"
 )
 
-type binaryEntry struct {
-	Name        string
-	PkgId       string
-	Version     string
-	Description string
-	Path        string
-	Rank        uint16
-}
-
-func fSearch(config *Config, searchTerms []string, metadata map[string]interface{}) error {
+func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) error {
 	var results []binaryEntry
 
-	for _, section := range metadata {
-		binList, ok := section.([]interface{})
-		if !ok {
+	for _, bin := range uRepoIndex {
+		name, pkgId, version, description, rank := bin.Name, bin.PkgId, bin.Version, bin.Description, bin.Rank
+
+		if name == "" || description == "" {
 			continue
 		}
 
-		for _, bin := range binList {
-			binMap, ok := bin.(map[string]interface{})
-			if !ok {
-				continue
+		match := true
+		for _, term := range searchTerms {
+			if !strings.Contains(strings.ToLower(name), strings.ToLower(term)) &&
+				!strings.Contains(strings.ToLower(description), strings.ToLower(term)) &&
+				!strings.Contains(strings.ToLower(pkgId), strings.ToLower(term)) {
+				match = false
+				break
 			}
+		}
 
-			name, _ := binMap["pkg"].(string)
-			pkgId, _ := binMap["pkg_id"].(string)
-			version, _ := binMap["version"].(string)
-			description, _ := binMap["description"].(string)
-			rank, _ := binMap["rank"].(uint16)
-
-			if name == "" || description == "" {
-				continue
-			}
-
-			// Check if all search terms are contained in either name or description
-			match := true
-			for _, term := range searchTerms {
-				if !strings.Contains(strings.ToLower(name), strings.ToLower(term)) &&
-				   !strings.Contains(strings.ToLower(description), strings.ToLower(term)) &&
-				   !strings.Contains(strings.ToLower(pkgId), strings.ToLower(term)) {
-					match = false
-					break
-				}
-			}
-
-			if match {
-				results = append(results, binaryEntry{
-					Name:        name,
-					PkgId:       pkgId,
-					Version:     version,
-					Description: description,
-					Path:        filepath.Join(config.InstallDir, filepath.Base(name)),
-					Rank:        rank,
-				})
-			}
+		if match {
+			results = append(results, binaryEntry{
+				Name:        name,
+				PkgId:       pkgId,
+				Version:     version,
+				Description: description,
+				Rank:        rank,
+			})
 		}
 	}
 
@@ -85,7 +58,7 @@ func fSearch(config *Config, searchTerms []string, metadata map[string]interface
 
 	for _, result := range filteredResults {
 		prefix := "[-]"
-		if bEntryOfinstalledBinary(result.Path).PkgId == result.PkgId {
+		if bEntryOfinstalledBinary(filepath.Join(config.InstallDir, filepath.Base(result.Name))).PkgId == result.PkgId {
 			prefix = "[i]"
 		}
 

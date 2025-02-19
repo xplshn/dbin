@@ -13,7 +13,7 @@ import (
 	"github.com/hedzr/progressbar/cursor"
 )
 
-func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	var outputDevice io.Writer
 	if verbosityLevel <= silentVerbosityWithErrors {
 		outputDevice = io.Discard
@@ -25,7 +25,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(binaries))
-	urls, checksums, err := findURL(config, binaries, verbosityLevel, metadata)
+	urls, checksums, err := findURL(config, binaries, verbosityLevel, uRepoIndex)
 	if err != nil {
 		return err
 	}
@@ -81,12 +81,12 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 					return
 				}
 
-				if err := runIntegrationHooks(config, destination, verbosityLevel, metadata); err != nil {
+				if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
 					errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err)
 					return
 				}
 
-				binInfo, _ := getBinaryInfo(config, bEntry, metadata)
+				binInfo, _ := getBinaryInfo(config, bEntry, uRepoIndex)
 				if err := embedBEntry(destination, binInfo.Name+"#"+binInfo.PkgId); err != nil {
 					errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
 					return
@@ -114,12 +114,12 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 	return nil
 }
 
-func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	if config.UseIntegrationHooks {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			for _, cmd := range hookCommands.IntegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel, metadata); err != nil {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel, uRepoIndex); err != nil {
 					return err
 				}
 			}
@@ -128,6 +128,6 @@ func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbo
 	return nil
 }
 
-func installCommand(config *Config, binaries []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) error {
-	return installBinaries(context.Background(), config, removeDuplicates(binaries), verbosityLevel, metadata)
+func installCommand(config *Config, binaries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
+	return installBinaries(context.Background(), config, binaries, verbosityLevel, uRepoIndex)
 }

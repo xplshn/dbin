@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 )
 
-func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	var (
 		skipped, updated, errors uint32
 		checked                  uint32
@@ -17,7 +17,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 		padding                  = " "
 	)
 
-	programsToUpdate, err := validateProgramsFrom(config, programsToUpdate, metadata)
+	programsToUpdate, err := validateProgramsFrom(config, programsToUpdate, uRepoIndex)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 				return
 			}
 
-			binaryInfo, err := getBinaryInfo(config, program, metadata)
+			binInfo, err := getBinaryInfo(config, program, uRepoIndex)
 			if err != nil {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
@@ -77,7 +77,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 				return
 			}
 
-			if binaryInfo.Bsum == "" {
+			if binInfo.Bsum == "" {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&skipped, 1)
@@ -88,7 +88,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 				return
 			}
 
-			if localB3sum != binaryInfo.Bsum {
+			if localB3sum != binInfo.Bsum {
 				progressMutex.Lock()
 				atomic.AddUint32(&checked, 1)
 				atomic.AddUint32(&updated, 1)
@@ -114,7 +114,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 
 	if len(outdatedPrograms) > 0 {
 		fmt.Print("\033[2K\r")
-		if err := installCommand(config, outdatedPrograms, 1, metadata); err != nil {
+		if err := installCommand(config, outdatedPrograms, 1, uRepoIndex); err != nil {
 			atomic.AddUint32(&errors, 1)
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Printf("Failed to update programs: %v\n", outdatedPrograms)

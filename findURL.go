@@ -3,23 +3,19 @@ package main
 import (
 	"fmt"
 	"net/url"
-	"strings"
 	"path/filepath"
+	"strings"
 )
 
-func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]map[string]interface{}, uint16) {
-	var matchingBins []map[string]interface{}
+func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, uint16) {
+	var matchingBins []binaryEntry
 	var highestRank uint16
 
-	for _, section := range metadata {
-		if binaries, ok := section.([]interface{}); ok {
-			for _, bin := range binaries {
-				if binMap, ok := bin.(map[string]interface{}); ok && matchesEntry(bEntry, binMap) {
-					matchingBins = append(matchingBins, binMap)
-					if rank, ok := binMap["rank"].(uint16); ok && rank > highestRank {
-						highestRank = rank
-					}
-				}
+	for _, bin := range uRepoIndex {
+		if bin.Name == bEntry.Name && (bEntry.PkgId == "" || bin.PkgId == bEntry.PkgId) && (bEntry.Version == "" || bin.Version == bEntry.Version) {
+			matchingBins = append(matchingBins, bin)
+			if bin.Rank > highestRank {
+				highestRank = bin.Rank
 			}
 		}
 	}
@@ -27,38 +23,33 @@ func findMatchingBins(bEntry binaryEntry, metadata map[string]interface{}) ([]ma
 	return matchingBins, highestRank
 }
 
-// Selects the best available candidate, avoids Glibc and uses "rank"
-// It will choose a glibc match if there isn't a non-glibc one tho
-func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank uint16) map[string]interface{} {
+func selectHighestRankedBin(matchingBins []binaryEntry, highestRank uint16) binaryEntry {
 	if len(matchingBins) == 1 {
 		return matchingBins[0]
 	}
 
-	var nonGlibcBins []map[string]interface{}
+	var nonGlibcBins []binaryEntry
 
-	// Collect all bins that do not contain "glibc" in their PkgId
 	for _, bin := range matchingBins {
-		if pkgId, ok := bin["PkgId"].(string); ok && !strings.Contains(pkgId, "glibc") {
+		if !strings.Contains(bin.PkgId, "glibc") {
 			nonGlibcBins = append(nonGlibcBins, bin)
 		}
 	}
 
-	// If there are non-glibc bins, select the one with the highest rank
 	if len(nonGlibcBins) > 0 {
-		var selectedBin map[string]interface{}
+		var selectedBin binaryEntry
 		var highestNonGlibcRank uint16
 		for _, bin := range nonGlibcBins {
-			if rank, ok := bin["rank"].(uint16); ok && rank > highestNonGlibcRank {
-				highestNonGlibcRank = rank
+			if bin.Rank > highestNonGlibcRank {
+				highestNonGlibcRank = bin.Rank
 				selectedBin = bin
 			}
 		}
 		return selectedBin
 	}
 
-	// If no non-glibc bins, select the highest ranked bin overall
 	for _, bin := range matchingBins {
-		if rank, ok := bin["rank"].(uint16); ok && rank == highestRank {
+		if bin.Rank == highestRank {
 			return bin
 		}
 	}
@@ -67,16 +58,10 @@ func selectHighestRankedBin(matchingBins []map[string]interface{}, highestRank u
 		return matchingBins[0]
 	}
 
-	return nil
+	return binaryEntry{}
 }
 
-func matchesEntry(bEntry binaryEntry, binMap map[string]interface{}) bool {
-	return (binMap["pkg"].(string) == bEntry.Name) &&
-		(bEntry.PkgId == "" || binMap["pkg_id"].(string) == bEntry.PkgId) &&
-		(bEntry.Version == "" || binMap["version"].(string) == bEntry.Version)
-}
-
-func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) ([]string, []string, error) {
+func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) ([]string, []string, error) {
 	var foundURLs []string
 	var foundB3sum []string
 
@@ -91,12 +76,11 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, m
 			continue
 		}
 
-		// Check if the package is installed
 		if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); instBEntry.Name != "" {
 			bEntry = instBEntry
 		}
 
-		matchingBins, highestRank := findMatchingBins(bEntry, metadata)
+		matchingBins, highestRank := findMatchingBins(bEntry, uRepoIndex)
 
 		if len(matchingBins) == 0 {
 			if verbosityLevel >= silentVerbosityWithErrors {
@@ -107,12 +91,12 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, m
 
 		selectedBin := selectHighestRankedBin(matchingBins, highestRank)
 
-		foundURLs = append(foundURLs, selectedBin["ghcr_pkg"].(string))
-		foundB3sum = append(foundB3sum, selectedBin["bsum"].(string))
+		foundURLs = append(foundURLs, selectedBin.DownloadURL)
+		foundB3sum = append(foundB3sum, selectedBin.Bsum)
 
 		if verbosityLevel >= extraVerbose {
 			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s",
-				bEntry.Name, selectedBin["pkg_id"], selectedBin["version"])
+				bEntry.Name, selectedBin.PkgId, selectedBin.Version)
 		}
 	}
 

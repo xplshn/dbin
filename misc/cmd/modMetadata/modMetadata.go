@@ -9,10 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-
 	"github.com/fxamacker/cbor/v2"
-	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-json"
+	"github.com/goccy/go-yaml"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
 )
@@ -290,14 +289,14 @@ func saveCBOR(filename string, metadata DbinMetadata) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filename + ".cbor", cborData, 0644)
+	return os.WriteFile(filename+".cbor", cborData, 0644)
 }
 func saveYAML(filename string, metadata DbinMetadata) error {
 	yamlData, err := yaml.Marshal(metadata)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filename + ".yaml", yamlData, 0644)
+	return os.WriteFile(filename+".yaml", yamlData, 0644)
 }
 func saveJSON(filename string, metadata DbinMetadata) error {
 	jsonData, err := json.MarshalIndent(metadata, "", " ")
@@ -404,7 +403,7 @@ func t[T any](cond bool, vtrue, vfalse T) T {
 	return vfalse
 }
 
-/* The following is a _favor_ I'm doing to ivan-hc and everyone that contributes 
+/* The following is a _favor_ I'm doing to ivan-hc and everyone that contributes
  *  And actively endorses or uses AM
  *  They are a tremendous help to the Portable Linux Apps community!
  */

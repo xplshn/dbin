@@ -135,22 +135,17 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 		os.Exit(1)
 	}
 
-	var metadata map[string]interface{}
-	var alreadyFetched bool
-	fetchMetadata := func() map[string]interface{} {
-		if alreadyFetched != true {
-			for _, url := range config.RepoURLs {
-				err := fetchJSON(url, &metadata)
-				if err != nil {
-					fmt.Printf("failed to fetch and decode binary information from %s: %v\n", url, err)
-					continue
-				}
+	var uRepoIndex []binaryEntry
+	fetchRepoIndex := func() []binaryEntry {
+		for _, url := range config.RepoURLs {
+			repoIndex, err := decodeRepoIndex(url)
+			if err != nil {
+				fmt.Printf("failed to fetch and decode binary information from %s: %v\n", url, err)
+				continue
 			}
-			alreadyFetched = true
-		} else {
-			fmt.Println("fetchMetadata was re-triggered.")
+			uRepoIndex = append(uRepoIndex, repoIndex...)
 		}
-		return metadata
+		return uRepoIndex
 	}
 
 	switch command {
@@ -159,8 +154,8 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			fmt.Println("No binary name provided for install command.")
 			os.Exit(1)
 		}
-		fetchMetadata()
-		err := installCommand(config, removeDuplicates(arrStringToArrBinaryEntry(args)), verbosityLevel, metadata)
+		fetchRepoIndex()
+		err := installCommand(config, arrStringToArrBinaryEntry(removeDuplicates(args)), verbosityLevel, uRepoIndex)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -170,8 +165,8 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			fmt.Println("No binary name provided for remove command.")
 			os.Exit(1)
 		}
-		bEntries := arrStringToArrBinaryEntry(args)
-		err := removeBinaries(config, bEntries, verbosityLevel, metadata)
+		bEntries := arrStringToArrBinaryEntry(removeDuplicates(args))
+		err := removeBinaries(config, bEntries, verbosityLevel, uRepoIndex)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -179,14 +174,14 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 	case "list":
 		if len(os.Args) == 3 {
 			if os.Args[2] == "--described" || os.Args[2] == "-d" {
-				fetchMetadata()
-				fSearch(config, []string{""}, metadata)
+				fetchRepoIndex()
+				fSearch(config, []string{""}, uRepoIndex)
 			} else {
 				errorOut("dbin: Unknown command.\n")
 			}
 		} else {
-			fetchMetadata()
-			bEntries, err := listBinaries(metadata)
+			fetchRepoIndex()
+			bEntries, err := listBinaries(uRepoIndex)
 			if err != nil {
 				fmt.Println("Error listing binaries:", err)
 				os.Exit(1)
@@ -224,10 +219,9 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			os.Exit(1)
 		}
 
-		// Collect all remaining arguments as search terms
 		query := args[queryIndex:]
-		fetchMetadata()
-		err := fSearch(config, query, metadata)
+		fetchRepoIndex()
+		err := fSearch(config, query, uRepoIndex)
 		if err != nil {
 			fmt.Printf("error searching binaries: %v\n", err)
 			os.Exit(1)
@@ -265,8 +259,8 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 					fmt.Println(program)
 				}
 			} else {
-				fetchMetadata()
-				installedPrograms, err := validateProgramsFrom(config, nil, metadata)
+				fetchRepoIndex()
+				installedPrograms, err := validateProgramsFrom(config, nil, uRepoIndex)
 				if err != nil {
 					fmt.Printf("error validating programs: %v\n", err)
 					os.Exit(1)
@@ -276,8 +270,8 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 				}
 			}
 		} else {
-			fetchMetadata()
-			binaryInfo, err := getBinaryInfo(config, bEntry, metadata)
+			fetchRepoIndex()
+			binaryInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
 			if err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
@@ -340,15 +334,15 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			os.Exit(1)
 		}
 
-		fetchMetadata()
-		RunFromCache(config, stringToBinaryEntry(flag.Arg(0)), flag.Args()[1:], transparentMode, verbosityLevel, metadata)
+		fetchRepoIndex()
+		RunFromCache(config, stringToBinaryEntry(flag.Arg(0)), args, transparentMode, verbosityLevel, uRepoIndex)
 	case "tldr":
-		RunFromCache(config, stringToBinaryEntry("tlrc"), flag.Args()[1:], true, verbosityLevel, metadata)
+		RunFromCache(config, stringToBinaryEntry("tlrc"), args, true, verbosityLevel, uRepoIndex)
 	case "eget2":
-		RunFromCache(config, stringToBinaryEntry("eget2"), flag.Args()[1:], true, verbosityLevel, metadata)
+		RunFromCache(config, stringToBinaryEntry("eget2"), args, true, verbosityLevel, uRepoIndex)
 	case "update":
-		fetchMetadata()
-		if err := update(config, arrStringToArrBinaryEntry(os.Args[2:]), verbosityLevel, metadata); err != nil {
+		fetchRepoIndex()
+		if err := update(config, arrStringToArrBinaryEntry(removeDuplicates(args)), verbosityLevel, uRepoIndex); err != nil {
 			fmt.Println("Update failed:", err)
 		}
 	case "findurl":
@@ -356,9 +350,9 @@ dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE"
 			fmt.Println("No binary names provided for findurl command.")
 			os.Exit(1)
 		}
-		bEntries := removeDuplicates(arrStringToArrBinaryEntry(args))
-		fetchMetadata()
-		urls, _, err := findURL(config, bEntries, verbosityLevel, metadata)
+		bEntries := arrStringToArrBinaryEntry(removeDuplicates(args))
+		fetchRepoIndex()
+		urls, _, err := findURL(config, bEntries, verbosityLevel, uRepoIndex)
 		if err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "%v", err)

@@ -10,16 +10,18 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
+	"github.com/goccy/go-yaml"
 	"golang.org/x/term"
 
 	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zstd"
 
 	"github.com/pkg/xattr"
 	"github.com/zeebo/blake3"
 )
 
-// removeDuplicates removes duplicate elements from the list
 func removeDuplicates[T comparable](elements []T) []T {
 	seen := make(map[T]struct{})
 	result := []T{}
@@ -32,7 +34,6 @@ func removeDuplicates[T comparable](elements []T) []T {
 	return result
 }
 
-// contains returns true if the provided slice of []strings contains the word str
 func contains(slice []string, str string) bool {
 	for _, v := range slice {
 		if v == str {
@@ -42,13 +43,11 @@ func contains(slice []string, str string) bool {
 	return false
 }
 
-// fileExists checks if a file exists.
 func fileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
 	return !os.IsNotExist(err)
 }
 
-// isDirectory checks if the given path is a directory.
 func isDirectory(path string) (bool, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -60,7 +59,6 @@ func isDirectory(path string) (bool, error) {
 	return info.IsDir(), nil
 }
 
-// isExecutable checks if the file at the specified path is executable.
 func isExecutable(filePath string) bool {
 	info, err := os.Stat(filePath)
 	if err != nil {
@@ -69,23 +67,19 @@ func isExecutable(filePath string) bool {
 	return info.Mode().IsRegular() && (info.Mode().Perm()&0o111) != 0
 }
 
-// stringToBinaryEntry parses a string in the format "binary", "binary#id", "binary#id:version" or "id"
 func stringToBinaryEntry(input string) binaryEntry {
 	var bEntry binaryEntry
 
-	// Split the input string by '#' to separate the name and the id/version part
 	parts := strings.SplitN(input, "#", 2)
 	bEntry.Name = parts[0]
 
 	if len(parts) > 1 {
-		// Further split the id/version part by ':' to separate the id and version
 		idVer := strings.SplitN(parts[1], ":", 2)
 		bEntry.PkgId = idVer[0]
 		if len(idVer) > 1 {
 			bEntry.Version = idVer[1]
 		}
 	} else {
-		// If there's no '#', assume the whole input is the name
 		bEntry.Name = input
 	}
 
@@ -100,7 +94,6 @@ func arrStringToArrBinaryEntry(args []string) []binaryEntry {
 	return entries
 }
 
-// parseBinaryEntry formats a single binaryEntry into a string in the format "name#id"
 func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 	if ansi && term.IsTerminal(int(os.Stdout.Fd())) {
 		return entry.Name + "\033[94m#" + entry.PkgId + "\033[0m"
@@ -108,7 +101,6 @@ func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 	return entry.Name + ternary(entry.PkgId != "", "#"+entry.PkgId, entry.PkgId)
 }
 
-// parseBinaryEntries formats a slice of binaryEntry into a slice of strings, each in the format "name#id" or "name#id:version"
 func binaryEntriesToArrString(entries []binaryEntry, ansi bool) []string {
 	var result []string
 	seen := make(map[string]bool)
@@ -128,9 +120,8 @@ func binaryEntriesToArrString(entries []binaryEntry, ansi bool) []string {
 	return result
 }
 
-// validateProgramsFrom checks the validity of programs against a remote source
-func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, metadata map[string]interface{}) ([]binaryEntry, error) {
-	programsEntries, err := listBinaries(metadata)
+func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
+	programsEntries, err := listBinaries(uRepoIndex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list remote binaries: %w", err)
 	}
@@ -140,7 +131,6 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, meta
 		return nil, fmt.Errorf("failed to list files in %s: %w", config.InstallDir, err)
 	}
 
-	programsToValidate = removeDuplicates(programsToValidate)
 	validPrograms := make([]binaryEntry, 0, len(programsToValidate))
 
 	validate := func(file string) (binaryEntry, bool) {
@@ -151,9 +141,8 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, meta
 				trackedBEntry.PkgId = "!retake"
 			}
 		}
-		// Check if trackedBEntry exists in the remote programsEntries
 		for _, remoteEntry := range programsEntries {
-			if remoteEntry.Name == trackedBEntry.Name && (remoteEntry.PkgId == trackedBEntry.PkgId || trackedBEntry.PkgId == "!retake" ) {
+			if remoteEntry.Name == trackedBEntry.Name && (remoteEntry.PkgId == trackedBEntry.PkgId || trackedBEntry.PkgId == "!retake") {
 				return trackedBEntry, true
 			}
 		}
@@ -189,7 +178,6 @@ func bEntryOfinstalledBinary(binaryPath string) binaryEntry {
 	return trackedBEntry
 }
 
-// errorEncoder generates a unique error code based on the sum of ASCII values of the error message.
 func errorEncoder(format string, args ...interface{}) int {
 	formattedErrorMessage := fmt.Sprintf(format, args...)
 
@@ -202,12 +190,10 @@ func errorEncoder(format string, args ...interface{}) int {
 	return errorCode
 }
 
-// errorOut prints the error message to stderr and exits the program with the error code generated by errorEncoder.
 func errorOut(format string, args ...interface{}) {
 	os.Exit(errorEncoder(format, args...))
 }
 
-// getTerminalWidth attempts to determine the width of the terminal.
 func getTerminalWidth() int {
 	w, _, _ := term.GetSize(int(os.Stdout.Fd()))
 	if w != 0 {
@@ -216,7 +202,6 @@ func getTerminalWidth() int {
 	return 80
 }
 
-// truncateSprintf formats text and truncates to fit the screen's size, preserving escape sequences
 func truncateSprintf(indicator, format string, a ...interface{}) string {
 	text := fmt.Sprintf(format, a...)
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
@@ -269,7 +254,6 @@ func truncateSprintf(indicator, format string, a ...interface{}) string {
 	return result
 }
 
-// truncatePrintf formats and prints text, and offers optional truncation
 func truncatePrintf(disableTruncation bool, format string, a ...interface{}) (n int, err error) {
 	if disableTruncation {
 		return fmt.Printf(format, a...)
@@ -278,7 +262,6 @@ func truncatePrintf(disableTruncation bool, format string, a ...interface{}) (n 
 	return fmt.Print(text)
 }
 
-// listFilesInDir lists all files in a directory
 func listFilesInDir(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -293,7 +276,6 @@ func listFilesInDir(dir string) ([]string, error) {
 	return files, nil
 }
 
-// embedBEntry writes the full binary name to the extended attributes of the binary file.
 func embedBEntry(binaryPath string, fName string) error {
 	if err := xattr.Set(binaryPath, "user.FullName", []byte(fName)); err != nil {
 		return fmt.Errorf("failed to set xattr for %s: %w", binaryPath, err)
@@ -301,7 +283,6 @@ func embedBEntry(binaryPath string, fName string) error {
 	return nil
 }
 
-// readEmbeddedBEntry retrieves the full binary name from the extended attributes of the binary file.
 func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	if !fileExists(binaryPath) {
 		return binaryEntry{}, fmt.Errorf("Error: Tried to get EmbeddedBEntry of non-existant file: %s", binaryPath)
@@ -315,7 +296,6 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	return stringToBinaryEntry(string(fullName)), nil
 }
 
-// removeNixGarbageFoundInTheRepos corrects any /nix/store/ or /bin/ binary path in the file.
 func removeNixGarbageFoundInTheRepos(filePath string) error {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
@@ -347,50 +327,76 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 	return nil
 }
 
-func fetchJSON(url string, v interface{}) error {
-	// Check if the URL is empty
+func decodeRepoIndex(url string) ([]binaryEntry, error) {
 	if url == "" {
-		return fmt.Errorf("This repository index URL is empty. Please check your configuration or remove it.")
+		return nil, fmt.Errorf("repository index URL is empty. Please check your configuration or remove it.")
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return fmt.Errorf("error creating request for %s: %v", url, err)
+		return nil, fmt.Errorf("error creating request for %s: %v", url, err)
 	}
 
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("Expires", "0")
 
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("error fetching from %s: %v. Please check your configuration's repo_urls. Ensure your network has access to the internet.", url, err)
+		return nil, fmt.Errorf("error fetching from %s: %v. Please check your configuration's repo_urls. Ensure your network has access to the internet.", url, err)
 	}
 	defer response.Body.Close()
+	bodyReader := response.Body
 
-	var bodyReader io.Reader = response.Body
 	if strings.HasSuffix(url, ".gz") {
-		bodyReader, err = gzip.NewReader(response.Body)
+		url = strings.TrimSuffix(url, ".gz")
+		bodyReader, err = gzip.NewReader(bodyReader)
 		if err != nil {
-			return fmt.Errorf("error creating gzip reader for %s: %v", url, err)
+			return nil, fmt.Errorf("error creating gzip reader for %s: %v", url, err)
 		}
-		defer bodyReader.(*gzip.Reader).Close()
+		defer bodyReader.Close()
+	}
+	if strings.HasSuffix(url, ".zst") {
+		url = strings.TrimSuffix(url, ".zst")
+		zstdReader, err := zstd.NewReader(bodyReader)
+		if err != nil {
+			return nil, fmt.Errorf("error creating zstd reader for %s: %v", url, err)
+		}
+		defer zstdReader.Close()
+		bodyReader = zstdReader.IOReadCloser()
 	}
 
-	body := &bytes.Buffer{}
+	body := new(bytes.Buffer)
 	if _, err := io.Copy(body, bodyReader); err != nil {
-		return fmt.Errorf("error reading from %s: %v", url, err)
+		return nil, fmt.Errorf("error reading from %s: %v", url, err)
 	}
 
-	if err := json.Unmarshal(body.Bytes(), v); err != nil {
-		return fmt.Errorf("error decoding from %s: %v", url, err)
+	var repoIndex map[string][]binaryEntry
+	switch {
+	case strings.HasSuffix(url, ".cbor"):
+		if err := cbor.Unmarshal(body.Bytes(), &repoIndex); err != nil {
+			return nil, fmt.Errorf("error decoding CBOR from %s: %v", url, err)
+		}
+	case strings.HasSuffix(url, ".json"):
+		if err := json.Unmarshal(body.Bytes(), &repoIndex); err != nil {
+			return nil, fmt.Errorf("error decoding JSON from %s: %v", url, err)
+		}
+	case strings.HasSuffix(url, ".yaml"):
+		if err := yaml.Unmarshal(body.Bytes(), &repoIndex); err != nil {
+			return nil, fmt.Errorf("error decoding YAML from %s: %v", url, err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported format for URL: %s", url)
 	}
 
-	return nil
+	var binaryEntries []binaryEntry
+	for _, entries := range repoIndex {
+		binaryEntries = append(binaryEntries, entries...)
+	}
+
+	return binaryEntries, nil
 }
 
-// calculateChecksum calculates the checksum of a file
 func calculateChecksum(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -421,7 +427,6 @@ func sanitizeString(input string) string {
 	return sanitized.String()
 }
 
-// ternary function
 func ternary[T any](cond bool, vtrue, vfalse T) T {
 	if cond {
 		return vtrue

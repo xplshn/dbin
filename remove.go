@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	var wg sync.WaitGroup
 	var removeErrors []string
 	var mutex sync.Mutex
@@ -48,7 +48,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 				return
 			}
 
-			if err := runDeintegrationHooks(config, installPath, verbosityLevel, metadata); err != nil {
+			if err := runDeintegrationHooks(config, installPath, verbosityLevel, uRepoIndex); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
 					fmt.Fprintf(os.Stderr, "error: %s\n", err)
 				}
@@ -81,12 +81,12 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 	return nil
 }
 
-func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	if config.UseIntegrationHooks {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			for _, cmd := range hookCommands.DeintegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, false, verbosityLevel, metadata); err != nil {
+				if err := executeHookCommand(config, cmd, binaryPath, ext, false, verbosityLevel, uRepoIndex); err != nil {
 					return err
 				}
 			}

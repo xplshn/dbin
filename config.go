@@ -10,35 +10,35 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/goccy/go-json"
+	"github.com/goccy/go-yaml"
 )
 
 type Config struct {
-	RepoURLs            []string `json:"repo_urls" env:"DBIN_REPO_URLS"`
-	InstallDir          string   `json:"install_dir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
-	CacheDir            string   `json:"cache_dir" env:"DBIN_CACHEDIR"`
-	Limit               uint     `json:"fsearch_limit"`
-	ProgressbarStyle    int      `json:"progressbar_style,omitempty"`
-	DisableTruncation   bool     `json:"disable_truncation" env:"DBIN_NOTRUNCATION"`
-	RetakeOwnership     bool     `json:"retake_ownership" env:"DBIN_REOWN"`
-	UseIntegrationHooks bool     `json:"use_integration_hooks" env:"DBIN_USEHOOKS"`
-	Hooks               Hooks    `json:"integration_hooks,omitempty"`
+	RepoURLs            []string `yaml:"RepoURLs" env:"DBIN_REPO_URLS"`
+	InstallDir          string   `yaml:"InstallDir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
+	CacheDir            string   `yaml:"CacheDir" env:"DBIN_CACHEDIR"`
+	Limit               uint     `yaml:"SearchResultsLimit"`
+	ProgressbarStyle    int      `yaml:"PbarStyle,omitempty"`
+	DisableTruncation   bool     `yaml:"Truncation" env:"DBIN_NOTRUNCATION"`
+	RetakeOwnership     bool     `yaml:"RetakeOwnership" env:"DBIN_REOWN"`
+	UseIntegrationHooks bool     `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS"`
+	Hooks               Hooks    `yaml:"Hooks,omitempty"`
 }
 
 type Hooks struct {
-	Commands map[string]HookCommands `json:"commands"`
+	Commands map[string]HookCommands `yaml:"commands"`
 }
 
 type HookCommands struct {
-	IntegrationCommands   []string `json:"integration_commands"`
-	DeintegrationCommands []string `json:"deintegration_commands"`
-	IntegrationErrorMsg   string   `json:"integration_error_msg"`
-	DeintegrationErrorMsg string   `json:"deintegration_error_msg"`
-	UseRunFromCache       bool     `json:"use_run_from_cache"`
-	NoOp                  bool     `json:"nop"`
+	IntegrationCommands   []string `yaml:"integration_commands"`
+	DeintegrationCommands []string `yaml:"deintegration_commands"`
+	IntegrationErrorMsg   string   `yaml:"integration_error_msg"`
+	DeintegrationErrorMsg string   `yaml:"deintegration_error_msg"`
+	UseRunFromCache       bool     `yaml:"use_run_from_cache"`
+	NoOp                  bool     `yaml:"nop"`
 }
 
-func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension string, isIntegration bool, verbosityLevel Verbosity, metadata map[string]interface{}) error {
+func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension string, isIntegration bool, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	hookCommands, exists := config.Hooks.Commands[extension]
 	if !exists {
 		return fmt.Errorf("no commands found for extension: %s", extension)
@@ -59,7 +59,7 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	args := commandParts[1:]
 
 	if useRunFromCache {
-		return RunFromCache(config, stringToBinaryEntry(command), args, true, verbosityLevel, metadata)
+		return RunFromCache(config, stringToBinaryEntry(command), args, true, verbosityLevel, uRepoIndex)
 	}
 
 	cmdExec := exec.Command(command, args...)
@@ -91,7 +91,7 @@ func loadConfig() (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user config directory: %v", err)
 		}
-		configFilePath = filepath.Join(userConfigDir, "dbin.json")
+		configFilePath = filepath.Join(userConfigDir, "dbin.yaml")
 	}
 
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
@@ -100,20 +100,20 @@ func loadConfig() (*Config, error) {
 		}
 	}
 
-	if err := loadJSON(configFilePath, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to load JSON file: %v", err)
+	if err := loadYAML(configFilePath, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to load YAML file: %v", err)
 	}
 	overrideWithEnv(&cfg)
 	return &cfg, nil
 }
 
-func loadJSON(filePath string, cfg *Config) error {
+func loadYAML(filePath string, cfg *Config) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	return json.NewDecoder(file).Decode(cfg)
+	return yaml.NewDecoder(file).Decode(cfg)
 }
 
 func overrideWithEnv(cfg *Config) {
@@ -179,7 +179,7 @@ func setDefaultValues(config *Config) {
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 
 	config.RepoURLs = []string{
-		"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadata/METADATA_" + arch + ".lite.min.json.gz",
+		"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadata/METADATA_" + arch + ".lite.cbor.zst",
 	}
 
 	config.DisableTruncation = false
@@ -230,18 +230,18 @@ func createDefaultConfig() error {
 	if err != nil {
 		return fmt.Errorf("failed to get user config directory: %v", err)
 	}
-	configFilePath := filepath.Join(userConfigDir, "dbin.json")
+	configFilePath := filepath.Join(userConfigDir, "dbin.yaml")
 
 	if err := os.MkdirAll(userConfigDir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %v", err)
 	}
 
-	configJSON, err := json.MarshalIndent(cfg, "", "  ")
+	configYAML, err := yaml.Marshal(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to marshal config to JSON: %v", err)
+		return fmt.Errorf("failed to marshal config to YAML: %v", err)
 	}
 
-	if err := os.WriteFile(configFilePath, configJSON, 0644); err != nil {
+	if err := os.WriteFile(configFilePath, configYAML, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %v", err)
 	}
 
