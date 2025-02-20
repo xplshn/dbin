@@ -13,7 +13,7 @@ import (
 	"github.com/hedzr/progressbar/cursor"
 )
 
-func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
+func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	var outputDevice io.Writer
 	if verbosityLevel <= silentVerbosityWithErrors {
 		outputDevice = io.Discard
@@ -24,8 +24,8 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 	}
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(binaries))
-	urls, checksums, err := findURL(config, binaries, verbosityLevel, uRepoIndex)
+	errChan := make(chan error, len(bEntries))
+	urls, checksums, err := findURL(config, bEntries, verbosityLevel, uRepoIndex)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 	var errors []string
 
 	binaryNameMaxlen := 0
-	for _, bEntry := range binaries {
+	for _, bEntry := range bEntries {
 		if binaryNameMaxlen < len(bEntry.Name) {
 			binaryNameMaxlen = len(bEntry.Name)
 		}
@@ -45,7 +45,7 @@ func installBinaries(ctx context.Context, config *Config, binaries []binaryEntry
 
 	termWidth := getTerminalWidth()
 
-	for i, bEntry := range binaries {
+	for i, bEntry := range bEntries {
 		wg.Add(1)
 		url := urls[i]
 		checksum := checksums[i]
@@ -128,6 +128,6 @@ func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbo
 	return nil
 }
 
-func installCommand(config *Config, binaries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
-	return installBinaries(context.Background(), config, binaries, verbosityLevel, uRepoIndex)
+func installCommand(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
+	return installBinaries(context.Background(), config, bEntries, verbosityLevel, uRepoIndex)
 }

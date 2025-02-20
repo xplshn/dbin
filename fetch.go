@@ -223,3 +223,7 @@ func downloadLayer(ctx context.Context, registry, repository string, manifest ma
 
 	return nil, fmt.Errorf("file with title '%s' not found in manifest", title)
 }
+
+func fetchCommand(ctx context.Context, bar progressbar.PB, url, checksum, destination string) (string, error) {
+	return fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
+}
