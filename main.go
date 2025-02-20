@@ -43,7 +43,7 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:   "install",
+				Name:    "install",
 				Aliases: []string{"add"},
 				Usage:   "Install a binary",
 				Action: func(c *cli.Context) error {
@@ -59,24 +59,7 @@ func main() {
 				},
 			},
 			{
-				Name:   "findurl",
-				Usage:   "find the origin url of a binary",
-				Action: func(c *cli.Context) error {
-					if c.NArg() < 1 {
-						return fmt.Errorf("no binary name provided for findurl command")
-					}
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					fURLs, bsums, _ := findURL(config, arrStringToArrBinaryEntry(removeDuplicates(c.Args().Slice())), getVerbosityLevel(c), uRepoIndex)
-					fmt.Println(fURLs, bsums)
-					return nil
-				},
-			},
-			{
-				Name:   "remove",
+				Name:    "remove",
 				Aliases: []string{"del"},
 				Usage:   "Remove a binary",
 				Action: func(c *cli.Context) error {
@@ -221,31 +204,7 @@ func main() {
 						return err
 					}
 					uRepoIndex := fetchRepoIndex(config)
-					return RunFromCache(config, stringToBinaryEntry(c.Args().First()), c.Args().Tail(), c.Bool("transparent"), getVerbosityLevel(c), uRepoIndex)
-				},
-			},
-			{
-				Name:  "tldr",
-				Usage: "Equivalent to --silent run --transparent tlrc",
-				Action: func(c *cli.Context) error {
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					return RunFromCache(config, stringToBinaryEntry("tlrc"), c.Args().Slice(), true, getVerbosityLevel(c), uRepoIndex)
-				},
-			},
-			{
-				Name:  "eget2",
-				Usage: "Run eget2 from cache",
-				Action: func(c *cli.Context) error {
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					return RunFromCache(config, stringToBinaryEntry("eget2"), c.Args().Slice(), true, getVerbosityLevel(c), uRepoIndex)
+					return runFromCache(config, stringToBinaryEntry(c.Args().First()), c.Args().Tail(), c.Bool("transparent"), getVerbosityLevel(c), uRepoIndex)
 				},
 			},
 			{

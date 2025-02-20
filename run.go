@@ -1,17 +1,15 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 )
 
-func ReturnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBEntry binaryEntry, err error) {
+func returnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBEntry binaryEntry, err error) {
 	cachedBinary = filepath.Join(config.CacheDir, filepath.Base(binaryName))
 
 	trackedBEntry, err = readEmbeddedBEntry(cachedBinary)
@@ -26,10 +24,7 @@ func ReturnCachedFile(config *Config, binaryName string) (cachedBinary string, t
 	return cachedBinary, trackedBEntry, nil
 }
 
-func RunFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
-	flagsAndBinaryName := append(strings.Fields(bEntry.Name), args...)
-	flag.CommandLine.Parse(flagsAndBinaryName)
-
+func runFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	binaryPath, err := exec.LookPath(bEntry.Name)
 	if err == nil && transparentMode {
 		if verbosityLevel >= normalVerbosity {

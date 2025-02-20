@@ -76,7 +76,6 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 			continue
 		}
 
-		// Check if the package is installed
 		if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); instBEntry.Name != "" {
 			bEntry = instBEntry
 		}

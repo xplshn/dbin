@@ -49,7 +49,6 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	}
 
 	cmd := strings.ReplaceAll(cmdTemplate, "{{binary}}", bEntryPath)
-	useRunFromCache := hookCommands.UseRunFromCache
 	commandParts := strings.Fields(cmd)
 	if len(commandParts) == 0 {
 		return nil
@@ -58,8 +57,8 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	command := commandParts[0]
 	args := commandParts[1:]
 
-	if useRunFromCache {
-		return RunFromCache(config, stringToBinaryEntry(command), args, true, verbosityLevel, uRepoIndex)
+	if hookCommands.UseRunFromCache {
+		return runFromCache(config, stringToBinaryEntry(command), args, true, verbosityLevel, uRepoIndex)
 	}
 
 	cmdExec := exec.Command(command, args...)
