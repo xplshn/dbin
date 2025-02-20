@@ -85,7 +85,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 				mutex.Lock()
 				removeErrors = append(removeErrors, fmt.Sprintf("failed to remove '%s' from %s: %v", bEntry.Name, installDir, err))
 				mutex.Unlock()
-			} else if verbosityLevel <= extraVerbose {
+			} else if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Printf("'%s' removed from %s\n", bEntry.Name, installDir)
 			}
 		}(bEntry)

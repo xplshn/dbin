@@ -20,7 +20,9 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 		return fmt.Errorf("failed to create parent directories for %s: %v", destination, err)
 	}
 
-	bar.UpdateRange(0, resp.ContentLength)
+	if bar != nil {
+		bar.UpdateRange(0, resp.ContentLength)
+	}
 
 	tempFile := destination + ".tmp"
 	out, err := os.Create(tempFile)
@@ -41,7 +43,11 @@ downloadLoop:
 		default:
 			n, err := resp.Body.Read(buf)
 			if n > 0 {
-				if _, err = io.MultiWriter(out, hash, bar).Write(buf[:n]); err != nil {
+				var writer io.Writer = io.MultiWriter(out, hash)
+				if bar != nil {
+					writer = io.MultiWriter(out, hash, bar)
+				}
+				if _, err = writer.Write(buf[:n]); err != nil {
 					_ = os.Remove(tempFile)
 					return err
 				}
@@ -222,8 +228,4 @@ func downloadLayer(ctx context.Context, registry, repository string, manifest ma
 	}
 
 	return nil, fmt.Errorf("file with title '%s' not found in manifest", title)
-}
-
-func fetchCommand(ctx context.Context, bar progressbar.PB, url, checksum, destination string) (string, error) {
-	return fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
 }

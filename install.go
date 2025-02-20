@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,14 +30,8 @@ func installCommand() *cli.Command {
 }
 
 func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
-	var outputDevice io.Writer
-	if verbosityLevel <= silentVerbosityWithErrors {
-		outputDevice = io.Discard
-	} else {
-		outputDevice = os.Stdout
-		cursor.Hide()
-		defer cursor.Show()
-	}
+	cursor.Hide()
+	defer cursor.Show()
 
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(bEntries))
@@ -47,9 +40,14 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 		return err
 	}
 
-	bar := progressbar.New(progressbar.WithOutputDevice(outputDevice))
-	tasks := progressbar.NewTasks(bar)
-	defer tasks.Close()
+	// Only create the progress bar if not in silent mode
+	var bar progressbar.MultiPB
+	var tasks *progressbar.Tasks
+	if verbosityLevel > silentVerbosityWithErrors {
+		bar = progressbar.New()
+		tasks = progressbar.NewTasks(bar)
+		defer tasks.Close()
+	}
 
 	var errors []string
 
@@ -68,26 +66,54 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 		checksum := checksums[i]
 		destination := filepath.Join(config.InstallDir, filepath.Base(bEntry.Name))
 
-		barTitle := fmt.Sprintf("Installing %s", bEntry.Name)
-		pbarOpts := []progressbar.Opt{
-			progressbar.WithBarStepper(config.ProgressbarStyle),
-		}
+		if verbosityLevel > silentVerbosityWithErrors {
+			barTitle := fmt.Sprintf("Installing %s", bEntry.Name)
+			pbarOpts := []progressbar.Opt{
+				progressbar.WithBarStepper(config.ProgressbarStyle),
+			}
 
-		if termWidth < 120 {
-			barTitle = bEntry.Name
-			pbarOpts = append(
-				pbarOpts,
-				progressbar.WithBarTextSchema(`{{.Bar}} {{.Percent}} | <font color="green">{{.Title}}</font>`),
-				progressbar.WithBarWidth(termWidth-(binaryNameMaxlen+19)),
+			if termWidth < 120 {
+				barTitle = bEntry.Name
+				pbarOpts = append(
+					pbarOpts,
+					progressbar.WithBarTextSchema(`{{.Bar}} {{.Percent}} | <font color="green">{{.Title}}</font>`),
+					progressbar.WithBarWidth(termWidth-(binaryNameMaxlen+19)),
+				)
+			}
+
+			tasks.Add(
+				progressbar.WithTaskAddBarTitle(barTitle),
+				progressbar.WithTaskAddBarOptions(pbarOpts...),
+				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
+					defer wg.Done()
+					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
+					if fetchErr != nil {
+						errChan <- fmt.Errorf("error fetching binary %s: %v", bEntry.Name, fetchErr)
+						return
+					}
+
+					if err := os.Chmod(destination, 0755); err != nil {
+						errChan <- fmt.Errorf("error making binary executable %s: %v", destination, err)
+						return
+					}
+
+					if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
+						errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err)
+						return
+					}
+
+					binInfo, _ := getBinaryInfo(config, bEntry, uRepoIndex)
+					if err := embedBEntry(destination, binInfo.Name+"#"+binInfo.PkgId); err != nil {
+						errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
+						return
+					}
+				}),
 			)
-		}
-
-		tasks.Add(
-			progressbar.WithTaskAddBarTitle(barTitle),
-			progressbar.WithTaskAddBarOptions(pbarOpts...),
-			progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
+		} else {
+			// Perform the download without the progress bar
+			go func() {
 				defer wg.Done()
-				_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
+				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, url, checksum, destination)
 				if fetchErr != nil {
 					errChan <- fmt.Errorf("error fetching binary %s: %v", bEntry.Name, fetchErr)
 					return
@@ -108,8 +134,8 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 					errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
 					return
 				}
-			}),
-		)
+			}()
+		}
 	}
 
 	go func() {
