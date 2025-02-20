@@ -8,10 +8,11 @@ require (
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.15.23
 	github.com/hedzr/progressbar v1.2.1
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.18.0
 	github.com/pkg/xattr v0.4.10
 	github.com/tdewolff/minify/v2 v2.21.3
 	github.com/urfave/cli/v2 v2.27.5
+	github.com/urfave/cli/v3 v3.0.0-beta1
 	github.com/xplshn/a-utils v0.0.0-20250124065437-73b554cf990b
 	github.com/zeebo/blake3 v0.2.4
 	golang.org/x/term v0.29.0

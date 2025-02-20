@@ -6,7 +6,26 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"context"
+
+	"github.com/urfave/cli/v3"
 )
+
+func removeCommand() *cli.Command {
+	return &cli.Command{
+		Name:    "remove",
+		Aliases: []string{"del"},
+		Usage:   "Remove binaries",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			config, err := loadConfig()
+			if err != nil {
+				return err
+			}
+			uRepoIndex := fetchRepoIndex(config)
+			return removeBinaries(config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
+		},
+	}
+}
 
 func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	var wg sync.WaitGroup

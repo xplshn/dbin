@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"context"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type Verbosity int8
@@ -22,7 +23,7 @@ const (
 )
 
 func main() {
-	app := &cli.App{
+	app := &cli.Command{
 		Name:        "dbin",
 		Usage:       "The easy to use, easy to get, software distribution system",
 		Version:     Version,
@@ -42,194 +43,20 @@ func main() {
 			},
 		},
 		Commands: []*cli.Command{
-			{
-				Name:    "install",
-				Aliases: []string{"add"},
-				Usage:   "Install a binary",
-				Action: func(c *cli.Context) error {
-					if c.NArg() < 1 {
-						return fmt.Errorf("no binary name provided for install command")
-					}
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					return installCommand(config, arrStringToArrBinaryEntry(removeDuplicates(c.Args().Slice())), getVerbosityLevel(c), uRepoIndex)
-				},
-			},
-			{
-				Name:    "remove",
-				Aliases: []string{"del"},
-				Usage:   "Remove a binary",
-				Action: func(c *cli.Context) error {
-					if c.NArg() < 1 {
-						return fmt.Errorf("no binary name provided for remove command")
-					}
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					return removeBinaries(config, arrStringToArrBinaryEntry(removeDuplicates(c.Args().Slice())), getVerbosityLevel(c), uRepoIndex)
-				},
-			},
-			{
-				Name:  "list",
-				Usage: "List all available binaries",
-				Action: func(c *cli.Context) error {
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					if c.NArg() == 1 && c.Args().First() == "--described" {
-						return fSearch(config, []string{""}, uRepoIndex)
-					}
-					bEntries, err := listBinaries(uRepoIndex)
-					if err != nil {
-						return err
-					}
-					for _, binary := range binaryEntriesToArrString(bEntries, true) {
-						fmt.Println(binary)
-					}
-					return nil
-				},
-			},
-			{
-				Name:  "search",
-				Usage: "Search for a binary by supplying one or more search terms",
-				Action: func(c *cli.Context) error {
-					if c.NArg() < 1 {
-						return fmt.Errorf("no search terms provided")
-					}
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					query := c.Args().Slice()
-					return fSearch(config, query, uRepoIndex)
-				},
-			},
-			{
-				Name:  "info",
-				Usage: "Show information about a specific binary OR display installed binaries",
-				Action: func(c *cli.Context) error {
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					var bEntry binaryEntry
-					if c.NArg() == 1 {
-						bEntry = stringToBinaryEntry(c.Args().First())
-					}
-					if bEntry.Name == "" {
-						files, err := listFilesInDir(config.InstallDir)
-						if err != nil {
-							return err
-						}
-						installedPrograms := make([]string, 0)
-						for _, file := range files {
-							trackedBEntry := bEntryOfinstalledBinary(file)
-							if trackedBEntry.Name != "" {
-								installedPrograms = append(installedPrograms, parseBinaryEntry(trackedBEntry, true))
-							}
-						}
-						for _, program := range installedPrograms {
-							fmt.Println(program)
-						}
-					} else {
-						binaryInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
-						if err != nil {
-							return err
-						}
-						fields := []struct {
-							label string
-							value interface{}
-						}{
-							{"Name", binaryInfo.Name + "#" + binaryInfo.PkgId},
-							{"Pkg ID", binaryInfo.PkgId},
-							{"Pretty Name", binaryInfo.PrettyName},
-							{"Description", binaryInfo.Description},
-							{"Version", binaryInfo.Version},
-							{"Ghcr Blob", binaryInfo.GhcrBlob},
-							{"Download URL", binaryInfo.DownloadURL},
-							{"Size", binaryInfo.Size},
-							{"B3SUM", binaryInfo.Bsum},
-							{"SHA256", binaryInfo.Shasum},
-							{"Build Date", binaryInfo.BuildDate},
-							{"Build Script", binaryInfo.BuildScript},
-							{"Build Log", binaryInfo.BuildLog},
-							{"Categories", binaryInfo.Categories},
-							{"Rank", binaryInfo.Rank},
-							{"Extra Bins", binaryInfo.ExtraBins},
-						}
-						for _, field := range fields {
-							switch v := field.value.(type) {
-							case []string:
-								for n, str := range v {
-									prefix := "\033[48;5;4m" + field.label + "\033[0m"
-									if n > 0 {
-										prefix = "         "
-									}
-									fmt.Printf("%s: %s\n", prefix, str)
-								}
-							default:
-								if v != "" && v != 0 {
-									fmt.Printf("\033[48;5;4m%s\033[0m: %v\n", field.label, v)
-								}
-							}
-						}
-					}
-					return nil
-				},
-			},
-			{
-				Name:  "run",
-				Usage: "Run a specified binary from cache",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:  "transparent",
-						Usage: "Run the binary from PATH if found",
-					},
-				},
-				Action: func(c *cli.Context) error {
-					if c.NArg() < 1 {
-						return fmt.Errorf("no binary name provided for run command")
-					}
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					return runFromCache(config, stringToBinaryEntry(c.Args().First()), c.Args().Tail(), c.Bool("transparent"), getVerbosityLevel(c), uRepoIndex)
-				},
-			},
-			{
-				Name:  "update",
-				Usage: "Update binaries, by checking their SHA against the repo's SHA",
-				Action: func(c *cli.Context) error {
-					config, err := loadConfig()
-					if err != nil {
-						return err
-					}
-					uRepoIndex := fetchRepoIndex(config)
-					return update(config, arrStringToArrBinaryEntry(removeDuplicates(c.Args().Slice())), getVerbosityLevel(c), uRepoIndex)
-				},
-			},
+			installCommand(),
+			removeCommand(),
+			listCommand(),
+			searchCommand(),
+			infoCommand(),
+			runCommand(),
+			updateCommand(),
 		},
 	}
 
-	err := app.Run(os.Args)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
-	}
+	app.Run(context.Background(), os.Args)
 }
 
-func getVerbosityLevel(c *cli.Context) Verbosity {
+func getVerbosityLevel(c *cli.Command) Verbosity {
 	if c.Bool("extra-silent") {
 		return extraSilent
 	} else if c.Bool("silent") {

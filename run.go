@@ -7,7 +7,43 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+	"context"
+
+	"github.com/urfave/cli/v3"
 )
+
+func runCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "run",
+		Usage: "Run a specified binary from cache",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "transparent",
+				Usage: "Run the binary from PATH if found",
+			},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if c.NArg() == 0 {
+				return fmt.Errorf("no binary name provided for run command")
+			}
+
+			config, err := loadConfig()
+			if err != nil {
+				return err
+			}
+			uRepoIndex := fetchRepoIndex(config)
+
+			// The first argument is the binary name
+			binaryName := c.Args().First()
+			bEntry := stringToBinaryEntry(binaryName)
+
+			// The rest of the arguments are passed to the binary
+			args := c.Args().Tail()
+
+			return runFromCache(config, bEntry, args, c.Bool("transparent"), getVerbosityLevel(c), uRepoIndex)
+		},
+	}
+}
 
 func returnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBEntry binaryEntry, err error) {
 	cachedBinary = filepath.Join(config.CacheDir, filepath.Base(binaryName))
@@ -46,7 +82,7 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 
 			config.UseIntegrationHooks = false
 			config.InstallDir = config.CacheDir
-			if err := installCommand(config, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
+			if err := installBinaries(context.Background(), config, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
 					fmt.Fprintf(os.Stderr, "Error: could not fetch and cache the binary: %v\n", err)
 				}
@@ -74,7 +110,7 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 
 	config.UseIntegrationHooks = false
 	config.InstallDir = config.CacheDir
-	if err := installCommand(config, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
+	if err := installBinaries(context.Background(), config, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
 		if verbosityLevel >= silentVerbosityWithErrors {
 			fmt.Fprintf(os.Stderr, "error: could not cache the binary: %v\n", err)
 		}

@@ -1,5 +1,43 @@
 package main
 
+import (
+	"fmt"
+	"context"
+
+	"github.com/urfave/cli/v3"
+)
+
+func listCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "List all available binaries",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "described",
+				Usage: "List binaries with descriptions",
+			},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			config, err := loadConfig()
+			if err != nil {
+				return err
+			}
+			uRepoIndex := fetchRepoIndex(config)
+			if c.Bool("described") {
+				return fSearch(config, []string{""}, uRepoIndex)
+			}
+			bEntries, err := listBinaries(uRepoIndex)
+			if err != nil {
+				return err
+			}
+			for _, binary := range binaryEntriesToArrString(bEntries, true) {
+				fmt.Println(binary)
+			}
+			return nil
+		},
+	}
+}
+
 func listBinaries(uRepoIndex []binaryEntry) ([]binaryEntry, error) {
 	var allBinaries []binaryEntry
 

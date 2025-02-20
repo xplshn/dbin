@@ -4,7 +4,25 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"context"
+
+	"github.com/urfave/cli/v3"
 )
+
+func searchCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "search",
+		Usage: "Search for a binary by supplying one or more search terms",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			config, err := loadConfig()
+			if err != nil {
+				return err
+			}
+			uRepoIndex := fetchRepoIndex(config)
+			return fSearch(config, c.Args().Slice(), uRepoIndex)
+		},
+	}
+}
 
 func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) error {
 	var results []binaryEntry

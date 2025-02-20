@@ -9,9 +9,26 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/urfave/cli/v3"
 	"github.com/hedzr/progressbar"
 	"github.com/hedzr/progressbar/cursor"
 )
+
+func installCommand() *cli.Command {
+	return &cli.Command{
+		Name:    "install",
+		Aliases: []string{"add"},
+		Usage:   "Install binaries",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			config, err := loadConfig()
+			if err != nil {
+				return err
+			}
+			uRepoIndex := fetchRepoIndex(config)
+			return installBinaries(context.Background(), config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
+		},
+	}
+}
 
 func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	var outputDevice io.Writer
@@ -126,8 +143,4 @@ func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbo
 		}
 	}
 	return nil
-}
-
-func installCommand(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
-	return installBinaries(context.Background(), config, bEntries, verbosityLevel, uRepoIndex)
 }

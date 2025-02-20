@@ -6,7 +6,25 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"context"
+
+	"github.com/urfave/cli/v3"
 )
+
+func updateCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "update",
+		Usage: "Update binaries, by checking their b3sum[:256] against the repo's",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			config, err := loadConfig()
+			if err != nil {
+				return err
+			}
+			uRepoIndex := fetchRepoIndex(config)
+			return update(config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
+		},
+	}
+}
 
 func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
 	var (
@@ -114,7 +132,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 
 	if len(outdatedPrograms) > 0 {
 		fmt.Print("\033[2K\r")
-		if err := installCommand(config, outdatedPrograms, 1, uRepoIndex); err != nil {
+		if err := installBinaries(context.Background(), config, outdatedPrograms, 1, uRepoIndex); err != nil {
 			atomic.AddUint32(&errors, 1)
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Printf("Failed to update programs: %v\n", outdatedPrograms)
