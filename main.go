@@ -51,6 +51,7 @@ func main() {
 			runCommand(),
 			updateCommand(),
 		},
+		EnableShellCompletion: true,
 	}
 
 	app.Run(context.Background(), os.Args)
