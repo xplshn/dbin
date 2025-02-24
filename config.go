@@ -79,30 +79,27 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 
 func loadConfig() (*Config, error) {
 	cfg := Config{}
+	setDefaultValues(&cfg)
 
-	if noConfig, _ := strconv.ParseBool(os.Getenv("DBIN_NOCONFIG")); noConfig {
-		setDefaultValues(&cfg)
-		return &cfg, nil
-	}
-
-	configFilePath := os.Getenv("DBIN_CONFIG_FILE")
-	if configFilePath == "" {
-		userConfigDir, err := os.UserConfigDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get user config directory: %v", err)
+	if noConfig, _ := strconv.ParseBool(os.Getenv("DBIN_NOCONFIG")); !noConfig {
+		configFilePath := os.Getenv("DBIN_CONFIG_FILE")
+		if configFilePath == "" {
+			userConfigDir, err := os.UserConfigDir()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get user config directory: %v", err)
+			}
+			configFilePath = filepath.Join(userConfigDir, "dbin.yaml")
 		}
-		configFilePath = filepath.Join(userConfigDir, "dbin.yaml")
-	}
-
-	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
-		if err := createDefaultConfig(); err != nil {
-			return nil, fmt.Errorf("failed to create default config file: %v", err)
+		if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
+			if err := createDefaultConfig(); err != nil {
+				return nil, fmt.Errorf("failed to create default config file: %v", err)
+			}
+		}
+		if err := loadYAML(configFilePath, &cfg); err != nil {
+			return nil, fmt.Errorf("failed to load YAML file: %v", err)
 		}
 	}
 
-	if err := loadYAML(configFilePath, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to load YAML file: %v", err)
-	}
 	overrideWithEnv(&cfg)
 	return &cfg, nil
 }
