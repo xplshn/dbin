@@ -22,6 +22,7 @@ type Config struct {
 	DisableTruncation   bool     `yaml:"Truncation" env:"DBIN_NOTRUNCATION"`
 	RetakeOwnership     bool     `yaml:"RetakeOwnership" env:"DBIN_REOWN"`
 	UseIntegrationHooks bool     `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS"`
+	DisableProgressbar  bool     `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR"`
 	Hooks               Hooks    `yaml:"Hooks,omitempty"`
 }
 
@@ -165,32 +166,28 @@ func setDefaultValues(config *Config) {
 		return
 	}
 	config.InstallDir = filepath.Join(homeDir, ".local/bin")
-
 	tempDir, err := os.UserCacheDir()
 	if err != nil {
 		fmt.Printf("failed to get user's Cache directory: %v\n", err)
 		return
 	}
-	if config.CacheDir == "" {
-		config.CacheDir = filepath.Join(tempDir, "dbin_cache")
-	}
-
+	config.CacheDir = filepath.Join(tempDir, "dbin_cache")
 	arch := runtime.GOARCH + "_" + runtime.GOOS
-
 	config.RepoURLs = []string{
 		"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadata/METADATA_" + arch + ".lite.cbor.zst",
 	}
-
 	config.DisableTruncation = false
 	config.Limit = 90
 	config.UseIntegrationHooks = true
 	config.RetakeOwnership = false
 	config.ProgressbarStyle = 1
+	config.DisableProgressbar = false
 }
 
 func createDefaultConfig() error {
 	cfg := Config{}
 	setDefaultValues(&cfg)
+	//overrideWithEnv(&cfg)
 
 	cfg.Hooks = Hooks{
 		Commands: map[string]HookCommands{

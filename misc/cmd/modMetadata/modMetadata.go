@@ -238,34 +238,59 @@ func downloadJSON(url string) ([]PkgForgeItem, error) {
 	return items, nil
 }
 
-// Save metadata in both JSON and CBOR formats
-func saveMetadata(filename string, metadata DbinMetadata) error {
-	// Replace "musl" with "AAA111Musl"
-	for repo, items := range metadata {
-		for i := range items {
-			items[i].BinId = strings.ReplaceAll(items[i].BinId, "musl", "AAA111Musl")
-		}
-		// Sort items alphabetically by BinId
-		sort.Slice(items, func(i, j int) bool {
-			return items[i].BinId < items[j].BinId
-		})
-		// Replace "AAA111Musl" back to "musl"
-		for i := range items {
-			items[i].BinId = strings.ReplaceAll(items[i].BinId, "AAA111Musl", "musl")
-		}
-		metadata[repo] = items
-	}
+// So that the metadata is ordered alphabetically, but with priority exceptions, for example:
+// I may want to lower the priority of all #NixPkg pkgs, and prioritize the binaries with an id thta starts with #ppkg
+// Or I may want to push Glibc to the end of the list
+func reorderItems(str []map[string]string, metadata DbinMetadata) {
+	for _, replacements := range str {
+		for repo, items := range metadata {
+			// Replace str with str2
+			for oldStr, newStr := range replacements {
+				for i := range items {
+					items[i].BinId = strings.ReplaceAll(items[i].BinId, oldStr, newStr)
+				}
+			}
 
+			// Sort items alphabetically by BinId
+			sort.Slice(items, func(i, j int) bool {
+				return items[i].BinId < items[j].BinId
+			})
+
+			// Replace str2 back to str
+			for oldStr, newStr := range replacements {
+				for i := range items {
+					items[i].BinId = strings.ReplaceAll(items[i].BinId, newStr, oldStr)
+				}
+			}
+
+			metadata[repo] = items
+		}
+	}
+}
+
+func saveAll(filename string, metadata DbinMetadata) error {
 	if err := saveJSON(filename, metadata); err != nil {
 		return err
 	}
 	if err := saveCBOR(filename, metadata); err != nil {
 		return err
 	}
-	if err := saveYAML(filename, metadata); err != nil {
+	//genAMMeta(filename, dbinMetadata)
+	return saveYAML(filename, metadata)
+}
+
+// Save metadata in various formats
+func saveMetadata(filename string, metadata DbinMetadata) error {
+	// Reorder items alphabetically but with priority exceptions
+	reorderItems([]map[string]string{
+		{"musl": "0AAAMusl"},   // Higher priority for Musl
+		{"ppkg": "0AAAPpkg"},   // Higher priority for ppkg
+		{"glibc": "ZZZXGlibc"}, // Push glibc to the end
+	}, metadata)
+
+	if err := saveAll(filename, metadata); err != nil {
 		return err
 	}
-
 	// "lite" version
 	for _, items := range metadata {
 		for i := range items {
@@ -274,14 +299,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 		}
 	}
 	filename += ".lite"
-
-	if err := saveJSON(filename, metadata); err != nil {
-		return err
-	}
-	if err := saveCBOR(filename, metadata); err != nil {
-		return err
-	}
-	return saveYAML(filename, metadata)
+	return saveAll(filename, metadata)
 }
 
 func saveCBOR(filename string, metadata DbinMetadata) error {
@@ -380,7 +398,6 @@ func main() {
 					continue
 				}
 				fmt.Printf("Successfully saved single metadata to %s\n", singleOutputFile)
-				genAMMeta(fmt.Sprintf("AM_METADATA_%s_%s", repo.Repo.Name, outputArch), dbinMetadata)
 			}
 		}
 
@@ -389,7 +406,6 @@ func main() {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
 			continue
 		}
-		genAMMeta(fmt.Sprintf("AM_METADATA_%s", outputArch), dbinMetadata)
 
 		fmt.Printf("Successfully processed and saved combined metadata to %s\n", outputFile)
 	}
@@ -406,8 +422,6 @@ func t[T any](cond bool, vtrue, vfalse T) T {
 /* The following is a _favor_ I'm doing to ivan-hc and everyone that contributes
  *  And actively endorses or uses AM
  *  They are a tremendous help to the Portable Linux Apps community!
- */
-
 const pipeRepl = "ǀ" // Replacement for `|` to avoid breaking the MD table
 func replacePipeFields(pkg *DbinItem) {
 	pkg.Name = strings.ReplaceAll(pkg.Name, "|", pipeRepl)
@@ -462,3 +476,4 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 		}
 	}
 }
+ */

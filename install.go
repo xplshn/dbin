@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/urfave/cli/v3"
@@ -34,7 +33,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 	defer cursor.Show()
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(bEntries))
+	var errors []string // Slice to collect errors
 	urls, checksums, err := findURL(config, bEntries, verbosityLevel, uRepoIndex)
 	if err != nil {
 		return err
@@ -43,13 +42,11 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 	// Only create the progress bar if not in silent mode
 	var bar progressbar.MultiPB
 	var tasks *progressbar.Tasks
-	if verbosityLevel > silentVerbosityWithErrors {
+	if verbosityLevel >= normalVerbosity {
 		bar = progressbar.New()
 		tasks = progressbar.NewTasks(bar)
 		defer tasks.Close()
 	}
-
-	var errors []string
 
 	binaryNameMaxlen := 0
 	for _, bEntry := range bEntries {
@@ -66,7 +63,14 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 		checksum := checksums[i]
 		destination := filepath.Join(config.InstallDir, filepath.Base(bEntry.Name))
 
-		if verbosityLevel > silentVerbosityWithErrors {
+		// Skip fetch if URL is "!not_found"
+		if url == "!not_found" {
+			errors = append(errors, fmt.Sprintf("error: didn't find download URL for [%s]", bEntry.Name))
+			wg.Done()
+			continue
+		}
+
+		if verbosityLevel >= normalVerbosity {
 			barTitle := fmt.Sprintf("Installing %s", bEntry.Name)
 			pbarOpts := []progressbar.Opt{
 				progressbar.WithBarStepper(config.ProgressbarStyle),
@@ -88,69 +92,67 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 					defer wg.Done()
 					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
 					if fetchErr != nil {
-						errChan <- fmt.Errorf("error fetching binary %s: %v", bEntry.Name, fetchErr)
+						errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v", bEntry.Name, fetchErr))
 						return
 					}
 
 					if err := os.Chmod(destination, 0755); err != nil {
-						errChan <- fmt.Errorf("error making binary executable %s: %v", destination, err)
+						errors = append(errors, fmt.Sprintf("error: error making binary executable %s: %v", destination, err))
 						return
 					}
 
 					if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
-						errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err)
+						errors = append(errors, fmt.Sprintf("error: [%s] could not be handled by its default hooks: %v", bEntry.Name, err))
 						return
 					}
 
 					binInfo, _ := getBinaryInfo(config, bEntry, uRepoIndex)
-					if err := embedBEntry(destination, binInfo.Name+"#"+binInfo.PkgId); err != nil {
-						errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
+					if err := embedBEntry(destination, *binInfo); err != nil {
+						errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v", destination, err))
 						return
 					}
 				}),
 			)
 		} else {
-			// Perform the download without the progress bar
-			go func() {
+			go func(bEntry binaryEntry, url, checksum, destination string) {
 				defer wg.Done()
 				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, url, checksum, destination)
 				if fetchErr != nil {
-					errChan <- fmt.Errorf("error fetching binary %s: %v", bEntry.Name, fetchErr)
+					errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v", bEntry.Name, fetchErr))
 					return
 				}
 
 				if err := os.Chmod(destination, 0755); err != nil {
-					errChan <- fmt.Errorf("error making binary executable %s: %v", destination, err)
+					errors = append(errors, fmt.Sprintf("error: error making binary executable %s: %v", destination, err))
 					return
 				}
 
 				if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
-					errChan <- fmt.Errorf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err)
+					errors = append(errors, fmt.Sprintf("error: [%s] could not be handled by its default hooks: %v", bEntry.Name, err))
 					return
 				}
 
 				binInfo, _ := getBinaryInfo(config, bEntry, uRepoIndex)
-				if err := embedBEntry(destination, binInfo.Name+"#"+binInfo.PkgId); err != nil {
-					errChan <- fmt.Errorf("failed to add fullName property to the binary's xattr %s: %v", destination, err)
+				if err := embedBEntry(destination, *binInfo); err != nil {
+					errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v", destination, err))
 					return
 				}
-			}()
+
+				if verbosityLevel >= normalVerbosity {
+					fmt.Printf("Successfully installed [%s]\n", binInfo.Name+"#"+binInfo.PkgId)
+				}
+			}(bEntry, url, checksum, destination)
 		}
 	}
 
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
+	wg.Wait()
 
-	for err := range errChan {
-		errors = append(errors, err.Error())
-	}
-
+	// Print all errors at the end
 	if len(errors) > 0 {
-		finalErr := strings.Join(errors, "\n")
-		if verbosityLevel >= silentVerbosityWithErrors {
-			return fmt.Errorf(finalErr)
+		var errN = uint8(0)
+		for _, errMsg := range errors {
+			errN += 1
+			fmt.Printf("%d. %v\n", errN, errMsg)
 		}
 	}
 

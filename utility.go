@@ -258,7 +258,7 @@ func truncatePrintf(disableTruncation bool, format string, a ...interface{}) (n 
 	if disableTruncation {
 		return fmt.Printf(format, a...)
 	}
-	text := truncateSprintf(indicator, format, a...)
+	text := truncateSprintf(Indicator, format, a...)
 	return fmt.Print(text)
 }
 
@@ -276,8 +276,9 @@ func listFilesInDir(dir string) ([]string, error) {
 	return files, nil
 }
 
-func embedBEntry(binaryPath string, fName string) error {
-	if err := xattr.Set(binaryPath, "user.FullName", []byte(fName)); err != nil {
+func embedBEntry(binaryPath string, bEntry binaryEntry) error {
+	bEntry.Version = ""
+	if err := xattr.Set(binaryPath, "user.FullName", []byte(parseBinaryEntry(bEntry, false))); err != nil {
 		return fmt.Errorf("failed to set xattr for %s: %w", binaryPath, err)
 	}
 	return nil

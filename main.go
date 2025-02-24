@@ -12,12 +12,12 @@ type Verbosity int8
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
-	indicator                           = "...>"
-	Version                             = "1.0"
+	Indicator                           = "...>"
+	Version                             = "1.1"
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
-	normalVerbosity           Verbosity = 1
 	extraVerbose              Verbosity = 2
+	normalVerbosity           Verbosity = 1
 	silentVerbosityWithErrors Verbosity = -1
 	extraSilent               Verbosity = -2
 )
@@ -54,7 +54,11 @@ func main() {
 		EnableShellCompletion: true,
 	}
 
-	app.Run(context.Background(), os.Args)
+	err := app.Run(context.Background(), os.Args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v", err)
+		os.Exit(1)
+	}
 }
 
 func getVerbosityLevel(c *cli.Command) Verbosity {

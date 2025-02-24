@@ -29,7 +29,6 @@ func selectHighestRankedBin(matchingBins []binaryEntry, highestRank uint16) bina
 	}
 
 	var nonGlibcBins []binaryEntry
-
 	for _, bin := range matchingBins {
 		if !strings.Contains(bin.PkgId, "glibc") {
 			nonGlibcBins = append(nonGlibcBins, bin)
@@ -64,6 +63,8 @@ func selectHighestRankedBin(matchingBins []binaryEntry, highestRank uint16) bina
 func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) ([]string, []string, error) {
 	var foundURLs []string
 	var foundB3sum []string
+	var allErrors []error
+	allFailed := true
 
 	for _, bEntry := range bEntries {
 		parsedURL, err := url.ParseRequestURI(bEntry.Name)
@@ -73,6 +74,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 			}
 			foundURLs = append(foundURLs, bEntry.Name)
 			foundB3sum = append(foundB3sum, "!no_check")
+			allFailed = false
 			continue
 		}
 
@@ -83,22 +85,32 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 		matchingBins, highestRank := findMatchingBins(bEntry, uRepoIndex)
 
 		if len(matchingBins) == 0 {
-			if verbosityLevel >= silentVerbosityWithErrors {
-				return nil, nil, fmt.Errorf("error: didn't find download URL for [%s]\n", bEntry.Name)
-			}
+			foundURLs = append(foundURLs, "!not_found")
+			foundB3sum = append(foundB3sum, "!no_check")
+			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]", bEntry.Name))
 			continue
 		}
 
+		allFailed = false
 		selectedBin := selectHighestRankedBin(matchingBins, highestRank)
 
-		foundURLs = append(foundURLs, ternary(selectedBin.GhcrPkg != "", selectedBin.GhcrPkg, selectedBin.DownloadURL))
+		url := ternary(selectedBin.GhcrPkg != "", selectedBin.GhcrPkg, selectedBin.DownloadURL)
+		foundURLs = append(foundURLs, url)
 		foundB3sum = append(foundB3sum, selectedBin.Bsum)
 
 		if verbosityLevel >= extraVerbose {
-			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s",
-				bEntry.Name, selectedBin.PkgId, selectedBin.Version)
+			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s", bEntry.Name, selectedBin.PkgId, selectedBin.Version)
 		}
+	}
+
+	if allFailed {
+		var errorMessages []string
+		for _, e := range allErrors {
+			errorMessages = append(errorMessages, e.Error())
+		}
+		return nil, nil, fmt.Errorf("error: no valid download URLs found for any of the requested binaries.\n%s\n", strings.Join(errorMessages, "\n"))
 	}
 
 	return foundURLs, foundB3sum, nil
 }
+
