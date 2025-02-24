@@ -43,9 +43,7 @@ $ dbin --help
     update            Update binaries, by checking their SHA against the repo's SHA
     run               Run a specified binary from cache
     info              Show information about a specific binary OR display installed binaries
-    search            Search for a binary - (not all binaries have metadata. Use list to see all binaries)
-    tldr              Equivalent to "--silent run --transparent tlrc"
-    eget2             Equivalent to "--silent run --transparent eget2"
+    search            Search for a binary by supplying one or more search terms
   Variables:
     DBIN_CACHEDIR      If present, it must contain a valid directory path
     DBIN_INSTALL_DIR   If present, it must contain a valid directory path
