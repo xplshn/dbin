@@ -31,11 +31,11 @@ type Hooks struct {
 }
 
 type HookCommands struct {
-	IntegrationCommands   []string `yaml:"integration_commands"`
-	DeintegrationCommands []string `yaml:"deintegration_commands"`
-	IntegrationErrorMsg   string   `yaml:"integration_error_msg"`
-	DeintegrationErrorMsg string   `yaml:"deintegration_error_msg"`
-	UseRunFromCache       bool     `yaml:"use_run_from_cache"`
+	IntegrationCommands   []string `yaml:"integrationCommands"`
+	DeintegrationCommands []string `yaml:"deintegrationCommands"`
+	IntegrationErrorMsg   string   `yaml:"integrationErrorMsg"`
+	DeintegrationErrorMsg string   `yaml:"deintegrationErrorMsg"`
+	UseRunFromCache       bool     `yaml:"RunFromCache"`
 	NoOp                  bool     `yaml:"nop"`
 }
 
@@ -59,7 +59,7 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	args := commandParts[1:]
 
 	if hookCommands.UseRunFromCache {
-		return runFromCache(config, stringToBinaryEntry(command), args, true, verbosityLevel, uRepoIndex)
+		return runFromCache(config, stringToBinaryEntry(command), args, true, verbosityLevel)
 	}
 
 	cmdExec := exec.Command(command, args...)

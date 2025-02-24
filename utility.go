@@ -208,13 +208,13 @@ func truncateSprintf(indicator, format string, a ...interface{}) string {
 		return text
 	}
 
-	width := getTerminalWidth() - len(indicator)
+	width := uint(getTerminalWidth() - len(indicator))
 	if width <= 0 {
 		return text
 	}
 
 	var out bytes.Buffer
-	var visibleCount int
+	var visibleCount uint
 	var inEscape bool
 	var escBuf bytes.Buffer
 
@@ -416,16 +416,6 @@ func calculateChecksum(filePath string) (string, error) {
 func isSymlink(filePath string) bool {
 	fileInfo, err := os.Lstat(filePath)
 	return err == nil && fileInfo.Mode()&os.ModeSymlink != 0
-}
-
-func sanitizeString(input string) string {
-	var sanitized strings.Builder
-	for _, ch := range input {
-		if ch >= 32 && ch <= 126 {
-			sanitized.WriteRune(ch)
-		}
-	}
-	return sanitized.String()
 }
 
 func ternary[T any](cond bool, vtrue, vfalse T) T {

@@ -1,27 +1,28 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"time"
-	"context"
 
 	"github.com/urfave/cli/v3"
 )
 
 func runCommand() *cli.Command {
 	return &cli.Command{
-		Name:  "run",
-		Usage: "Run a specified binary from cache",
+		Name:            "run",
+		Usage:           "Run a specified binary from cache",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "transparent",
 				Usage: "Run the binary from PATH if found",
 			},
 		},
+		SkipFlagParsing: true,
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.NArg() == 0 {
 				return fmt.Errorf("no binary name provided for run command")
@@ -31,93 +32,60 @@ func runCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			uRepoIndex := fetchRepoIndex(config)
-
-			// The first argument is the binary name
-			binaryName := c.Args().First()
-			bEntry := stringToBinaryEntry(binaryName)
-
-			// The rest of the arguments are passed to the binary
-			args := c.Args().Tail()
-
-			return runFromCache(config, bEntry, args, c.Bool("transparent"), getVerbosityLevel(c), uRepoIndex)
+			
+			bEntry := stringToBinaryEntry(c.Args().First())
+			return runFromCache(config, bEntry, c.Args().Tail(), c.Bool("transparent"), getVerbosityLevel(c))
 		},
 	}
 }
 
-func returnCachedFile(config *Config, binaryName string) (cachedBinary string, trackedBEntry binaryEntry, err error) {
-	cachedBinary = filepath.Join(config.CacheDir, filepath.Base(binaryName))
-
-	trackedBEntry, err = readEmbeddedBEntry(cachedBinary)
-	if err != nil {
-		return "", trackedBEntry, err
-	}
-
-	if !fileExists(cachedBinary) {
-		return "", trackedBEntry, fmt.Errorf("cached binary not found")
-	}
-
-	return cachedBinary, trackedBEntry, nil
-}
-
-func runFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
-	binaryPath, err := exec.LookPath(bEntry.Name)
-	if err == nil && transparentMode {
-		if verbosityLevel >= normalVerbosity {
-			fmt.Printf("Running '%s' from PATH...\n", bEntry.Name)
+func runFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity) error {
+	// Try running from PATH if transparent mode is enabled
+	if transparentMode {
+		binaryPath, err := exec.LookPath(bEntry.Name)
+		if err == nil {
+			if verbosityLevel >= normalVerbosity {
+				fmt.Printf("Running '%s' from PATH...\n", bEntry.Name)
+			}
+			return runBinary(binaryPath, args, verbosityLevel)
 		}
-		return runBinary(binaryPath, args, verbosityLevel)
 	}
 
+	// Check if the binary exists in cache and matches the requested version
 	baseName := filepath.Base(bEntry.Name)
 	cachedFile := filepath.Join(config.CacheDir, baseName)
+	
 	if fileExists(cachedFile) && isExecutable(cachedFile) {
 		trackedBEntry, err := readEmbeddedBEntry(cachedFile)
-		if err != nil || trackedBEntry.PkgId != bEntry.PkgId {
+		if err == nil && (trackedBEntry.PkgId == bEntry.PkgId || bEntry.PkgId == "") {
 			if verbosityLevel >= normalVerbosity {
-				if trackedBEntry.Name != "" {
-					fmt.Printf("Cached binary '%s' does not match requested binary '%s'. Fetching a new one...\n", parseBinaryEntry(trackedBEntry, false), parseBinaryEntry(bEntry, false))
-				}
+				fmt.Printf("Running '%s' from cache...\n", bEntry.Name)
 			}
-
-			config.UseIntegrationHooks = false
-			config.InstallDir = config.CacheDir
-			if err := installBinaries(context.Background(), config, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
-				if verbosityLevel >= silentVerbosityWithErrors {
-					fmt.Fprintf(os.Stderr, "Error: could not fetch and cache the binary: %v\n", err)
-				}
-				return err
-			}
-
-			if err := runBinary(filepath.Join(config.CacheDir, baseName), args, verbosityLevel); err != nil {
+			if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
 				return err
 			}
 			return cleanCache(config.CacheDir, verbosityLevel)
 		}
-
+		
 		if verbosityLevel >= normalVerbosity {
-			fmt.Printf("Running '%s' from cache...\n", bEntry.Name)
+			fmt.Printf("Cached binary '%s' does not match requested binary '%s'. Fetching a new one...\n", 
+				parseBinaryEntry(trackedBEntry, false), parseBinaryEntry(bEntry, false))
 		}
-		if err := runBinary(filepath.Join(config.CacheDir, baseName), args, verbosityLevel); err != nil {
-			return err
-		}
-		return cleanCache(config.CacheDir, verbosityLevel)
-	}
-
-	if verbosityLevel >= normalVerbosity {
+	} else if verbosityLevel >= normalVerbosity {
 		fmt.Printf("Couldn't find '%s' in the cache. Fetching a new one...\n", bEntry.Name)
 	}
 
-	config.UseIntegrationHooks = false
-	config.InstallDir = config.CacheDir
-	if err := installBinaries(context.Background(), config, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
-		if verbosityLevel >= silentVerbosityWithErrors {
-			fmt.Fprintf(os.Stderr, "error: could not cache the binary: %v\n", err)
-		}
+	// Fetch and install the binary
+	cacheConfig := *config
+	cacheConfig.UseIntegrationHooks = false
+	cacheConfig.InstallDir = config.CacheDir
+	
+	uRepoIndex := fetchRepoIndex(&cacheConfig)
+	if err := installBinaries(context.Background(), &cacheConfig, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
 		return err
 	}
 
-	if err := runBinary(filepath.Join(config.CacheDir, baseName), args, verbosityLevel); err != nil {
+	if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
 		return err
 	}
 	return cleanCache(config.CacheDir, verbosityLevel)
@@ -167,9 +135,7 @@ func cleanCache(cacheDir string, verbosityLevel Verbosity) error {
 			continue
 		}
 
-		atime := fileInfo.ModTime()
-
-		filesWithAtime = append(filesWithAtime, fileWithAtime{info: entry, atime: atime})
+		filesWithAtime = append(filesWithAtime, fileWithAtime{info: entry, atime: fileInfo.ModTime()})
 	}
 
 	sort.Slice(filesWithAtime, func(i, j int) bool {
@@ -182,10 +148,8 @@ func cleanCache(cacheDir string, verbosityLevel Verbosity) error {
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Fprintf(os.Stderr, "error removing old cached binary: %v\n", err)
 			}
-		} else {
-			if verbosityLevel >= extraVerbose {
-				fmt.Printf("Removed old cached binary: %s\n", filePath)
-			}
+		} else if verbosityLevel >= extraVerbose {
+			fmt.Printf("Removed old cached binary: %s\n", filePath)
 		}
 	}
 

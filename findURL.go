@@ -108,7 +108,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 		for _, e := range allErrors {
 			errorMessages = append(errorMessages, e.Error())
 		}
-		return nil, nil, fmt.Errorf("error: no valid download URLs found for any of the requested binaries.\n%s\n", strings.Join(errorMessages, "\n"))
+		return nil, nil, fmt.Errorf(ternary(len(bEntries) != 1, "error: no valid download URLs found for any of the requested binaries.\n%s\n", "%s\n"), strings.Join(errorMessages, "\n"))
 	}
 
 	return foundURLs, foundB3sum, nil
