@@ -96,9 +96,9 @@ func arrStringToArrBinaryEntry(args []string) []binaryEntry {
 
 func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 	if ansi && term.IsTerminal(int(os.Stdout.Fd())) {
-		return entry.Name + "\033[94m#" + entry.PkgId + "\033[0m"
+		return entry.Name + "\033[94m" + ternary(entry.PkgId != "", "#"+entry.PkgId, "") + "\033[0m"
 	}
-	return entry.Name + ternary(entry.PkgId != "", "#"+entry.PkgId, entry.PkgId)
+	return entry.Name + ternary(entry.PkgId != "", "#"+entry.PkgId, "")
 }
 
 func binaryEntriesToArrString(entries []binaryEntry, ansi bool) []string {

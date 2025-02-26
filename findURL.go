@@ -87,7 +87,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 		if len(matchingBins) == 0 {
 			foundURLs = append(foundURLs, "!not_found")
 			foundB3sum = append(foundB3sum, "!no_check")
-			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]", bEntry.Name + "#" + bEntry.PkgId))
+			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]", parseBinaryEntry(bEntry, false)))
 			continue
 		}
 
