@@ -134,22 +134,57 @@ system_info=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/st
 
 > Hmm, can I add my own repos?
 
-Yes! Absolutely. The repo's URL's are declared in main.go. Its simply a matter of providing a repo URL in the same format that the [PkgForge Project uses](https://docs.pkgforge.dev/repositories/pkgforge-edge/metadata). You may skip the metadata part if you're only interested in the `install/add` functionality.
+Yup, you'll need to provide a repository index, a JSON (or CBOR/YAML) file like this:
+```json
+ "SillyRepo": [
+  {                                                                                                                                                    
+   "pkg": "a-utils/ed",                                                                                                                                
+   "pkg_name": "ed",                                                                                                                                   
+   "pkg_id": "github.com.xplshn.a-utils",                                                                                                              
+   "description": "Ed with syntax highlighting (ed from u-root but with syntax highlighting)",                                                         
+   "version": "0.0.5",                                                                                                                                 
+   "download_url": "https://hf.co/datasets/pkgforge/bincache/resolve/main/a-utils/official/ed/0.0.5-x86_64-linux/a-utils.static",                      
+   "size": "5.4 MB",                                                                                                                                   
+   "bsum": "1f0213b604bf964dbd2ad0dbaddab1c6a64e5da7ea89febcbdb9de337a081d19",                                                                         
+   "shasum": "e2deb5cb912858603900a890630876e0830a9a912d2a71c05742b697c98bc768",                                                                       
+   "build_date": "2025-01-21T02:21:53Z",                                                                                                               
+   "src_urls": [                                                                                                                                       
+    "https://github.com/xplshn/a-utils"                                                                                                                
+   ],                                                                                                                                                  
+   "web_urls": [                                                                                                                                       
+    "https://github.com/xplshn/a-utils",                                                                                                               
+    "https://github.com/xplshn/Andes"                                                                                                                  
+   ],                                                                                                                                                  
+   "build_script": "https://github.com/pkgforge/soarpkgs/blob/main/binaries/a-utils/static.official.stable.yaml",                                      
+   "build_log": "https://api.ghcr.pkgforge.dev/pkgforge/bincache/a-utils/official/ed?tag=0.0.5-x86_64-linux\u0026download=ed.log",                     
+   "notes": [                                                                                                                                          
+    "Pre Built Binary Fetched from Upstream. Check/Report @ https://github.com/xplshn/a-utils"                                                         
+   ],                                                                                                                                                  
+   "ghcr_pkg": "oci://ghcr.io/pkgforge/bincache/a-utils/official/ed:0.0.5-x86_64-linux",                                                               
+   "ghcr_blob": "oci://ghcr.io/pkgforge/bincache/a-utils/official/ed@sha256:e2deb5cb912858603900a890630876e0830a9a912d2a71c05742b697c98bc768",         
+   "rank": 1822                                                                                                                                        
+  },
+... More Entries here
+}
+```
 
->Good to hear, now... What about the so-called MetadataURLs?
-
-MetadataURLs provide info about the binaries, which is used to `search` and `update` binaries, also for the functionality of `info` in both of its use-cases (showing the binaries which were installed to $DBIN_INSTALL_DIR from the [PkgForge](https://github.com/pkgforge) [repositories](https://docs.pkgforge.dev/repositories)) and showing a binary's description, size, etc. You can take a look at [`modMetadata`'s](misc/cmd/modMetadata/main.go) `Item` struct if you want to make a custom repo which's binaries appear in `search`, are compatible with the `update` functionality and also work with `info`.
+NOTE: Not all fields are essential :)
 
 ### Libraries
 I am using these two libraries for `dbin`:
-1. https://github.com/schollz/progressbar
-2. https://github.com/goccy/go-json
+1. https://github.com/urfave/cli (v3)
+2. https://github.com/schollz/progressbar
+3. https://github.com/goccy/go-json (index files can be .json)
+4. https://github.com/goccy/go-yaml (config && index files can be .yaml)
+5. https://github.com/klauspost/compress (index files can be .zst && .gz)
+6. https://github.com/fxamacker/cbor (index files can be .cbor)
+7. https://github.com/zeebo/blake3 (checksums)
+8. https://golang.org/x/term
 
 ## Contributing
 Contributions are welcome! Whether you've found a bug, have a feature request, or wish to improve the documentation, your input is valuable. Fork the repository, make your changes, and submit a pull request. Together, we can make dbin even more powerful and simpler. If you can provide repos that meet the requirements to add them to `dbin`, I'd be grateful.
-Also, I need help optimizing the cyclomatic complexity of `dbin`.
 
 ## License
-dbin is licensed under the ISC or RABRMS Licenses, choose whichever fits your needs best.
+dbin is licensed under the ISC (equivalent to MIT but without unnecessary legal wording) or RABRMS Licenses, choose whichever fits your needs best.
 
 ## Its pretty safe to state that we are ![cooltext466498248029130](https://github.com/user-attachments/assets/4397b1d3-44f2-4ae9-99c6-7379860bfa73)
