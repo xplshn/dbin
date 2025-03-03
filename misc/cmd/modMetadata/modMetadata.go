@@ -42,6 +42,7 @@ type PkgForgeItem struct {
 	BuildScript string   `json:"build_script,omitempty"`
 	BuildLog    string   `json:"build_log,omitempty"`
 	Category    []string `json:"categories,omitempty"`
+	Snapshots   []string `json:"snapshots,omitempty"`
 	Provides    []string `json:"provides,omitempty"`
 	Note        []string `json:"note,omitempty"`
 	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
@@ -51,31 +52,32 @@ type PkgForgeItem struct {
 }
 
 type DbinItem struct {
-	Pkg             string   `json:"pkg"                        cbor:"pkg"                        yaml:"pkg"                       `
-	Name            string   `json:"pkg_name"                   cbor:"pkg_name"                   yaml:"pkg_name"                  `
-	BinId           string   `json:"pkg_id,omitempty"           cbor:"pkg_id,omitempty"           yaml:"pkg_id,omitempty"          `
-	Icon            string   `json:"icon,omitempty"             cbor:"icon,omitempty"             yaml:"icon,omitempty"            `
-	License         string   `json:"license,omitempty"          cbor:"license,omitempty"          yaml:"license,omitempty"         `
-	Description     string   `json:"description,omitempty"      cbor:"description,omitempty"      yaml:"description,omitempty"     `
-	LongDescription string   `json:"description_long,omitempty" cbor:"description_long,omitempty" yaml:"description_long,omitempty"`
-	Screenshots     []string `json:"screenshots,omitempty"      cbor:"screenshots,omitempty"      yaml:"screenshots,omitempty"     `
-	Version         string   `json:"version,omitempty"          cbor:"version,omitempty"          yaml:"version,omitempty"         `
-	DownloadURL     string   `json:"download_url,omitempty"     cbor:"download_url,omitempty"     yaml:"download_url,omitempty"    `
-	Size            string   `json:"size,omitempty"             cbor:"size,omitempty"             yaml:"size,omitempty"            `
-	Bsum            string   `json:"bsum,omitempty"             cbor:"bsum,omitempty"             yaml:"bsum,omitempty"            `
-	Shasum          string   `json:"shasum,omitempty"           cbor:"shasum,omitempty"           yaml:"shasum,omitempty"          `
-	BuildDate       string   `json:"build_date,omitempty"       cbor:"build_date,omitempty"       yaml:"build_date,omitempty"      `
-	SrcURLs         []string `json:"src_urls,omitempty"         cbor:"src_urls,omitempty"         yaml:"src_urls,omitempty"        `
-	WebURLs         []string `json:"web_urls,omitempty"         cbor:"web_urls,omitempty"         yaml:"web_urls,omitempty"        `
-	BuildScript     string   `json:"build_script,omitempty"     cbor:"build_script,omitempty"     yaml:"build_script,omitempty"    `
-	BuildLog        string   `json:"build_log,omitempty"        cbor:"build_log,omitempty"        yaml:"build_log,omitempty"       `
-	Categories      string   `json:"categories,omitempty"       cbor:"categories,omitempty"       yaml:"categories,omitempty"      `
-	Provides        string   `json:"provides,omitempty"         cbor:"provides,omitempty"         yaml:"provides,omitempty"        `
-	Notes           []string `json:"notes,omitempty"            cbor:"notes,omitempty"            yaml:"notes,omitempty"           `
-	Appstream       string   `json:"appstream,omitempty"        cbor:"appstream,omitempty"        yaml:"appstream,omitempty"       `
-	GhcrPkg         string   `json:"ghcr_pkg,omitempty"         cbor:"ghcr_pkg,omitempty"         yaml:"ghcr_pkg,omitempty"        `
-	GhcrBlob        string   `json:"ghcr_blob,omitempty"        cbor:"ghcr_blob,omitempty"        yaml:"ghcr_blob,omitempty"       `
-	Rank            uint     `json:"rank,omitempty"             cbor:"rank,omitempty"             yaml:"rank,omitempty"            `
+	Pkg             string   `json:"pkg"                        `
+	Name            string   `json:"pkg_name"                   `
+	BinId           string   `json:"pkg_id,omitempty"           `
+	Icon            string   `json:"icon,omitempty"             `
+	License         string   `json:"license,omitempty"          `
+	Description     string   `json:"description,omitempty"      `
+	LongDescription string   `json:"description_long,omitempty" `
+	Screenshots     []string `json:"screenshots,omitempty"      `
+	Version         string   `json:"version,omitempty"          `
+	DownloadURL     string   `json:"download_url,omitempty"     `
+	Size            string   `json:"size,omitempty"             `
+	Bsum            string   `json:"bsum,omitempty"             `
+	Shasum          string   `json:"shasum,omitempty"           `
+	BuildDate       string   `json:"build_date,omitempty"       `
+	SrcURLs         []string `json:"src_urls,omitempty"         `
+	WebURLs         []string `json:"web_urls,omitempty"         `
+	BuildScript     string   `json:"build_script,omitempty"     `
+	BuildLog        string   `json:"build_log,omitempty"        `
+	Categories      string   `json:"categories,omitempty"       `
+	Snapshots   	[]string `json:"snapshots,omitempty"        `
+	Provides        string   `json:"provides,omitempty"         `
+	Notes           []string `json:"notes,omitempty"            `
+	Appstream       string   `json:"appstream,omitempty"        `
+	GhcrPkg         string   `json:"ghcr_pkg,omitempty"         `
+	GhcrBlob        string   `json:"ghcr_blob,omitempty"        `
+	Rank            uint     `json:"rank,omitempty"             `
 }
 
 type DbinMetadata map[string][]DbinItem
@@ -209,6 +211,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		BuildScript: item.BuildScript,
 		BuildLog:    item.BuildLog,
 		Categories:  categories,
+		Snapshots:    item.Snapshots,
 		Provides:    provides,
 		Notes:       item.Note,
 		GhcrPkg:     "oci://" + item.GhcrPkg,
