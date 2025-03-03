@@ -136,6 +136,7 @@ system_info=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/st
 
 Yup, you'll need to provide a repository index, a JSON (or CBOR/YAML) file like this:
 ```json
+{
  "SillyRepo": [
   {                                                                                                                                                    
    "pkg": "a-utils/ed",                                                                                                                                
@@ -164,7 +165,7 @@ Yup, you'll need to provide a repository index, a JSON (or CBOR/YAML) file like 
    "ghcr_blob": "oci://ghcr.io/pkgforge/bincache/a-utils/official/ed@sha256:e2deb5cb912858603900a890630876e0830a9a912d2a71c05742b697c98bc768",         
    "rank": 1822                                                                                                                                        
   },
-... More Entries here
+... More Entries here ...
 }
 ```
 
