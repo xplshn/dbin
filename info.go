@@ -51,6 +51,7 @@ func infoCommand() *cli.Command {
 					{"Pretty Name", binaryInfo.PrettyName},
 					{"Description", binaryInfo.Description},
 					{"Version", binaryInfo.Version},
+					{"Ghcr Pkg", binaryInfo.GhcrPkg},
 					{"Ghcr Blob", binaryInfo.GhcrBlob},
 					{"Download URL", binaryInfo.DownloadURL},
 					{"Size", binaryInfo.Size},
@@ -61,6 +62,7 @@ func infoCommand() *cli.Command {
 					{"Build Log", binaryInfo.BuildLog},
 					{"Categories", binaryInfo.Categories},
 					{"Rank", binaryInfo.Rank},
+					{"Snapshots", binaryInfo.Snapshots},
 					{"Extra Bins", binaryInfo.ExtraBins},
 				}
 				for _, field := range fields {

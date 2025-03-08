@@ -33,7 +33,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 	defer cursor.Show()
 
 	var wg sync.WaitGroup
-	var errors []string // Slice to collect errors
+	var errors []string
 	urls, checksums, err := findURL(config, bEntries, verbosityLevel, uRepoIndex)
 	if err != nil {
 		return err
@@ -147,7 +147,6 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 
 	wg.Wait()
 
-	// Print all errors at the end
 	if len(errors) > 0 {
 		var errN = uint8(0)
 		for _, errMsg := range errors {

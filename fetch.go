@@ -213,7 +213,9 @@ func downloadLayer(ctx context.Context, registry, repository string, manifest ma
 		annotations := layerMap["annotations"].(map[string]interface{})
 		layerTitle := annotations["org.opencontainers.image.title"].(string)
 
-		if layerTitle == title {
+		titleNoExt := filepath.Ext(title)
+		titleNoExt = title[0:len(title)-len(titleNoExt)]
+		if layerTitle == title || layerTitle == titleNoExt {
 			digest := layerMap["digest"].(string)
 			url := fmt.Sprintf("https://%s/v2/%s/blobs/%s", registry, repository, digest)
 

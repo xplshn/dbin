@@ -6,6 +6,8 @@ type binaryEntry struct {
 	PkgId       string   `json:"pkg_id"                `
 	Description string   `json:"description,omitempty" `
 	Version     string   `json:"version,omitempty"     `
+	GhcrBlob    string   `json:"ghcr_blob,omitempty"   `
+	GhcrPkg     string   `json:"ghcr_pkg,omitempty"    `
 	DownloadURL string   `json:"download_url,omitempty"`
 	Size        string   `json:"size,omitempty"        `
 	Bsum        string   `json:"bsum,omitempty"        `
@@ -14,9 +16,8 @@ type binaryEntry struct {
 	BuildScript string   `json:"build_script,omitempty"`
 	BuildLog    string   `json:"build_log,omitempty"   `
 	Categories  string   `json:"categories,omitempty"  `
+	Snapshots   []string `json:"snapshots,omitempty"    `
 	ExtraBins   string   `json:"provides,omitempty"    `
-	GhcrBlob    string   `json:"ghcr_blob,omitempty"   `
-	GhcrPkg     string   `json:"ghcr_pkg,omitempty"    `
 	Rank        uint16   `json:"rank,omitempty"        `
 	Notes       []string `json:"notes,omitempty"       `
 	SrcURLs     []string `json:"src_urls,omitempty"    `
