@@ -174,7 +174,7 @@ NOTE: Not all fields are essential :)
 ### Libraries
 I am using these two libraries for `dbin`:
 1. https://github.com/urfave/cli (v3)
-2. https://github.com/schollz/progressbar
+2. https://github.com/hedzr/progressbar (an attractive-looking progressbar, but with a messy API and codebase. Currently the only good alternative to mpb/v8+)
 3. https://github.com/goccy/go-json (index files can be .json)
 4. https://github.com/goccy/go-yaml (config && index files can be .yaml)
 5. https://github.com/klauspost/compress (index files can be .zst && .gz)
