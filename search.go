@@ -56,10 +56,10 @@ func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) err
 	}
 
 	if len(results) == 0 {
-		return fmt.Errorf("no matching binaries found for '%s'\n",
+		return fmt.Errorf("no matching binaries found for '%s'",
 		 	strings.Join(searchTerms, " "))
 	} else if uint(len(results)) > config.Limit {
-		return fmt.Errorf("too many matching binaries (+%d. [Use --limit before your query]) found for '%s'\n",
+		return fmt.Errorf("too many matching binaries (+%d. [Use --limit before your query]) found for '%s'",
 			config.Limit, strings.Join(searchTerms, " "))
 	}
 

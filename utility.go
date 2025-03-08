@@ -22,41 +22,9 @@ import (
 	"github.com/zeebo/blake3"
 )
 
-func removeDuplicates[T comparable](elements []T) []T {
-	seen := make(map[T]struct{})
-	result := []T{}
-	for _, element := range elements {
-		if _, ok := seen[element]; !ok {
-			seen[element] = struct{}{}
-			result = append(result, element)
-		}
-	}
-	return result
-}
-
-func contains(slice []string, str string) bool {
-	for _, v := range slice {
-		if v == str {
-			return true
-		}
-	}
-	return false
-}
-
 func fileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
 	return !os.IsNotExist(err)
-}
-
-func isDirectory(path string) (bool, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	return info.IsDir(), nil
 }
 
 func isExecutable(filePath string) bool {
@@ -178,22 +146,6 @@ func bEntryOfinstalledBinary(binaryPath string) binaryEntry {
 	return trackedBEntry
 }
 
-func errorEncoder(format string, args ...interface{}) int {
-	formattedErrorMessage := fmt.Sprintf(format, args...)
-
-	var sum int
-	for _, char := range formattedErrorMessage {
-		sum += int(char)
-	}
-	errorCode := sum % 256
-	fmt.Fprint(os.Stderr, formattedErrorMessage)
-	return errorCode
-}
-
-func errorOut(format string, args ...interface{}) {
-	os.Exit(errorEncoder(format, args...))
-}
-
 func getTerminalWidth() int {
 	w, _, _ := term.GetSize(int(os.Stdout.Fd()))
 	if w != 0 {
@@ -286,7 +238,7 @@ func embedBEntry(binaryPath string, bEntry binaryEntry) error {
 
 func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	if !fileExists(binaryPath) {
-		return binaryEntry{}, fmt.Errorf("Error: Tried to get EmbeddedBEntry of non-existant file: %s", binaryPath)
+		return binaryEntry{}, fmt.Errorf("error: Tried to get EmbeddedBEntry of non-existant file: %s", binaryPath)
 	}
 
 	fullName, err := xattr.Get(binaryPath, "user.FullName")
@@ -330,7 +282,7 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 
 func decodeRepoIndex(url string) ([]binaryEntry, error) {
 	if url == "" {
-		return nil, fmt.Errorf("repository index URL is empty. Please check your configuration or remove it.")
+		return nil, fmt.Errorf("repository index URL is empty. Please check your configuration or remove it")
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -344,7 +296,7 @@ func decodeRepoIndex(url string) ([]binaryEntry, error) {
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching from %s: %v. Please check your configuration's repo_urls. Ensure your network has access to the internet.", url, err)
+		return nil, fmt.Errorf("error fetching from %s: %v. Please check your configuration's repo_urls. Ensure your network has access to the internet", url, err)
 	}
 	defer response.Body.Close()
 	bodyReader := response.Body

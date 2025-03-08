@@ -146,7 +146,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 	}
 
 	if verbosityLevel >= normalVerbosity || (errors > 0 && verbosityLevel >= silentVerbosityWithErrors) {
-		fmt.Printf(finalCounts)
+		fmt.Print(finalCounts)
 		for _, errorMsg := range strings.Split(errorMessages, "\n") {
 			fmt.Println(strings.TrimSpace(errorMsg))
 		}
