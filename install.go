@@ -92,24 +92,26 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 					defer wg.Done()
 					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
 					if fetchErr != nil {
-						errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v", bEntry.Name, fetchErr))
+						errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v\n", bEntry.Name, fetchErr))
 						return
 					}
 
 					if err := os.Chmod(destination, 0755); err != nil {
-						errors = append(errors, fmt.Sprintf("error: error making binary executable %s: %v", destination, err))
+						errors = append(errors, fmt.Sprintf("error: error making binary executable %s: %v\n", destination, err))
 						return
 					}
 
 					if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
-						errors = append(errors, fmt.Sprintf("error: [%s] could not be handled by its default hooks: %v", bEntry.Name, err))
+						errors = append(errors, fmt.Sprintf("error: [%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
 						return
 					}
 
-					binInfo, _ := getBinaryInfo(config, bEntry, uRepoIndex)
-					if err := embedBEntry(destination, *binInfo); err != nil {
-						errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v", destination, err))
-						return
+					binInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
+					if err == nil {
+						if err := embedBEntry(destination, *binInfo); err != nil {
+							errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
+							return
+						}
 					}
 				}),
 			)

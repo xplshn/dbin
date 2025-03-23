@@ -17,27 +17,10 @@ func infoCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			uRepoIndex := fetchRepoIndex(config)
 			var bEntry binaryEntry
 			if c.Args().First() != "" {
+				uRepoIndex := fetchRepoIndex(config)
 				bEntry = stringToBinaryEntry(c.Args().First())
-			}
-			if bEntry.Name == "" {
-				files, err := listFilesInDir(config.InstallDir)
-				if err != nil {
-					return err
-				}
-				installedPrograms := make([]string, 0)
-				for _, file := range files {
-					trackedBEntry := bEntryOfinstalledBinary(file)
-					if trackedBEntry.Name != "" {
-						installedPrograms = append(installedPrograms, parseBinaryEntry(trackedBEntry, true))
-					}
-				}
-				for _, program := range installedPrograms {
-					fmt.Println(program)
-				}
-			} else {
 				binaryInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
 				if err != nil {
 					return err
@@ -80,6 +63,21 @@ func infoCommand() *cli.Command {
 							fmt.Printf("\033[48;5;4m%s\033[0m: %v\n", field.label, v)
 						}
 					}
+				}
+			} else {
+				files, err := listFilesInDir(config.InstallDir)
+				if err != nil {
+					return err
+				}
+				installedPrograms := make([]string, 0)
+				for _, file := range files {
+					trackedBEntry := bEntryOfinstalledBinary(file)
+					if trackedBEntry.Name != "" {
+						installedPrograms = append(installedPrograms, parseBinaryEntry(trackedBEntry, true))
+					}
+				}
+				for _, program := range installedPrograms {
+					fmt.Println(program)
 				}
 			}
 			return nil
