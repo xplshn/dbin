@@ -26,6 +26,9 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) ([]binaryEnt
 							if idx != -1 {
 								// Everything before the tag remains intact; the new tag is the snapshot commit.
 								bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
+								// Disable checksum verification
+								bin.Bsum = "!no_check"
+								bin.Version = snap.Version
 							}
 						}
 					}
