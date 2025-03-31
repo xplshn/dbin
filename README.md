@@ -91,39 +91,37 @@ $ dbin --help
 #### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 ##### Flags that correspond to the `run` functionality
 In the case of `--transparent`, it runs the program from $PATH and if it isn't available in the user's $PATH it will pull the binary from `dbin`'s repos and run it from cache.
-In the case of `--silent`, it simply hides the progressbar and all optional messages (warnings) that `dbin` can show, which would always report if the binary is found on cache + the return code of the binary to be run if it differs from 0 otherwise.
-##### Flags that correspond to the `install` functionality
-`--silent`, it hides the progressbar and doesn't print the installation message
 ##### `Update` arguments:
-Update can receive an optional list of specific binaries to update OR no arguments at all. When `update` receives no arguments it updates everything that is both found in the repos and in your `$DBIN_INSTALL_DIR`.
+Update can receive an optional list of specific binaries to update OR no arguments at all. When `update` receives no arguments it updates everything that is both found in the repos and in your `$DBIN_INSTALL_DIR` (unless `$DBIN_REOWN=1`, dbin will not update binaries it didn't install. It won't modify symlinks either).
 ##### Arguments of `info`
-When `info` is called with no arguments, it displays binaries which are part of the `list` and are also found on your `$DBIN_INSTALL_DIR`. If `info` is called with a binary's name as argument, `info` will display as much information of it as is available. The "Size", "SHA256", "Version" fields may not match your local installation if the binary wasn't provided by `dbin` or if it isn't up-to-date.
+When `info` is called with no arguments, it displays all binaries which were installed by `dbin`. When it is called with a binary's name as argument, `info` will display as much information of it as is available.
 ###### Example:
 ```
 $ dbin info micro
-Name: micro
-Description: A modern and intuitive terminal-based text editor
-Version: v2.0.14
-Download URL: https://bin.pkgforge.dev/x86_64/micro
-Size: 11.67 MB
-B3SUM: 2455db4db6e117717b33f6fb4a85d6630268442b111e1012e790feae6255484a
-SHA256: 6be82c65571f6aac935e7ef723932322ed5d665028a2179d66211b5629d4b665
-Build Date: 2024-08-31T01:08:46
-Source URL: https://github.com/zyedidia/micro
-Web URL: https://github.com/zyedidia/micro
-Build Script: https://github.com/Azathothas/Toolpacks/tree/main/.github/scripts/x86_64_Linux/bins/micro.sh
-Build Log: https://bin.pkgforge.dev/x86_64/micro.log.txt
-Category: command-line, cross-platform, editor, go, golang, micro, terminal, text-editor
+Name: micro#github.com.zyedidia.micro
+Pkg ID: github.com.zyedidia.micro
+Pretty Name: micro
+Description: Modern and intuitive terminal-based text editor
+Version: HEAD-7d16dcd-250311T073524
+Download URL: oci://ghcr.io/pkgforge/bincache/micro/official/micro:HEAD-7d16dcd-250311T073524-x86_64-linux
+Size: 14 MB
+B3SUM: b6f32b2b8ff4b5abad126c4d0d466549f91c12eedafbc9826d0673b91d10eea9
+SHA256: 3a9278b2be59a8c1fd87647f65d0cfcb9c707e823713045e93af183610ef8102
+Build Date: 2025-03-12T03:02:06Z
+Build Script: https://github.com/pkgforge/soarpkgs/blob/main/binaries/micro/static.official.source.yaml
+Build Log: https://api.ghcr.pkgforge.dev/pkgforge/bincache/micro/official/micro?tag=HEAD-7d16dcd-250311T073524-x86_64-linux&download=micro.log
+Rank: 1102
+Snapshots: HEAD-9b3f7ff-250119T130748-x86_64-linux [2.0.14]
 ```
 ##### Arguments of `list`
-`list` can receive the optional argument `--described`/`-d`. It will display all binaries that have a description in their metadata.
+`list` can receive the optional argument `--described`/`-d`. It will display all binaries + their description
 ##### Arguments of `search`
-`search` can only receive ONE search term, if the name of a binary or a description of a binary contains the term, it is shown as a search result.
-`search` can optionally receive a `--limit` argument, which changes the limit on how many search results can be displayed (default is 90).
+`search` can only receive various search terms, if the name of a binary or a description of a binary contains the term, it is shown as a search result.
+`search` can optionally receive a `--limit` argument, which changes the limit on how many search results can be displayed (default is 90) (you can also put this in your config)
 
 ## Getting Started ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 
-To begin using dbin, simply run one of these commands on your Linux system. No additional setup is required. You may also build the project using `go build or go install`
+To begin using dbin, simply run one of these commands on your Linux/FreeBSD+Linuxlator system. No additional setup is required. You may also build the project using `go build` or `go install`
 #### Use without installing
 ```
 wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- --help
