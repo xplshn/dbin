@@ -284,11 +284,17 @@ func saveAll(filename string, metadata DbinMetadata) error {
 
 // Save metadata in various formats
 func saveMetadata(filename string, metadata DbinMetadata) error {
-	// Reorder items alphabetically but with priority exceptions
+	// Reorder items alphabetically but with priority exceptions, to ensure a higher level of quality.
 	reorderItems([]map[string]string{
-		{"musl": "0AAAMusl"},   // Higher priority for Musl
-		{"ppkg": "0AAAPpkg"},   // Higher priority for ppkg
-		{"glibc": "ZZZXGlibc"}, // Push glibc to the end
+		{"musl":    "0AAAMusl"},      // | Higher priority for Musl
+		{"musl-v3": "0AABMusl"},      // |
+		{"musl-v4": "0AACMusl"},      // |
+
+		{"ppkg":    "0AABPpkg"},      // * Higher priority for ppkg
+
+		{"glibc":    "ZZZXXXGlibc"},  // | Push glibc to the end
+		{"glibc-v3": "ZZZXXXXGlibc"}, // |
+		{"glibc-v4": "ZZZXXXZGlibc"}, // |
 	}, metadata)
 
 	if err := saveAll(filename, metadata); err != nil {
