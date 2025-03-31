@@ -89,15 +89,15 @@ downloadLoop:
 	return nil
 }
 
-func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, url, checksum, destination string) (string, error) {
-	if strings.HasPrefix(url, "oci://") {
-		url = strings.TrimPrefix(url, "oci://")
-		return fetchOCIImage(ctx, bar, url, checksum, destination)
+func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string) (string, error) {
+	if strings.HasPrefix(bEntry.DownloadURL, "oci://") {
+		bEntry.DownloadURL = strings.TrimPrefix(bEntry.DownloadURL, "oci://")
+		return fetchOCIImage(ctx, bar, bEntry, destination)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", bEntry.DownloadURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request for %s: %v", url, err)
+		return "", fmt.Errorf("failed to create request for %s: %v", bEntry.DownloadURL, err)
 	}
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
@@ -111,15 +111,15 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, url, chec
 	}
 	defer resp.Body.Close()
 
-	if err := downloadWithProgress(ctx, bar, resp, destination, checksum); err != nil {
+	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry.Bsum); err != nil {
 		return "", err
 	}
 
 	return destination, nil
 }
 
-func fetchOCIImage(ctx context.Context, bar progressbar.PB, ref, checksum, destination string) (string, error) {
-	parts := strings.SplitN(ref, ":", 2)
+func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string) (string, error) {
+	parts := strings.SplitN(bEntry.DownloadURL, ":", 2)
 	if len(parts) != 2 {
 		return "", fmt.Errorf("invalid OCI reference format")
 	}
@@ -144,7 +144,7 @@ func fetchOCIImage(ctx context.Context, bar progressbar.PB, ref, checksum, desti
 	}
 	defer resp.Body.Close()
 
-	if err := downloadWithProgress(ctx, bar, resp, destination, checksum); err != nil {
+	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry.Bsum); err != nil {
 		return "", err
 	}
 
@@ -176,8 +176,8 @@ func getAuthToken(registry, repository string) (string, error) {
 	return tokenResponse.Token, nil
 }
 
-func downloadManifest(ctx context.Context, registry, repository, tag, token string) (map[string]interface{}, error) {
-	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s", registry, repository, tag)
+func downloadManifest(ctx context.Context, registry, repository, version, token string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s", registry, repository, version)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err

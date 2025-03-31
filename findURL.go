@@ -12,11 +12,31 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) ([]binaryEnt
 	var highestRank uint16
 
 	for _, bin := range uRepoIndex {
-		if bin.Name == bEntry.Name && (bEntry.PkgId == "" || bin.PkgId == bEntry.PkgId) && (bEntry.Version == "" || bin.Version == bEntry.Version) {
+		// Basic match criteria (name and optional package ID)
+		if bin.Name == bEntry.Name && (bEntry.PkgId == "" || bin.PkgId == bEntry.PkgId) {
+			if bEntry.Version != "" {
+				// Handle snapshot request: check if this binary has the requested snapshot
+				for _, snap := range bin.Snapshots {
+					// Match by commit or version
+					if bEntry.Version == snap.Version || bEntry.Version == snap.Commit {
+						// Modify the URL to use the snapshot's commit
+						if strings.HasPrefix(bin.DownloadURL, "oci://") {
+							// For OCI URLs, replace the tag part by locating the last colon.
+							idx := strings.LastIndex(bin.DownloadURL, ":")
+							if idx != -1 {
+								// Everything before the tag remains intact; the new tag is the snapshot commit.
+								bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
+							}
+						}
+					}
+
+				}
+			}
 			matchingBins = append(matchingBins, bin)
 			if bin.Rank > highestRank {
 				highestRank = bin.Rank
 			}
+			break
 		}
 	}
 
@@ -60,9 +80,8 @@ func selectHighestRankedBin(matchingBins []binaryEntry, highestRank uint16) bina
 	return binaryEntry{}
 }
 
-func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) ([]string, []string, error) {
-	var foundURLs []string
-	var foundB3sum []string
+func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
+	var results []binaryEntry
 	var allErrors []error
 	allFailed := true
 
@@ -72,8 +91,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 			if verbosityLevel >= extraVerbose {
 				fmt.Printf("\033[2K\rFound \"%s\" is already a valid URL", bEntry.Name)
 			}
-			foundURLs = append(foundURLs, bEntry.Name)
-			foundB3sum = append(foundB3sum, "!no_check")
+			results = append(results, bEntry)
 			allFailed = false
 			continue
 		}
@@ -85,8 +103,11 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 		matchingBins, highestRank := findMatchingBins(bEntry, uRepoIndex)
 
 		if len(matchingBins) == 0 {
-			foundURLs = append(foundURLs, "!not_found")
-			foundB3sum = append(foundB3sum, "!no_check")
+			results = append(results, binaryEntry{
+				Name:        bEntry.Name,
+				DownloadURL: "!not_found",
+				Bsum:        "!no_check",
+			})
 			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]", parseBinaryEntry(bEntry, false)))
 			continue
 		}
@@ -94,9 +115,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 		allFailed = false
 		selectedBin := selectHighestRankedBin(matchingBins, highestRank)
 
-		url := ternary(selectedBin.GhcrPkg != "", selectedBin.GhcrPkg, selectedBin.DownloadURL)
-		foundURLs = append(foundURLs, url)
-		foundB3sum = append(foundB3sum, selectedBin.Bsum)
+		results = append(results, selectedBin)
 
 		if verbosityLevel >= extraVerbose {
 			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s", bEntry.Name, selectedBin.PkgId, selectedBin.Version)
@@ -108,9 +127,8 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 		for _, e := range allErrors {
 			errorMessages = append(errorMessages, e.Error())
 		}
-		return nil, nil, fmt.Errorf(ternary(len(bEntries) != 1, "error: no valid download URLs found for any of the requested binaries.\n%s\n", "%s\n"), strings.Join(errorMessages, "\n"))
+		return nil, fmt.Errorf(ternary(len(bEntries) != 1, "error: no valid download URLs found for any of the requested binaries.\n%s\n", "%s\n"), strings.Join(errorMessages, "\n"))
 	}
 
-	return foundURLs, foundB3sum, nil
+	return results, nil
 }
-

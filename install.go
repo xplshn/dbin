@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/urfave/cli/v3"
 	"github.com/hedzr/progressbar"
 	"github.com/hedzr/progressbar/cursor"
+	"github.com/urfave/cli/v3"
 )
 
 func installCommand() *cli.Command {
@@ -34,7 +34,9 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 
 	var wg sync.WaitGroup
 	var errors []string
-	urls, checksums, err := findURL(config, bEntries, verbosityLevel, uRepoIndex)
+
+	// New version using the binaryEntryResult
+	binResults, err := findURL(config, bEntries, verbosityLevel, uRepoIndex)
 	if err != nil {
 		return err
 	}
@@ -49,26 +51,18 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 	}
 
 	binaryNameMaxlen := 0
-	for _, bEntry := range bEntries {
-		if binaryNameMaxlen < len(bEntry.Name) {
-			binaryNameMaxlen = len(bEntry.Name)
+	for _, result := range binResults {
+		if binaryNameMaxlen < len(result.Name) {
+			binaryNameMaxlen = len(result.Name)
 		}
 	}
 
 	termWidth := getTerminalWidth()
 
-	for i, bEntry := range bEntries {
+	for _, result := range binResults {
 		wg.Add(1)
-		url := urls[i]
-		checksum := checksums[i]
+		bEntry := result
 		destination := filepath.Join(config.InstallDir, filepath.Base(bEntry.Name))
-
-		// Skip fetch if URL is "!not_found"
-		if url == "!not_found" {
-			errors = append(errors, fmt.Sprintf("error: didn't find download URL for [%s]", bEntry.Name))
-			wg.Done()
-			continue
-		}
 
 		if verbosityLevel >= normalVerbosity {
 			barTitle := fmt.Sprintf("Installing %s", bEntry.Name)
@@ -90,7 +84,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 				progressbar.WithTaskAddBarOptions(pbarOpts...),
 				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
 					defer wg.Done()
-					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, url, checksum, destination)
+					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, bEntry, destination)
 					if fetchErr != nil {
 						errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v\n", bEntry.Name, fetchErr))
 						return
@@ -106,19 +100,18 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 						return
 					}
 
-					binInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
-					if err == nil {
-						if err := embedBEntry(destination, *binInfo); err != nil {
-							errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
-							return
-						}
+					// Use the binary entry from the result directly since it already has the correct version info
+					binInfo := &bEntry
+					if err := embedBEntry(destination, *binInfo); err != nil {
+						errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
+						return
 					}
 				}),
 			)
 		} else {
-			go func(bEntry binaryEntry, url, checksum, destination string) {
+			go func(bEntry binaryEntry, destination string) {
 				defer wg.Done()
-				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, url, checksum, destination)
+				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, bEntry, destination)
 				if fetchErr != nil {
 					errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v", bEntry.Name, fetchErr))
 					return
@@ -134,7 +127,8 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 					return
 				}
 
-				binInfo, _ := getBinaryInfo(config, bEntry, uRepoIndex)
+				// Use the binaryEntry directly with its correct version info
+				binInfo := &bEntry
 				if err := embedBEntry(destination, *binInfo); err != nil {
 					errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v", destination, err))
 					return
@@ -143,7 +137,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 				if verbosityLevel >= normalVerbosity {
 					fmt.Printf("Successfully installed [%s]\n", binInfo.Name+"#"+binInfo.PkgId)
 				}
-			}(bEntry, url, checksum, destination)
+			}(bEntry, destination)
 		}
 	}
 

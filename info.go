@@ -9,80 +9,86 @@ import (
 )
 
 func infoCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "info",
-		Usage: "Show information about a specific binary OR display installed binaries",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			config, err := loadConfig()
-			if err != nil {
-				return err
-			}
-			var bEntry binaryEntry
-			if c.Args().First() != "" {
-				uRepoIndex := fetchRepoIndex(config)
-				bEntry = stringToBinaryEntry(c.Args().First())
-				binaryInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
-				if err != nil {
-					return err
-				}
-				fields := []struct {
-					label string
-					value interface{}
-				}{
-					{"Name", binaryInfo.Name + "#" + binaryInfo.PkgId},
-					{"Pkg ID", binaryInfo.PkgId},
-					{"Pretty Name", binaryInfo.PrettyName},
-					{"Description", binaryInfo.Description},
-					{"Version", binaryInfo.Version},
-					{"Ghcr Pkg", binaryInfo.GhcrPkg},
-					{"Ghcr Blob", binaryInfo.GhcrBlob},
-					{"Download URL", binaryInfo.DownloadURL},
-					{"Size", binaryInfo.Size},
-					{"B3SUM", binaryInfo.Bsum},
-					{"SHA256", binaryInfo.Shasum},
-					{"Build Date", binaryInfo.BuildDate},
-					{"Build Script", binaryInfo.BuildScript},
-					{"Build Log", binaryInfo.BuildLog},
-					{"Categories", binaryInfo.Categories},
-					{"Rank", binaryInfo.Rank},
-					{"Snapshots", binaryInfo.Snapshots},
-					{"Extra Bins", binaryInfo.ExtraBins},
-				}
-				for _, field := range fields {
-					switch v := field.value.(type) {
-					case []string:
-						for n, str := range v {
-							prefix := "\033[48;5;4m" + field.label + "\033[0m"
-							if n > 0 {
-								prefix = "         "
-							}
-							fmt.Printf("%s: %s\n", prefix, str)
-						}
-					default:
-						if v != "" && v != 0 {
-							fmt.Printf("\033[48;5;4m%s\033[0m: %v\n", field.label, v)
-						}
-					}
-				}
-			} else {
-				files, err := listFilesInDir(config.InstallDir)
-				if err != nil {
-					return err
-				}
-				installedPrograms := make([]string, 0)
-				for _, file := range files {
-					trackedBEntry := bEntryOfinstalledBinary(file)
-					if trackedBEntry.Name != "" {
-						installedPrograms = append(installedPrograms, parseBinaryEntry(trackedBEntry, true))
-					}
-				}
-				for _, program := range installedPrograms {
-					fmt.Println(program)
-				}
-			}
-			return nil
-		},
-	}
+    return &cli.Command{
+        Name:  "info",
+        Usage: "Show information about a specific binary OR display installed binaries",
+        Action: func(ctx context.Context, c *cli.Command) error {
+            config, err := loadConfig()
+            if err != nil {
+                return err
+            }
+            var bEntry binaryEntry
+            if c.Args().First() != "" {
+                uRepoIndex := fetchRepoIndex(config)
+                bEntry = stringToBinaryEntry(c.Args().First())
+                binaryInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
+                if err != nil {
+                    return err
+                }
+                fields := []struct {
+                    label string
+                    value interface{}
+                }{
+                    {"Name", binaryInfo.Name + "#" + binaryInfo.PkgId},
+                    {"Pkg ID", binaryInfo.PkgId},
+                    {"Pretty Name", binaryInfo.PrettyName},
+                    {"Description", binaryInfo.Description},
+                    {"Version", binaryInfo.Version},
+                    {"Download URL", binaryInfo.DownloadURL},
+                    {"Size", binaryInfo.Size},
+                    {"B3SUM", binaryInfo.Bsum},
+                    {"SHA256", binaryInfo.Shasum},
+                    {"Build Date", binaryInfo.BuildDate},
+                    {"Build Script", binaryInfo.BuildScript},
+                    {"Build Log", binaryInfo.BuildLog},
+                    {"Categories", binaryInfo.Categories},
+                    {"Rank", binaryInfo.Rank},
+                    {"Snapshots", binaryInfo.Snapshots},
+                    {"Extra Bins", binaryInfo.ExtraBins},
+                }
+                for _, field := range fields {
+                    switch v := field.value.(type) {
+                    case []string:
+                        for n, str := range v {
+                            prefix := "\033[48;5;4m" + field.label + "\033[0m"
+                            if n > 0 {
+                                prefix = "         "
+                            }
+                            fmt.Printf("%s: %s\n", prefix, str)
+                        }
+                    case []snapshot:
+                        for n, snap := range v {
+                            prefix := "\033[48;5;4m" + field.label + "\033[0m"
+                            if n > 0 {
+                                prefix = "         "
+                            }
+                            fmt.Printf("%s: %s %s\n", prefix, snap.Commit, ternary(snap.Version != "", "["+snap.Version+"]", ""))
+                        }
+                    default:
+                        if v != "" && v != 0 {
+                            fmt.Printf("\033[48;5;4m%s\033[0m: %v\n", field.label, v)
+                        }
+                    }
+                }
+            } else {
+                files, err := listFilesInDir(config.InstallDir)
+                if err != nil {
+                    return err
+                }
+                installedPrograms := make([]string, 0)
+                for _, file := range files {
+                    trackedBEntry := bEntryOfinstalledBinary(file)
+                    if trackedBEntry.Name != "" {
+                        installedPrograms = append(installedPrograms, parseBinaryEntry(trackedBEntry, true))
+                    }
+                }
+                for _, program := range installedPrograms {
+                    fmt.Println(program)
+                }
+            }
+            return nil
+        },
+    }
 }
 
 func findBinaryInfo(bEntry binaryEntry, uRepoIndex []binaryEntry) (binaryEntry, bool) {
