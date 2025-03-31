@@ -166,7 +166,9 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		provides = strings.Join(item.Provides, ",")
 	}
 
-	if item.HfPkg != "" {
+	if item.GhcrPkg != "" {
+		downloadURL = "oci://" + item.GhcrPkg
+	} else if item.HfPkg != "" {
 		downloadURL = strings.Replace(item.HfPkg, "/tree/main", "/resolve/main", 1) + "/" + item.Pkg
 	}
 
@@ -211,11 +213,9 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		BuildScript: item.BuildScript,
 		BuildLog:    item.BuildLog,
 		Categories:  categories,
-		Snapshots:    item.Snapshots,
+		Snapshots:   item.Snapshots,
 		Provides:    provides,
 		Notes:       item.Note,
-		GhcrPkg:     "oci://" + item.GhcrPkg,
-		GhcrBlob:    "oci://" + item.GhcrBlob,
 		Rank:        uint(rank),
 	}
 }
