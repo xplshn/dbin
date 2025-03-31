@@ -4,18 +4,18 @@
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/xplshn/dbin?include_prereleases)](https://github.com/xplshn/dbin/releases/latest)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/xplshn/dbin)
 
-<p align="center"><img src="https://github.com/user-attachments/assets/3c2dd460-6590-4e69-9c08-69bcccf77d9d" alt="dbin logo, made by a proffesional (my brother)" width="150" /></p>
+<p align="center"><img src="https://github.com/user-attachments/assets/3c2dd460-6590-4e69-9c08-69bcccf77d9d" alt="dbin logo, made by a professional (my brother)" width="150" /></p>
 
-<!--[Makes my repo look bad because these usually show "Failling"]-------------------------------------------------------------------------------------------
+<!--[Makes my repo look bad because these usually show "Failing"]-------------------------------------------------------------------------------------------
 [![AMD64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_x86_64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
 [![ARM64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_aarch64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
 -->
 
-dbin is a simple, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux systems, with plans to expand to other platforms soon, dbin is particularly well-suited for embedded systems, we support both amd64 & aarch64. (freeBSD + linuxlator is supported and works quite wonderfully, specially if you want an embedded-ready freeBSD install, you can pair it with `dbin` instead of `pkg`)
+dbin is a simple, Golang-based rewrite of the original [BDL](https://github.com/xplshn/Handyscripts/blob/master/bdl), it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked. This tool is made to operate on Linux systems, with plans to expand to other platforms soon, dbin is particularly well-suited for embedded systems, we support both amd64 & aarch64. (freeBSD + linuxlator is supported and works quite wonderfully, especially if you want an embedded-ready freeBSD install, you can pair it with `dbin` instead of `pkg`)
 
 > Why?
 
- “I tend to think the drawbacks of dynamic linking outweigh the advantages for many (most?) applications.” – John Carmack. If you are looking for more in-depth arguments, see: [cat-v.ORG - Dynamic Linking](https://harmful.cat-v.org/software/dynamic-linking)
+ "I tend to think the drawbacks of dynamic linking outweigh the advantages for many (most?) applications." – John Carmack. If you are looking for more in-depth arguments, see: [cat-v.ORG - Dynamic Linking](https://harmful.cat-v.org/software/dynamic-linking)
 
 > I've seen lots of package manager projects without "packages". What is different about this one?
 
@@ -49,8 +49,8 @@ $ dbin --help
     DBIN_INSTALL_DIR   If present, it must contain a valid directory path
     DBIN_NOTRUNCATION  If present, and set to ONE (1), string truncation will be disabled
     DBIN_REOWN         If present, and set to ONE (1), it makes dbin update programs that may not have been installed by dbin
-    DBIN_REPO_URLS     If present, it must contain one or more repository URLS ended in / separated by ;
-    DBIN_METADATA_URLS If present, it must contain one or more repository's metadata url separated by ;
+    DBIN_NOCONFIG      If present, and set to ONE (1), it makes dbin use its builtin config, it won't create or read an existing one
+    DBIN_REPO_URLS     If present, it must contain one or more repository's index file urls separated by ;
 
 ```
 
@@ -72,6 +72,21 @@ $ dbin --help
     dbin --silent run --transparent micro ~/.profile
     dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE" # Donate?
 ```
+
+#### Features ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
+- Ability to install specific versions of binaries (by specifying the Snapshot you want to install of it)
+- Ability to use user-curated repositories, as the format for the repository indexes is quite simple
+  Note that a repo index for `dbin` can be in either of these formats:
+  - JSON: For ease of use
+  - CBOR: To optimize the time it takes to load the repo
+  - YAML: Because this library is already used for the config, so, why not?
+   The repo indexes can be compressed as .gz or .zst, this is specially useful for large catalogs of programs
+- Hooks. `dbin` can run a set of commands or a script, whenever a binary of file with a certain extension is being installed. The user can also specify uninstall hooks
+- `dbin` can work without a config, and it can also run from RAM
+- `dbin` can download random URLs and put them alongside the binaries in your `$DBIN_INSTALL_DIR` (~/.local/bin)
+- No breaking changes. Old releases of `dbin` do not break, until after at least 3 releases of newer versions.
+- `dbin` will survive even if the upstream repo disappears. `dbin` has a repository index that is held in its own repo. And given that the upstream binaries are held & built in GHCR, all build logs and binaries will continue to be usable/downloadable even if `pkgforge` disappears or experiences downtime
+- The binaries in `dbin` are specifically filtered for `portability` (meaning, they work on older kernel versions, they work on `Musl` and `Glibc` and even weird yet wonderful system like [AliceLinux](https://github.com/xplshn/alicelinux), [OasisLinux](https://github.com/oasislinux/oasis) or FreeBSD (with linuxlator, so that you don't have to set up an Ubuntu to install a Linux web browser and be able to watch DRM content.)
 
 #### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 ##### Flags that correspond to the `run` functionality
@@ -138,32 +153,37 @@ Yup, you'll need to provide a repository index, a JSON (or CBOR/YAML) file like 
 ```json
 {
  "SillyRepo": [
-  {                                                                                                                                                    
-   "pkg": "a-utils/ed",                                                                                                                                
-   "pkg_name": "ed",                                                                                                                                   
-   "pkg_id": "github.com.xplshn.a-utils",                                                                                                              
-   "description": "Ed with syntax highlighting (ed from u-root but with syntax highlighting)",                                                         
-   "version": "0.0.5",                                                                                                                                 
-   "download_url": "https://hf.co/datasets/pkgforge/bincache/resolve/main/a-utils/official/ed/0.0.5-x86_64-linux/a-utils.static",                      
-   "size": "5.4 MB",                                                                                                                                   
-   "bsum": "1f0213b604bf964dbd2ad0dbaddab1c6a64e5da7ea89febcbdb9de337a081d19",                                                                         
-   "shasum": "e2deb5cb912858603900a890630876e0830a9a912d2a71c05742b697c98bc768",                                                                       
-   "build_date": "2025-01-21T02:21:53Z",                                                                                                               
-   "src_urls": [                                                                                                                                       
-    "https://github.com/xplshn/a-utils"                                                                                                                
-   ],                                                                                                                                                  
-   "web_urls": [                                                                                                                                       
-    "https://github.com/xplshn/a-utils",                                                                                                               
-    "https://github.com/xplshn/Andes"                                                                                                                  
-   ],                                                                                                                                                  
-   "build_script": "https://github.com/pkgforge/soarpkgs/blob/main/binaries/a-utils/static.official.stable.yaml",                                      
-   "build_log": "https://api.ghcr.pkgforge.dev/pkgforge/bincache/a-utils/official/ed?tag=0.0.5-x86_64-linux\u0026download=ed.log",                     
-   "notes": [                                                                                                                                          
-    "Pre Built Binary Fetched from Upstream. Check/Report @ https://github.com/xplshn/a-utils"                                                         
-   ],                                                                                                                                                  
-   "ghcr_pkg": "oci://ghcr.io/pkgforge/bincache/a-utils/official/ed:0.0.5-x86_64-linux",                                                               
-   "ghcr_blob": "oci://ghcr.io/pkgforge/bincache/a-utils/official/ed@sha256:e2deb5cb912858603900a890630876e0830a9a912d2a71c05742b697c98bc768",         
-   "rank": 1822                                                                                                                                        
+  {
+   "pkg": "a-utils/ed",
+   "pkg_name": "ed",
+   "pkg_id": "github.com.xplshn.a-utils",
+   "icon": "https://api.ghcr.pkgforge.dev/pkgforge/bincache/a-utils/official/ed?tag=0.0.5-x86_64-linux\u0026download=ed.png",
+   "description": "Ed with syntax highlighting (ed from u-root but with syntax highlighting)",
+   "version": "0.0.5",
+   "download_url": "oci://ghcr.io/pkgforge/bincache/a-utils/official/ed:0.0.5-x86_64-linux",
+   "size": "5.4 MB",
+   "bsum": "1f0213b604bf964dbd2ad0dbaddab1c6a64e5da7ea89febcbdb9de337a081d19",
+   "shasum": "e2deb5cb912858603900a890630876e0830a9a912d2a71c05742b697c98bc768",
+   "build_date": "2025-01-21T02:21:53Z",
+   "src_urls": [
+    "https://github.com/xplshn/a-utils"
+   ],
+   "web_urls": [
+    "https://github.com/xplshn/a-utils",
+    "https://github.com/xplshn/Andes"
+   ],
+   "build_script": "https://github.com/pkgforge/soarpkgs/blob/main/binaries/a-utils/static.official.stable.yaml",
+   "build_log": "https://api.ghcr.pkgforge.dev/pkgforge/bincache/a-utils/official/ed?tag=0.0.5-x86_64-linux\u0026download=ed.log",
+   "snapshots": [
+    {
+     "commit": "0.0.5-x86_64-linux",
+     "version": "0.0.5"
+    }
+   ],
+   "notes": [
+    "Pre Built Binary Fetched from Upstream. Check/Report @ https://github.com/xplshn/a-utils"
+   ],
+   "rank": 1012
   },
 ... More Entries here ...
 }
