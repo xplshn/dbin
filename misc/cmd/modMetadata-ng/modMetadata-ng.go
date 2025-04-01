@@ -57,30 +57,30 @@ type snapshot struct {
 }
 
 type DbinItem struct {
-	Pkg             string    `json:"pkg"`
-	Name            string    `json:"pkg_name"`
-	BinId           string    `json:"pkg_id,omitempty"`
-	Icon            string    `json:"icon,omitempty"`
-	License         string    `json:"license,omitempty"`
-	Description     string    `json:"description,omitempty"`
-	LongDescription string    `json:"description_long,omitempty"`
-	Screenshots     []string  `json:"screenshots,omitempty"`
-	Version         string    `json:"version,omitempty"`
-	DownloadURL     string    `json:"download_url,omitempty"`
-	Size            string    `json:"size,omitempty"`
-	Bsum            string    `json:"bsum,omitempty"`
-	Shasum          string    `json:"shasum,omitempty"`
-	BuildDate       string    `json:"build_date,omitempty"`
-	SrcURLs         []string  `json:"src_urls,omitempty"`
-	WebURLs         []string  `json:"web_urls,omitempty"`
-	BuildScript     string    `json:"build_script,omitempty"`
-	BuildLog        string    `json:"build_log,omitempty"`
-	Categories      string    `json:"categories,omitempty"`
+	Pkg             string     `json:"pkg,omitempty"`
+	Name            string     `json:"pkg_name,omitempty"`
+	BinId           string     `json:"pkg_id,omitempty"`
+	Icon            string     `json:"icon,omitempty"`
+	License         string     `json:"license,omitempty"`
+	Description     string     `json:"description,omitempty"`
+	LongDescription string     `json:"description_long,omitempty"`
+	Screenshots     []string   `json:"screenshots,omitempty"`
+	Version         string     `json:"version,omitempty"`
+	DownloadURL     string     `json:"download_url,omitempty"`
+	Size            string     `json:"size,omitempty"`
+	Bsum            string     `json:"bsum,omitempty"`
+	Shasum          string     `json:"shasum,omitempty"`
+	BuildDate       string     `json:"build_date,omitempty"`
+	SrcURLs         []string   `json:"src_urls,omitempty"`
+	WebURLs         []string   `json:"web_urls,omitempty"`
+	BuildScript     string     `json:"build_script,omitempty"`
+	BuildLog        string     `json:"build_log,omitempty"`
+	Categories      string     `json:"categories,omitempty"`
 	Snapshots       []snapshot `json:"snapshots,omitempty"`
-	Provides        string    `json:"provides,omitempty"`
-	Notes           []string  `json:"notes,omitempty"`
-	Appstream       string    `json:"appstream,omitempty"`
-	Rank            uint      `json:"rank,omitempty"`
+	Provides        string     `json:"provides,omitempty"`
+	Notes           []string   `json:"notes,omitempty"`
+	Appstream       string     `json:"appstream,omitempty"`
+	Rank            uint       `json:"rank,omitempty"`
 }
 
 type DbinMetadata map[string][]DbinItem
@@ -101,7 +101,7 @@ func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
 	return fetchAndConvertMetadata(url, downloadJSON, convertPkgForgeToDbinItem)
 }
 
-func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem, map[string]bool) DbinItem) ([]DbinItem, error) {
+func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem, map[string]bool) (DbinItem, bool)) ([]DbinItem, error) {
 	items, err := downloadFunc(url)
 	if err != nil {
 		return nil, err
@@ -122,14 +122,22 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 
 	var dbinItems []DbinItem
 	for _, item := range items {
-		dbinItem := convertFunc(item, useFamilyFormat)
-		dbinItems = append(dbinItems, dbinItem)
+		dbinItem, include := convertFunc(item, useFamilyFormat)
+		if include {
+			dbinItems = append(dbinItems, dbinItem)
+		}
 	}
 
 	return dbinItems, nil
 }
 
-func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]bool) DbinItem {
+func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]bool) (DbinItem, bool) {
+	// PkgTypes we discard, completely
+	if item.PkgType == "archive" {
+		// Exclude archive items completely by returning false
+		return DbinItem{}, false
+	}
+
 	var categories, provides, downloadURL string
 
 	if len(item.Category) > 0 {
@@ -147,11 +155,6 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	}
 
 	rank, _ := strconv.Atoi(item.Rank)
-
-	// PkgTypes we discard, completely
-	if item.PkgType == "archive" {
-		return DbinItem{}
-	}
 
 	// Parse snapshots
 	var snapshots []snapshot
@@ -203,7 +206,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		Provides:    provides,
 		Notes:       item.Note,
 		Rank:        uint(rank),
-	}
+	}, true
 }
 
 func downloadJSON(url string) ([]PkgForgeItem, error) {
@@ -269,14 +272,15 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	// Reorder items alphabetically but with priority exceptions, to ensure a higher level of quality.
 	reorderItems([]map[string]string{
 		{"musl":    "0AAAMusl"},      // | Higher priority for Musl
-		{"musl-v3": "0AABMusl"},      // |
-		{"musl-v4": "0AACMusl"},      // |
-
-		{"ppkg":    "0AABPpkg"},      // * Higher priority for ppkg
-
-		{"glibc":    "ZZZXXXGlibc"},  // | Push glibc to the end
-		{"glibc-v3": "ZZZXXXXGlibc"}, // |
-		{"glibc-v4": "ZZZXXXZGlibc"}, // |
+		{"ppkg":    "0AABPpkg"},      // | Higher priority for ppkg
+		{"glibc":   "ZZZXXXGlibc"},   // | Push glibc to the end
+									  // | - Little Glenda says hi!
+									  // |   (\(\
+		{"musl-v3": "0AACMusl"},      // |   ¸". ..
+		{"glibc-v3": "ZZZXXXXGlibc"}, // |   (  . .)
+									  // |   |   ° ¡
+		{"musl-v4": "0AADMusl"},      // |   ¿     ;
+		{"glibc-v4": "ZZZXXXZGlibc"}, // |  c?".UJ"
 	}, metadata)
 
 	if err := saveAll(filename, metadata); err != nil {
@@ -286,6 +290,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	for _, items := range metadata {
 		for i := range items {
 			items[i].Icon = ""
+			items[i].Screenshots = []string{}
 			items[i].Provides = ""
 		}
 	}
@@ -469,4 +474,3 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 	}
 }
  */
-
