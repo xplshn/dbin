@@ -133,7 +133,13 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 
 func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]bool) (DbinItem, bool) {
 	// PkgTypes we discard, completely
-	if item.PkgType == "archive" || item.PkgType == "dynamic" {
+	//if item.PkgType == "archive" || item.PkgType == "dynamic" {
+	//	// Exclude archive items completely by returning false
+	//	return DbinItem{}, false
+	//}
+
+	// PkgTypes we discard, completely
+	if item.PkgType == "dynamic" {
 		// Exclude archive items completely by returning false
 		return DbinItem{}, false
 	}
@@ -288,24 +294,27 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	if err := saveAll(filename, metadata); err != nil {
 		return err
 	}
+
 	// "web" version
-	for _, items := range metadata {
+	trimmedMetadata := metadata
+	for _, items := range trimmedMetadata {
 		for i := range items {
 			items[i].Provides = ""
 			items[i].Shasum = ""
 			items[i].Bsum = ""
 		}
 	}
-	saveAll(filename + ".web", metadata)
+	saveAll(filename + ".web", trimmedMetadata)
 	// "lite" version
-	for _, items := range metadata {
+	trimmedMetadata = metadata
+	for _, items := range trimmedMetadata {
 		for i := range items {
 			items[i].Icon = ""
 			items[i].Provides = ""
 			items[i].Shasum = ""
 		}
 	}
-	return saveAll(filename + ".lite", metadata)
+	return saveAll(filename + ".lite", trimmedMetadata)
 }
 
 func saveCBOR(filename string, metadata DbinMetadata) error {

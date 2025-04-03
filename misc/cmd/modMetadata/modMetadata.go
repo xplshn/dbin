@@ -302,24 +302,27 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	if err := saveAll(filename, metadata); err != nil {
 		return err
 	}
+
 	// "web" version
-	for _, items := range metadata {
+	trimmedMetadata := metadata
+	for _, items := range trimmedMetadata {
 		for i := range items {
 			items[i].Provides = ""
 			items[i].Shasum = ""
 			items[i].Bsum = ""
 		}
 	}
-	saveAll(filename + ".web", metadata)
+	saveAll(filename + ".web", trimmedMetadata)
 	// "lite" version
-	for _, items := range metadata {
+	trimmedMetadata = metadata
+	for _, items := range trimmedMetadata {
 		for i := range items {
 			items[i].Icon = ""
 			items[i].Provides = ""
 			items[i].Shasum = ""
 		}
 	}
-	return saveAll(filename + ".lite", metadata)
+	return saveAll(filename + ".lite", trimmedMetadata)
 }
 
 func saveCBOR(filename string, metadata DbinMetadata) error {
