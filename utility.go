@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -248,37 +247,6 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	}
 
 	return stringToBinaryEntry(string(fullName)), nil
-}
-
-func removeNixGarbageFoundInTheRepos(filePath string) error {
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read file %s: %v", filePath, err)
-	}
-
-	nixShebangRegex := regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`)
-	nixBinPathRegex := regexp.MustCompile(`/nix/store/[^/]+/bin/`)
-
-	lines := strings.Split(string(content), "\n")
-	correctionsMade := false
-
-	if len(lines) > 0 && nixShebangRegex.MatchString(lines[0]) {
-		lines[0] = nixShebangRegex.ReplaceAllString(lines[0], "#!/")
-		for i := 1; i < len(lines); i++ {
-			if nixBinPathRegex.MatchString(lines[i]) {
-				lines[i] = nixBinPathRegex.ReplaceAllString(lines[i], "")
-			}
-		}
-		correctionsMade = true
-	}
-
-	if correctionsMade {
-		if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
-			return fmt.Errorf("failed to correct nix object [%s]: %v", filepath.Base(filePath), err)
-		}
-		fmt.Printf("[%s] is a nix object. Corrections have been made.\n", filepath.Base(filePath))
-	}
-	return nil
 }
 
 func decodeRepoIndex(config *Config) ([]binaryEntry, error) {

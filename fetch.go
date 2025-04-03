@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/goccy/go-json"
@@ -71,7 +72,7 @@ downloadLoop:
 		fmt.Println("Warning: No checksum exists for this binary in the repository index, skipping verification.")
 	}
 
-	if err := removeNixGarbageFoundInTheRepos(tempFile); err != nil {
+	if err := validateFileType(tempFile); err != nil {
 		_ = os.Remove(tempFile)
 		return err
 	}
@@ -87,6 +88,43 @@ downloadLoop:
 	}
 
 	return nil
+}
+
+func validateFileType(filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 4)
+	if _, err := file.Read(buf); err != nil {
+		return err
+	}
+
+	// Check for ELF magic number
+	if string(buf) == "\x7fELF" {
+		return nil
+	}
+
+	// Check for shebang
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	shebangBuf := make([]byte, 128)
+	if n, err := file.Read(shebangBuf); err != nil && err != io.EOF {
+		return err
+	} else {
+		shebang := string(shebangBuf[:n])
+		if strings.HasPrefix(shebang, "#!") {
+			if regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`).MatchString(shebang) {
+				return fmt.Errorf("file contains invalid shebang (nix object/garbage): %s", shebang)
+			}
+			return nil
+		}
+	}
+
+	return fmt.Errorf("file is neither a shell script nor an ELF")
 }
 
 func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string) (string, error) {

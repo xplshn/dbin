@@ -176,7 +176,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	rank, _ := strconv.Atoi(item.Rank)
 
 	// PkgTypes we discard, completely
-	if item.PkgType == "archive" {
+	if item.PkgType == "dynamic" || item.PkgType == "archive" {
 		return DbinItem{}
 	}
 

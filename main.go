@@ -13,7 +13,7 @@ type Verbosity int8
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	Indicator                           = "...>"
-	Version                             = "1.2"
+	Version                             = "1.3"
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
 	extraVerbose              Verbosity = 2

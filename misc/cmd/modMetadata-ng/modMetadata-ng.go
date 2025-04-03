@@ -134,13 +134,7 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 
 func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]bool) (DbinItem, bool) {
 	// PkgTypes we discard, completely
-	//if item.PkgType == "archive" || item.PkgType == "dynamic" {
-	//	// Exclude archive items completely by returning false
-	//	return DbinItem{}, false
-	//}
-
-	// PkgTypes we discard, completely
-	if item.PkgType == "dynamic" {
+	if item.PkgType == "archive" || item.PkgType == "dynamic" {
 		// Exclude archive items completely by returning false
 		return DbinItem{}, false
 	}
