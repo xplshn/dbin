@@ -3,5 +3,5 @@ TODO
 work/
 release.sh
 install.sh
-dbin*
+dbin
 .*

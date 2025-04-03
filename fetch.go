@@ -124,7 +124,7 @@ func validateFileType(filePath string) error {
 		}
 	}
 
-	return fmt.Errorf("file is neither a shell script nor an ELF")
+	return fmt.Errorf("file is neither a shell script nor an ELF. Please report this at @ https://github.com/xplshn/dbin")
 }
 
 func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string) (string, error) {
