@@ -172,7 +172,7 @@ func setDefaultValues(config *Config) {
 	config.CacheDir = filepath.Join(tempDir, "dbin_cache")
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 	config.RepoURLs = []string{
-		"https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/modMetadata-ng/METADATA_" + arch + ".lite.cbor.zst",
+		"https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/1.3/" + arch + ".lite.cbor.zst",
 	}
 	config.DisableTruncation = false
 	config.Limit = 90
