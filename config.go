@@ -118,41 +118,39 @@ func overrideWithEnv(cfg *Config) {
 	v := reflect.ValueOf(cfg).Elem()
 	t := v.Type()
 
-	setFieldFromEnv := func(field reflect.Value, envVar string) bool {
-		if value, exists := os.LookupEnv(envVar); exists {
-			switch field.Kind() {
-			case reflect.String:
-				field.SetString(value)
-			case reflect.Slice:
-				field.Set(reflect.ValueOf(strings.Split(value, ",")))
-			case reflect.Bool:
-				if val, err := strconv.ParseBool(value); err == nil {
-					field.SetBool(val)
+	setFieldFromEnv := func(field reflect.Value, envVars []string) bool {
+		for _, envVar := range envVars {
+			if value, exists := os.LookupEnv(envVar); exists && value != "" {
+				switch field.Kind() {
+				case reflect.String:
+					field.SetString(value)
+				case reflect.Slice:
+					field.Set(reflect.ValueOf(strings.Split(value, ",")))
+				case reflect.Bool:
+					if val, err := strconv.ParseBool(value); err == nil {
+						field.SetBool(val)
+					}
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					if val, err := strconv.Atoi(value); err == nil {
+						field.SetInt(int64(val))
+					}
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+					if val, err := strconv.ParseUint(value, 10, 64); err == nil {
+						field.SetUint(val)
+					}
 				}
-			case reflect.Int:
-				if val, err := strconv.Atoi(value); err == nil {
-					field.SetInt(int64(val))
-				}
+				return true
 			}
-			return true
 		}
 		return false
 	}
 
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
-		envTags := strings.Split(t.Field(i).Tag.Get("env"), " ")
+		envTags := strings.Fields(t.Field(i).Tag.Get("env"))
 
-		if len(envTags) > 0 && setFieldFromEnv(field, envTags[0]) {
-			continue
-		}
-
-		if field.IsZero() {
-			for _, envVar := range envTags[1:] {
-				if setFieldFromEnv(field, envVar) {
-					break
-				}
-			}
+		if len(envTags) > 0 {
+			setFieldFromEnv(field, envTags)
 		}
 	}
 }
@@ -186,7 +184,6 @@ func setDefaultValues(config *Config) {
 func createDefaultConfig() error {
 	cfg := Config{}
 	setDefaultValues(&cfg)
-	//overrideWithEnv(&cfg)
 
 	cfg.Hooks = Hooks{
 		Commands: map[string]HookCommands{
