@@ -282,33 +282,44 @@ func saveAll(filename string, metadata DbinMetadata) error {
 	return saveYAML(filename, metadata)
 }
 
-// Save metadata in various formats
 func saveMetadata(filename string, metadata DbinMetadata) error {
 	// Reorder items alphabetically but with priority exceptions, to ensure a higher level of quality.
+	// We basically do a search&replace, order alphabetically, and then do a search&replace again.
+	// I prioritize binaries with a smaller size, more hardware compat, and that are truly static.
 	reorderItems([]map[string]string{
 		{"musl":    "0AAAMusl"},      // | Higher priority for Musl
-		{"musl-v3": "0AABMusl"},      // |
-		{"musl-v4": "0AACMusl"},      // |
-
-		{"ppkg":    "0AABPpkg"},      // * Higher priority for ppkg
-
-		{"glibc":    "ZZZXXXGlibc"},  // | Push glibc to the end
-		{"glibc-v3": "ZZZXXXXGlibc"}, // |
-		{"glibc-v4": "ZZZXXXZGlibc"}, // |
+		{"ppkg":    "0AABPpkg"},      // | Higher priority for ppkg
+		{"glibc":   "ZZZXXXGlibc"},   // | Push glibc to the end
+									  // | - Little Glenda says hi!
+									  // |   (\(\
+		{"musl-v3": "0AACMusl"},      // |   ¸". ..
+		{"glibc-v3": "ZZZXXXXGlibc"}, // |   (  . .)
+									  // |   |   ° ¡
+		{"musl-v4": "0AADMusl"},      // |   ¿     ;
+		{"glibc-v4": "ZZZXXXZGlibc"}, // |  c?".UJ"
 	}, metadata)
 
 	if err := saveAll(filename, metadata); err != nil {
 		return err
 	}
+	// "web" version
+	for _, items := range metadata {
+		for i := range items {
+			items[i].Provides = ""
+			items[i].Shasum = ""
+			items[i].Bsum = ""
+		}
+	}
+	saveAll(filename + ".web", metadata)
 	// "lite" version
 	for _, items := range metadata {
 		for i := range items {
 			items[i].Icon = ""
 			items[i].Provides = ""
+			items[i].Shasum = ""
 		}
 	}
-	filename += ".lite"
-	return saveAll(filename, metadata)
+	return saveAll(filename + ".lite", metadata)
 }
 
 func saveCBOR(filename string, metadata DbinMetadata) error {

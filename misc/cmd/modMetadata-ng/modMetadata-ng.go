@@ -133,7 +133,7 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 
 func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]bool) (DbinItem, bool) {
 	// PkgTypes we discard, completely
-	if item.PkgType == "archive" {
+	if item.PkgType == "archive" || item.PkgType == "dynamic" {
 		// Exclude archive items completely by returning false
 		return DbinItem{}, false
 	}
@@ -270,6 +270,8 @@ func saveAll(filename string, metadata DbinMetadata) error {
 
 func saveMetadata(filename string, metadata DbinMetadata) error {
 	// Reorder items alphabetically but with priority exceptions, to ensure a higher level of quality.
+	// We basically do a search&replace, order alphabetically, and then do a search&replace again.
+	// I prioritize binaries with a smaller size, more hardware compat, and that are truly static.
 	reorderItems([]map[string]string{
 		{"musl":    "0AAAMusl"},      // | Higher priority for Musl
 		{"ppkg":    "0AABPpkg"},      // | Higher priority for ppkg
@@ -286,16 +288,24 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	if err := saveAll(filename, metadata); err != nil {
 		return err
 	}
+	// "web" version
+	for _, items := range metadata {
+		for i := range items {
+			items[i].Provides = ""
+			items[i].Shasum = ""
+			items[i].Bsum = ""
+		}
+	}
+	saveAll(filename + ".web", metadata)
 	// "lite" version
 	for _, items := range metadata {
 		for i := range items {
 			items[i].Icon = ""
-			items[i].Screenshots = []string{}
 			items[i].Provides = ""
+			items[i].Shasum = ""
 		}
 	}
-	filename += ".lite"
-	return saveAll(filename, metadata)
+	return saveAll(filename + ".lite", metadata)
 }
 
 func saveCBOR(filename string, metadata DbinMetadata) error {
