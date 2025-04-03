@@ -75,7 +75,7 @@ func getVerbosityLevel(c *cli.Command) Verbosity {
 func fetchRepoIndex(config *Config) []binaryEntry {
 	var uRepoIndex []binaryEntry
 	for _, url := range config.RepoURLs {
-		repoIndex, err := decodeRepoIndex(url)
+		repoIndex, err := decodeRepoIndex(config)
 		if err != nil {
 			fmt.Printf("failed to fetch and decode binary information from %s: %v\n", url, err)
 			continue

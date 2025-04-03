@@ -23,6 +23,7 @@ type Config struct {
 	RetakeOwnership     bool     `yaml:"RetakeOwnership" env:"DBIN_REOWN"`
 	UseIntegrationHooks bool     `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS"`
 	DisableProgressbar  bool     `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR"`
+	NoConfig            bool     `yaml:"NoConfig" env:"DBIN_NOCONFIG"`
 	Hooks               Hooks    `yaml:"Hooks,omitempty"`
 }
 
@@ -81,7 +82,7 @@ func loadConfig() (*Config, error) {
 	cfg := Config{}
 	setDefaultValues(&cfg)
 
-	if noConfig, _ := strconv.ParseBool(os.Getenv("DBIN_NOCONFIG")); !noConfig {
+	if !cfg.NoConfig {
 		configFilePath := os.Getenv("DBIN_CONFIG_FILE")
 		if configFilePath == "" {
 			userConfigDir, err := os.UserConfigDir()
@@ -179,6 +180,7 @@ func setDefaultValues(config *Config) {
 	config.RetakeOwnership = false
 	config.ProgressbarStyle = 1
 	config.DisableProgressbar = false
+	config.NoConfig = false
 }
 
 func createDefaultConfig() error {

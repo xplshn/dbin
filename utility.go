@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
@@ -280,11 +281,122 @@ func removeNixGarbageFoundInTheRepos(filePath string) error {
 	return nil
 }
 
-func decodeRepoIndex(url string) ([]binaryEntry, error) {
-	if url == "" {
-		return nil, fmt.Errorf("repository index URL is empty. Please check your configuration or remove it")
-	}
+func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
+    var binaryEntries []binaryEntry
 
+    for _, url := range config.RepoURLs {
+        if url == "" {
+            return nil, fmt.Errorf("repository index URL is empty. Please check your configuration or remove it")
+        }
+
+        var bodyReader io.ReadCloser
+        var err error
+
+        if strings.HasPrefix(url, "file://") {
+            filePath := strings.TrimPrefix(url, "file://")
+            bodyReader, err = os.Open(filePath)
+            if err != nil {
+                return nil, fmt.Errorf("error opening file %s: %v", filePath, err)
+            }
+            defer bodyReader.Close()
+        } else {
+            if config.NoConfig {
+                bodyReader, err = fetchMetadata(url)
+                if err != nil {
+                    return nil, err
+                }
+            } else {
+                cachedFilePath := filepath.Join(config.CacheDir, "."+filepath.Base(url))
+
+                // Ensure the cache directory exists
+                if err := os.MkdirAll(config.CacheDir, 0755); err != nil {
+                    return nil, fmt.Errorf("error creating cache directory %s: %v", config.CacheDir, err)
+                }
+
+                fileInfo, err := os.Stat(cachedFilePath)
+                if err == nil && time.Since(fileInfo.ModTime()).Hours() < 6 {
+                    bodyReader, err = os.Open(cachedFilePath)
+                    if err != nil {
+                        return nil, fmt.Errorf("error opening cached file %s: %v", cachedFilePath, err)
+                    }
+                    defer bodyReader.Close()
+                } else {
+                    bodyReader, err = fetchMetadata(url)
+                    if err != nil {
+                        return nil, err
+                    }
+                    defer bodyReader.Close()
+
+                    cachedFile, err := os.Create(cachedFilePath)
+                    if err != nil {
+                        return nil, fmt.Errorf("error creating cached file %s: %v", cachedFilePath, err)
+                    }
+                    defer cachedFile.Close()
+
+                    _, err = io.Copy(cachedFile, bodyReader)
+                    if err != nil {
+                        return nil, fmt.Errorf("error writing to cached file %s: %v", cachedFilePath, err)
+                    }
+
+                    bodyReader, err = os.Open(cachedFilePath)
+                    if err != nil {
+                        return nil, fmt.Errorf("error opening cached file %s: %v", cachedFilePath, err)
+                    }
+                    defer bodyReader.Close()
+                }
+            }
+        }
+
+        if strings.HasSuffix(url, ".gz") {
+            url = strings.TrimSuffix(url, ".gz")
+            bodyReader, err = gzip.NewReader(bodyReader)
+            if err != nil {
+                return nil, fmt.Errorf("error creating gzip reader for %s: %v", url, err)
+            }
+            defer bodyReader.Close()
+        }
+        if strings.HasSuffix(url, ".zst") {
+            url = strings.TrimSuffix(url, ".zst")
+            zstdReader, err := zstd.NewReader(bodyReader)
+            if err != nil {
+                return nil, fmt.Errorf("error creating zstd reader for %s: %v", url, err)
+            }
+            defer zstdReader.Close()
+            bodyReader = zstdReader.IOReadCloser()
+        }
+
+        body := new(bytes.Buffer)
+        if _, err := io.Copy(body, bodyReader); err != nil {
+            return nil, fmt.Errorf("error reading from %s: %v", url, err)
+        }
+
+        var repoIndex map[string][]binaryEntry
+        switch {
+        case strings.HasSuffix(url, ".cbor"):
+            if err := cbor.Unmarshal(body.Bytes(), &repoIndex); err != nil {
+                return nil, fmt.Errorf("error decoding CBOR from %s: %v", url, err)
+            }
+        case strings.HasSuffix(url, ".json"):
+            if err := json.Unmarshal(body.Bytes(), &repoIndex); err != nil {
+                return nil, fmt.Errorf("error decoding JSON from %s: %v", url, err)
+            }
+        case strings.HasSuffix(url, ".yaml"):
+            if err := yaml.Unmarshal(body.Bytes(), &repoIndex); err != nil {
+                return nil, fmt.Errorf("error decoding YAML from %s: %v", url, err)
+            }
+        default:
+            return nil, fmt.Errorf("unsupported format for URL: %s", url)
+        }
+
+        for _, entries := range repoIndex {
+            binaryEntries = append(binaryEntries, entries...)
+        }
+    }
+
+    return binaryEntries, nil
+}
+
+func fetchMetadata(url string) (io.ReadCloser, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request for %s: %v", url, err)
@@ -298,56 +410,10 @@ func decodeRepoIndex(url string) ([]binaryEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error fetching from %s: %v. Please check your configuration's repo_urls. Ensure your network has access to the internet", url, err)
 	}
-	defer response.Body.Close()
-	bodyReader := response.Body
-
-	if strings.HasSuffix(url, ".gz") {
-		url = strings.TrimSuffix(url, ".gz")
-		bodyReader, err = gzip.NewReader(bodyReader)
-		if err != nil {
-			return nil, fmt.Errorf("error creating gzip reader for %s: %v", url, err)
-		}
-		defer bodyReader.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error fetching from %s: received status code %d", url, response.StatusCode)
 	}
-	if strings.HasSuffix(url, ".zst") {
-		url = strings.TrimSuffix(url, ".zst")
-		zstdReader, err := zstd.NewReader(bodyReader)
-		if err != nil {
-			return nil, fmt.Errorf("error creating zstd reader for %s: %v", url, err)
-		}
-		defer zstdReader.Close()
-		bodyReader = zstdReader.IOReadCloser()
-	}
-
-	body := new(bytes.Buffer)
-	if _, err := io.Copy(body, bodyReader); err != nil {
-		return nil, fmt.Errorf("error reading from %s: %v", url, err)
-	}
-
-	var repoIndex map[string][]binaryEntry
-	switch {
-	case strings.HasSuffix(url, ".cbor"):
-		if err := cbor.Unmarshal(body.Bytes(), &repoIndex); err != nil {
-			return nil, fmt.Errorf("error decoding CBOR from %s: %v", url, err)
-		}
-	case strings.HasSuffix(url, ".json"):
-		if err := json.Unmarshal(body.Bytes(), &repoIndex); err != nil {
-			return nil, fmt.Errorf("error decoding JSON from %s: %v", url, err)
-		}
-	case strings.HasSuffix(url, ".yaml"):
-		if err := yaml.Unmarshal(body.Bytes(), &repoIndex); err != nil {
-			return nil, fmt.Errorf("error decoding YAML from %s: %v", url, err)
-		}
-	default:
-		return nil, fmt.Errorf("unsupported format for URL: %s", url)
-	}
-
-	var binaryEntries []binaryEntry
-	for _, entries := range repoIndex {
-		binaryEntries = append(binaryEntries, entries...)
-	}
-
-	return binaryEntries, nil
+	return response.Body, nil
 }
 
 func calculateChecksum(filePath string) (string, error) {
