@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tiendc/go-deepcopy"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
@@ -304,25 +305,25 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	}
 
 	// "web" version
-	trimmedMetadata := metadata
-	for _, items := range trimmedMetadata {
+	var webMetadata DbinMetadata
+    _ = deepcopy.Copy(&webMetadata, &metadata)
+	for _, items := range webMetadata {
 		for i := range items {
 			items[i].Provides = ""
 			items[i].Shasum = ""
 			items[i].Bsum = ""
 		}
 	}
-	saveAll(filename + ".web", trimmedMetadata)
+	saveAll(filename + ".web", webMetadata)
 	// "lite" version
-	trimmedMetadata = metadata
-	for _, items := range trimmedMetadata {
+	for _, items := range metadata {
 		for i := range items {
 			items[i].Icon = ""
 			items[i].Provides = ""
 			items[i].Shasum = ""
 		}
 	}
-	return saveAll(filename + ".lite", trimmedMetadata)
+	return saveAll(filename + ".lite", metadata)
 }
 
 func saveCBOR(filename string, metadata DbinMetadata) error {
