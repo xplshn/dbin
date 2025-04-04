@@ -372,6 +372,7 @@ func fetchMetadata(url string) (io.ReadCloser, error) {
 
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("dbin", Version)
 
 	client := &http.Client{}
 	response, err := client.Do(req)

@@ -45,7 +45,8 @@ type PkgForgeItem struct {
 	Category    []string `json:"categories,omitempty"`
 	Snapshots   []string `json:"snapshots,omitempty"`
 	Provides    []string `json:"provides,omitempty"`
-	Note        []string `json:"note,omitempty"`
+	License     []string `json:"license,omitempty"`
+	Notes       []string `json:"note,omitempty"`
 	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
@@ -57,7 +58,6 @@ type DbinItem struct {
 	Name            string   `json:"pkg_name"                   `
 	BinId           string   `json:"pkg_id,omitempty"           `
 	Icon            string   `json:"icon,omitempty"             `
-	License         string   `json:"license,omitempty"          `
 	Description     string   `json:"description,omitempty"      `
 	LongDescription string   `json:"description_long,omitempty" `
 	Screenshots     []string `json:"screenshots,omitempty"      `
@@ -74,6 +74,7 @@ type DbinItem struct {
 	Categories      string   `json:"categories,omitempty"       `
 	Snapshots   	[]string `json:"snapshots,omitempty"        `
 	Provides        string   `json:"provides,omitempty"         `
+	License         []string `json:"license,omitempty"          `
 	Notes           []string `json:"notes,omitempty"            `
 	Appstream       string   `json:"appstream,omitempty"        `
 	GhcrPkg         string   `json:"ghcr_pkg,omitempty"         `
@@ -216,7 +217,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		Categories:  categories,
 		Snapshots:   item.Snapshots,
 		Provides:    provides,
-		Notes:       item.Note,
+		License:     item.License,
+		Notes:       item.Notes,
 		Rank:        uint(rank),
 	}
 }
@@ -410,12 +412,30 @@ func main() {
 				continue
 			}
 
+			// Filter items from "pkgcache" repository that do not contain "[PORTABLE]" in their Notes
+			if repo.Repo.Name == "pkgcache" {
+				var filteredItems []DbinItem
+				for _, item := range items {
+					hasPortableNote := false
+					for _, note := range item.Notes {
+						if strings.Contains(note, "[PORTABLE]") {
+							hasPortableNote = true
+							break
+						}
+					}
+					if hasPortableNote {
+						filteredItems = append(filteredItems, item)
+					}
+				}
+				items = filteredItems
+			}
+
 			dbinMetadata[repo.Repo.Name] = append(dbinMetadata[repo.Repo.Name], items...)
 
 			if repo.Repo.Single {
 				singleMetadata := make(DbinMetadata)
 				singleMetadata[repo.Repo.Name] = items
-				singleOutputFile := fmt.Sprintf("METADATA_%s_%s", repo.Repo.Name, outputArch)
+				singleOutputFile := fmt.Sprintf("%s_%s", repo.Repo.Name, outputArch)
 
 				if err := saveMetadata(singleOutputFile, singleMetadata); err != nil {
 					fmt.Printf("Error saving single metadata to %s: %v\n", singleOutputFile, err)
@@ -425,7 +445,7 @@ func main() {
 			}
 		}
 
-		outputFile := fmt.Sprintf("METADATA_%s", outputArch)
+		outputFile := fmt.Sprintf("%s", outputArch)
 		if err := saveMetadata(outputFile, dbinMetadata); err != nil {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
 			continue

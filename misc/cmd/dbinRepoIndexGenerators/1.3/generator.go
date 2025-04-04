@@ -46,6 +46,7 @@ type PkgForgeItem struct {
 	Snapshots   []string `json:"snapshots,omitempty"`
 	Provides    []string `json:"provides,omitempty"`
 	Note        []string `json:"note,omitempty"`
+	License     []string `json:"license,omitempty"`
 	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
@@ -62,7 +63,6 @@ type DbinItem struct {
 	Name            string     `json:"pkg_name,omitempty"`
 	BinId           string     `json:"pkg_id,omitempty"`
 	Icon            string     `json:"icon,omitempty"`
-	License         string     `json:"license,omitempty"`
 	Description     string     `json:"description,omitempty"`
 	LongDescription string     `json:"description_long,omitempty"`
 	Screenshots     []string   `json:"screenshots,omitempty"`
@@ -79,6 +79,7 @@ type DbinItem struct {
 	Categories      string     `json:"categories,omitempty"`
 	Snapshots       []snapshot `json:"snapshots,omitempty"`
 	Provides        string     `json:"provides,omitempty"`
+	License         []string   `json:"license,omitempty"`
 	Notes           []string   `json:"notes,omitempty"`
 	Appstream       string     `json:"appstream,omitempty"`
 	Rank            uint       `json:"rank,omitempty"`
@@ -134,8 +135,7 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 
 func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]bool) (DbinItem, bool) {
 	// PkgTypes we discard, completely
-	if item.PkgType == "dynamic" { // item.PkgType == "archive" // Upstream believes that SelfExtractingArchives are archives, when in fact, they are a whole different thing. Which is why I'm no longer filtering this out
-								   // Upstream also appparently sneaked some real archives into the repo. Which is a shame, because those are not portable/slim/upgradable
+	if item.PkgType == "dynamic" {
 		// Exclude archive items completely by returning false
 		return DbinItem{}, false
 	}
@@ -206,6 +206,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		Categories:  categories,
 		Snapshots:   snapshots,
 		Provides:    provides,
+		License:    item.License,
 		Notes:       item.Note,
 		Rank:        uint(rank),
 	}, true
@@ -399,6 +400,24 @@ func main() {
 				continue
 			}
 
+			// Filter items from "pkgcache" repository that do not contain "[PORTABLE]" in their Notes
+			if repo.Repo.Name == "pkgcache" {
+				var filteredItems []DbinItem
+				for _, item := range items {
+					hasPortableNote := false
+					for _, note := range item.Notes {
+						if strings.Contains(note, "[PORTABLE]") {
+							hasPortableNote = true
+							break
+						}
+					}
+					if hasPortableNote {
+						filteredItems = append(filteredItems, item)
+					}
+				}
+				items = filteredItems
+			}
+
 			dbinMetadata[repo.Repo.Name] = append(dbinMetadata[repo.Repo.Name], items...)
 
 			if repo.Repo.Single {
@@ -489,3 +508,4 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 	}
 }
  */
+
