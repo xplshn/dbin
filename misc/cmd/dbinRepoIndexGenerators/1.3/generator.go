@@ -45,7 +45,7 @@ type PkgForgeItem struct {
 	Category    []string `json:"categories,omitempty"`
 	Snapshots   []string `json:"snapshots,omitempty"`
 	Provides    []string `json:"provides,omitempty"`
-	Note        []string `json:"note,omitempty"`
+	Notes       []string `json:"note,omitempty"`
 	License     []string `json:"license,omitempty"`
 	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
 	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
@@ -207,7 +207,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		Snapshots:   snapshots,
 		Provides:    provides,
 		License:    item.License,
-		Notes:       item.Note,
+		Notes:       item.Notes,
 		Rank:        uint(rank),
 	}, true
 }
