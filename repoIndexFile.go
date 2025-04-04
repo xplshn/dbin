@@ -21,6 +21,7 @@ type binaryEntry struct {
 	BuildLog    string   			`json:"build_log,omitempty"   `
 	Categories  string   			`json:"categories,omitempty"  `
 	ExtraBins   string   			`json:"provides,omitempty"    `
+	License     []string   			`json:"license,omitempty"       `
 	Snapshots   []snapshot          `json:"snapshots,omitempty"   `
 	Notes       []string 			`json:"notes,omitempty"       `
 	SrcURLs     []string 			`json:"src_urls,omitempty"    `
