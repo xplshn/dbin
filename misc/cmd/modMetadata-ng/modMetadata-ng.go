@@ -79,7 +79,7 @@ type DbinItem struct {
 	Categories      string     `json:"categories,omitempty"`
 	Snapshots       []snapshot `json:"snapshots,omitempty"`
 	Provides        string     `json:"provides,omitempty"`
-	License         []string   `json:"license,omitempty"`
+	License         string   `json:"license,omitempty"`
 	Notes           []string   `json:"notes,omitempty"`
 	Appstream       string     `json:"appstream,omitempty"`
 	Rank            uint       `json:"rank,omitempty"`
@@ -140,10 +140,14 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		return DbinItem{}, false
 	}
 
-	var categories, provides, downloadURL string
+	var categories, license, provides, downloadURL string
 
 	if len(item.Category) > 0 {
 		categories = strings.Join(item.Category, ",")
+	}
+
+	if len(item.License) > 0 {
+		license = strings.Join(item.License, ",")
 	}
 
 	if len(item.Provides) > 0 {
@@ -206,7 +210,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		Categories:  categories,
 		Snapshots:   snapshots,
 		Provides:    provides,
-		License:     item.License,
+		License:     license,
 		Notes:       item.Notes,
 		Rank:        uint(rank),
 	}, true
