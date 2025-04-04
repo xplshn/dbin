@@ -423,7 +423,7 @@ func main() {
 			if repo.Repo.Single {
 				singleMetadata := make(DbinMetadata)
 				singleMetadata[repo.Repo.Name] = items
-				singleOutputFile := fmt.Sprintf("%s_%s", repo.Repo.Name, outputArch)
+				singleOutputFile := fmt.Sprintf("METADATA_%s_%s", repo.Repo.Name, outputArch)
 
 				if err := saveMetadata(singleOutputFile, singleMetadata); err != nil {
 					fmt.Printf("Error saving single metadata to %s: %v\n", singleOutputFile, err)
@@ -433,7 +433,7 @@ func main() {
 			}
 		}
 
-		outputFile := fmt.Sprintf("%s", outputArch)
+		outputFile := fmt.Sprintf("METADATA_%s", outputArch)
 		if err := saveMetadata(outputFile, dbinMetadata); err != nil {
 			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
 			continue
