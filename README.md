@@ -144,10 +144,11 @@ system_info=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/st
 ### Where do these binaries come from? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 - [AppBundleHub](https://github.com/xplshn/AppBundleHUB)
 - [PkgForge's repos](https://docs.pkgforge.dev/repositories)
+   - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs.
 
 > Hmm, can I add my own repos?
 
-Yup, you'll need to provide a repository index, a JSON (or CBOR/YAML) file like this:
+Yup, you'll need to provide a repository index, a JSON (or CBOR/YAML) (it can optionally be compressed | as .gz or .zst) file like this:
 ```json
 {
  "SillyRepo": [
@@ -156,7 +157,7 @@ Yup, you'll need to provide a repository index, a JSON (or CBOR/YAML) file like 
    "pkg_name": "ed",
    "pkg_id": "github.com.xplshn.a-utils",
    "icon": "https://api.ghcr.pkgforge.dev/pkgforge/bincache/a-utils/official/ed?tag=0.0.5-x86_64-linux\u0026download=ed.png",
-   "description": "Ed with syntax highlighting (ed from u-root but with syntax highlighting)",
+   "description": "ed from u-root but with syntax highlighting",
    "version": "0.0.5",
    "download_url": "oci://ghcr.io/pkgforge/bincache/a-utils/official/ed:0.0.5-x86_64-linux",
    "size": "5.4 MB",
@@ -188,6 +189,8 @@ Yup, you'll need to provide a repository index, a JSON (or CBOR/YAML) file like 
 ```
 
 NOTE: Not all fields are essential :)
+
+A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenerators/*/generator.go](https://github.com/xplshn/dbin/tree/master/misc/cmd/dbinRepoIndexGenerators)
 
 ### Libraries
 I am using these two libraries for `dbin`:
