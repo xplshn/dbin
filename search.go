@@ -1,3 +1,12 @@
+// TODO: Implement Flags (-l/--limit uint)
+/*
+Flags: []cli.Flag{
+	&cli.BoolFlag{
+		Name:  "limit",
+		Usage: "Set the limit of entries to be shown at once on the screen",
+	},
+},
+*/
 package main
 
 import (

@@ -11,6 +11,9 @@ import (
 	"regexp"
 	"strings"
 
+	// _Mozilla's_ CA certs __list__
+	_ "github.com/breml/rootcerts"
+
 	"github.com/goccy/go-json"
 	"github.com/hedzr/progressbar"
 	"github.com/zeebo/blake3"

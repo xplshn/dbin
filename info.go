@@ -45,6 +45,8 @@ func infoCommand() *cli.Command {
                     {"Rank", binaryInfo.Rank},
                     {"Snapshots", binaryInfo.Snapshots},
                     {"Extra Bins", binaryInfo.ExtraBins},
+                    {"Notes", binaryInfo.Notes},
+                    {"License", binaryInfo.License},
                 }
                 for _, field := range fields {
                     switch v := field.value.(type) {
