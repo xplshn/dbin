@@ -57,6 +57,7 @@ func main() {
 	err := app.Run(context.Background(), os.Args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintf(os.Stderr, "Consider checking this if DBIN_NOCONFIG=1 works, if so, consider modifying your config, specially, your repository URLs may be outdated\n")
 		os.Exit(1)
 	}
 }
