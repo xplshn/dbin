@@ -19,7 +19,10 @@ func infoCommand() *cli.Command {
             }
             var bEntry binaryEntry
             if c.Args().First() != "" {
-                uRepoIndex := fetchRepoIndex(config)
+                uRepoIndex, err := fetchRepoIndex(config)
+                if err != nil {
+                    return err
+                }
                 bEntry = stringToBinaryEntry(c.Args().First())
                 binaryInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
                 if err != nil {
@@ -34,19 +37,21 @@ func infoCommand() *cli.Command {
                     {"Pretty Name", binaryInfo.PrettyName},
                     {"Description", binaryInfo.Description},
                     {"Version", binaryInfo.Version},
-                    {"Download URL", binaryInfo.DownloadURL},
                     {"Size", binaryInfo.Size},
+                    {"Categories", binaryInfo.Categories},
+                    {"WebURLs", binaryInfo.WebURLs},
+                    {"SrcURLs", binaryInfo.SrcURLs},
+                    {"Download URL", binaryInfo.DownloadURL},
                     {"B3SUM", binaryInfo.Bsum},
                     {"SHA256", binaryInfo.Shasum},
                     {"Build Date", binaryInfo.BuildDate},
                     {"Build Script", binaryInfo.BuildScript},
                     {"Build Log", binaryInfo.BuildLog},
-                    {"Categories", binaryInfo.Categories},
-                    {"Rank", binaryInfo.Rank},
-                    {"Snapshots", binaryInfo.Snapshots},
                     {"Extra Bins", binaryInfo.ExtraBins},
+                    {"Snapshots", binaryInfo.Snapshots},
                     {"Notes", binaryInfo.Notes},
                     {"License", binaryInfo.License},
+                    {"Rank", binaryInfo.Rank},
                 }
                 for _, field := range fields {
                     switch v := field.value.(type) {

@@ -57,7 +57,6 @@ func main() {
 	err := app.Run(context.Background(), os.Args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
-		fmt.Fprintf(os.Stderr, "Consider checking this if DBIN_NOCONFIG=1 works, if so, consider modifying your config, specially, your repository URLs may be outdated\n")
 		os.Exit(1)
 	}
 }
@@ -73,15 +72,27 @@ func getVerbosityLevel(c *cli.Command) Verbosity {
 	return normalVerbosity
 }
 
-func fetchRepoIndex(config *Config) []binaryEntry {
+
+func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
 	var uRepoIndex []binaryEntry
+	var errMsg string
+
 	for _, url := range config.RepoURLs {
 		repoIndex, err := decodeRepoIndex(config)
 		if err != nil {
-			fmt.Printf("failed to fetch and decode binary information from %s: %v\n", url, err)
+			if errMsg != "" {
+				errMsg += "\n"
+			}
+			errMsg += fmt.Sprintf("failed to fetch and decode binary information from %s: %v", url, err)
 			continue
 		}
 		uRepoIndex = append(uRepoIndex, repoIndex...)
 	}
-	return uRepoIndex
+
+	if errMsg != "" {
+		advice := "Consider checking if DBIN_NOCONFIG=1 works, if so, consider modifying your config, your repository URLs may be outdated.\nAlso consider removing dbin's cache if the above fails."
+		return uRepoIndex, fmt.Errorf("%s\n%s", errMsg, advice)
+	}
+
+	return uRepoIndex, nil
 }

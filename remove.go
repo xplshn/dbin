@@ -21,7 +21,10 @@ func removeCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			uRepoIndex := fetchRepoIndex(config)
+			uRepoIndex, err := fetchRepoIndex(config)
+			if err != nil {
+				return err
+			}
 			return removeBinaries(config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
 		},
 	}

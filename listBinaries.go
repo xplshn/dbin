@@ -22,7 +22,10 @@ func listCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			uRepoIndex := fetchRepoIndex(config)
+			uRepoIndex, err := fetchRepoIndex(config)
+            if err != nil {
+                return err
+            }
 			if c.Bool("described") {
 				return fSearch(config, []string{""}, uRepoIndex)
 			}

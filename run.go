@@ -32,7 +32,7 @@ func runCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			
+
 			bEntry := stringToBinaryEntry(c.Args().First())
 			return runFromCache(config, bEntry, c.Args().Tail(), c.Bool("transparent"), getVerbosityLevel(c))
 		},
@@ -54,7 +54,7 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 	// Check if the binary exists in cache and matches the requested version
 	baseName := filepath.Base(bEntry.Name)
 	cachedFile := filepath.Join(config.CacheDir, baseName)
-	
+
 	if fileExists(cachedFile) && isExecutable(cachedFile) {
 		trackedBEntry, err := readEmbeddedBEntry(cachedFile)
 		if err == nil && (trackedBEntry.PkgId == bEntry.PkgId || bEntry.PkgId == "") {
@@ -66,9 +66,9 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 			}
 			return cleanCache(config.CacheDir, verbosityLevel)
 		}
-		
+
 		if verbosityLevel >= normalVerbosity {
-			fmt.Printf("Cached binary '%s' does not match requested binary '%s'. Fetching a new one...\n", 
+			fmt.Printf("Cached binary '%s' does not match requested binary '%s'. Fetching a new one...\n",
 				parseBinaryEntry(trackedBEntry, false), parseBinaryEntry(bEntry, false))
 		}
 	} else if verbosityLevel >= normalVerbosity {
@@ -79,8 +79,11 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 	cacheConfig := *config
 	cacheConfig.UseIntegrationHooks = false
 	cacheConfig.InstallDir = config.CacheDir
-	
-	uRepoIndex := fetchRepoIndex(&cacheConfig)
+
+	uRepoIndex, err := fetchRepoIndex(&cacheConfig)
+	if err != nil {
+	    return err
+	}
 	if err := installBinaries(context.Background(), &cacheConfig, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
 		return err
 	}

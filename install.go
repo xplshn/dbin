@@ -22,7 +22,10 @@ func installCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			uRepoIndex := fetchRepoIndex(config)
+			uRepoIndex, err := fetchRepoIndex(config)
+            if err != nil {
+                return err
+            }
 			return installBinaries(context.Background(), config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
 		},
 	}
