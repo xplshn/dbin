@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
@@ -24,13 +25,19 @@ type ScreenshotImage struct {
 type Screenshot struct {
 	Type    string          `xml:"type,attr"`
 	Caption string          `xml:"caption"`
-	Image   ScreenshotImage `xml:"image"`
+	Images  []ScreenshotImage `xml:"image"`
 }
 
 type Component struct {
 	Id         string      `xml:"id"`
 	Screenshots []Screenshot `xml:"screenshots>screenshot"`
-	Url        []struct {
+	Icons       []struct {
+		Type   string `xml:"type,attr"`
+		Width  string `xml:"width,attr"`
+		Height string `xml:"height,attr"`
+		Url    string `xml:",innerxml"`
+	} `xml:"icon"`
+	Url []struct {
 		Type string `xml:"type,attr"`
 		Url  string `xml:",chardata"`
 	} `xml:"url"`
@@ -42,9 +49,9 @@ type Components struct {
 }
 
 type AppStreamData struct {
-	AppId       string   `json:"app_id" cbor:"app_id"`
-	Icons       []string `json:"icons" cbor:"icons"`
-	Screenshots []string `json:"screenshots" cbor:"screenshots"`
+	AppId       string   `json:"app_id,omitempty" cbor:"app_id,omitempty"`
+	Icons       []string `json:"icons,omitempty" cbor:"icons,omitempty"`
+	Screenshots []string `json:"screenshots,omitempty" cbor:"screenshots,omitempty"`
 }
 
 func downloadFile(url string, dest string) error {
@@ -132,25 +139,50 @@ func main() {
 		var icons []string
 		var screenshots []string
 
-		for _, url := range component.Url {
-			if url.Type == "icon" {
-				icons = append(icons, url.Url)
+		// Filter icons to include only those of type "remote" and size 128x128 or larger
+		for _, icon := range component.Icons {
+			if icon.Type == "remote" {
+				width, err1 := strconv.Atoi(icon.Width)
+				height, err2 := strconv.Atoi(icon.Height)
+				if err1 == nil && err2 == nil && width >= 128 && height >= 128 {
+					icons = append(icons, icon.Url)
+				}
 			}
 		}
 
+		// Select the largest screenshot
 		for _, screenshot := range component.Screenshots {
-			if screenshot.Type == "source" || screenshot.Type == "default" {
-				screenshots = append(screenshots, screenshot.Image.Url)
+			var largestImage ScreenshotImage
+			var largestArea int
+			for _, image := range screenshot.Images {
+				if image.Type == "source" || image.Type == "default" {
+					width, err1 := strconv.Atoi(image.Width)
+					height, err2 := strconv.Atoi(image.Height)
+					if err1 == nil && err2 == nil {
+						area := width * height
+						if area > largestArea {
+							largestArea = area
+							largestImage = image
+						}
+					}
+				}
+			}
+			if largestImage.Url != "" {
+				screenshots = append(screenshots, largestImage.Url)
 			}
 		}
 
-		metadata = append(metadata, AppStreamData{
-			AppId:       component.Id,
-			Icons:        icons,
-			Screenshots: screenshots,
-		})
+		// Only add the entry if there are icons or screenshots
+		if len(icons) > 0 || len(screenshots) > 0 {
+			metadata = append(metadata, AppStreamData{
+				AppId:       component.Id,
+				Icons:        icons,
+				Screenshots: screenshots,
+			})
+		}
 	}
 
+	// Save the metadata to CBOR and JSON files
 	if err := saveAll("appstream_metadata", metadata); err != nil {
 		fmt.Printf("Error saving metadata: %v\n", err)
 	} else {
