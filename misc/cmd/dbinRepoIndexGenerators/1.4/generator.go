@@ -58,12 +58,6 @@ type snapshot struct {
 	Version string `json:"version,omitempty"`
 }
 
-type AppStreamMetadata struct {
-	AppId       string   `json:"app_id"`
-	Icons       []string `json:"icons"`
-	Screenshots []string `json:"screenshots"`
-}
-
 type DbinItem struct {
 	Pkg             string     `json:"pkg,omitempty"`
 	Name            string     `json:"pkg_name,omitempty"`
@@ -110,6 +104,13 @@ func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
 	return fetchAndConvertMetadata(url, downloadJSON, convertPkgForgeToDbinItem)
 }
 
+type AppStreamMetadata struct {
+	AppId           string   `json:"app_id"`
+	Categories      string   `json:"categories"`
+	RichDescription string   `json:"rich_description"`
+	Icons           []string `json:"icons"`
+	Screenshots     []string `json:"screenshots"`
+}
 var appStreamMetadata []AppStreamMetadata
 var appStreamMetadataLoaded bool
 
@@ -118,7 +119,7 @@ func loadAppStreamMetadata() error {
 		return nil
 	}
 
-	resp, err := http.Get("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.min.json")
+	resp, err := http.Get("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.cbor")
 	if err != nil {
 		return err
 	}
@@ -129,7 +130,7 @@ func loadAppStreamMetadata() error {
 		return err
 	}
 
-	err = json.Unmarshal(body, &appStreamMetadata)
+	err = cbor.Unmarshal(body, &appStreamMetadata)
 	if err != nil {
 		return err
 	}
@@ -150,6 +151,12 @@ func updateItemWithAppStreamMetadata(item *DbinItem) {
 			}
 			if len(metadata.Screenshots) > 0 {
 				item.Screenshots = metadata.Screenshots
+			}
+			if metadata.Categories != "" {
+				item.Categories = metadata.Categories
+			}
+			if metadata.RichDescription != "" {
+				item.LongDescription = metadata.RichDescription
 			}
 			break
 		}
@@ -354,7 +361,6 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Provides = ""
 			items[i].Shasum = ""
 			items[i].Bsum = ""
-			items[i].AppstreamId = ""
 		}
 	}
 	saveAll(filename + ".web", webMetadata)
@@ -365,6 +371,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Provides = ""
 			items[i].Shasum = ""
 			items[i].AppstreamId = ""
+			items[i].LongDescription = ""
 			items[i].Screenshots = []string{}
 		}
 	}
