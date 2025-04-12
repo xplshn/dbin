@@ -38,11 +38,11 @@ type Screenshot struct {
 }
 
 type Component struct {
-	Id            string       `xml:"id"`
-	Screenshots   []Screenshot `xml:"screenshots>screenshot"`
-	Description   []Tag        `xml:"description>p"`
-	Categories    []Tag        `xml:"categories>category"`
-	Icons         []struct {
+	Id          string       `xml:"id"`
+	Screenshots []Screenshot `xml:"screenshots>screenshot"`
+	Description []Tag        `xml:"description>p"`
+	Categories  []Tag        `xml:"categories>category"`
+	Icons       []struct {
 		Type   string `xml:"type,attr"`
 		Width  string `xml:"width,attr"`
 		Height string `xml:"height,attr"`
@@ -60,11 +60,11 @@ type Components struct {
 }
 
 type AppStreamData struct {
-	AppId          string   `json:"app_id,omitempty" cbor:"app_id,omitempty"`
-	Icons          []string `json:"icons,omitempty" cbor:"icons,omitempty"`
-	Screenshots    []string `json:"screenshots,omitempty" cbor:"screenshots,omitempty"`
-	Categories     string   `json:"categories,omitempty" cbor:"categories,omitempty"`
-	RichDescription string   `json:"rich_description,omitempty" cbor:"rich_description,omitempty"`
+	AppId           string   `json:"app_id,omitempty"           `
+	Icons           []string `json:"icons,omitempty"            `
+	Screenshots     []string `json:"screenshots,omitempty"      `
+	Categories      string   `json:"categories,omitempty"       `
+	RichDescription string   `json:"rich_description,omitempty" `
 }
 
 func downloadFile(url string, dest string) error {
@@ -220,10 +220,10 @@ func main() {
 		richDescription := getRichDescription(component.Description)
 
 		metadata = append(metadata, AppStreamData{
-			AppId:          component.Id,
-			Icons:          icons,
-			Screenshots:    screenshots,
-			Categories:     categories,
+			AppId:           component.Id,
+			Icons:           icons,
+			Screenshots:     screenshots,
+			Categories:      categories,
 			RichDescription: richDescription,
 		})
 	}
