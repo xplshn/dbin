@@ -27,7 +27,8 @@ type PkgForgeItem struct {
 	Pkg         string   `json:"pkg"`
 	Name        string   `json:"pkg_name,omitempty"`
 	Family      string   `json:"pkg_family,omitempty"`
-	BinId       string   `json:"pkg_id,omitempty"`
+	PkgId       string   `json:"pkg_id,omitempty"`
+	AppId       string   `json:"app_id,omitempty"`
 	PkgType     string   `json:"pkg_type,omitempty"`
 	Icon        string   `json:"icon,omitempty"`
 	Screenshots []string `json:"screenshots,omitempty"`
@@ -48,7 +49,6 @@ type PkgForgeItem struct {
 	Notes       []string `json:"note,omitempty"`
 	License     []string `json:"license,omitempty"`
 	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
-	GhcrBlob    string   `json:"ghcr_blob,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
 	Rank        string   `json:"rank,omitempty"`
 }
@@ -61,7 +61,8 @@ type snapshot struct {
 type DbinItem struct {
 	Pkg             string     `json:"pkg,omitempty"`
 	Name            string     `json:"pkg_name,omitempty"`
-	BinId           string     `json:"pkg_id,omitempty"`
+	PkgId           string     `json:"pkg_id,omitempty"`
+	AppStreamId     string     `json:"app_id,omitempty"`
 	Icon            string     `json:"icon,omitempty"`
 	Description     string     `json:"description,omitempty"`
 	LongDescription string     `json:"description_long,omitempty"`
@@ -136,7 +137,6 @@ func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeIt
 func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]bool) (DbinItem, bool) {
 	// PkgTypes we discard, completely
 	if item.PkgType == "dynamic" {
-		// Exclude archive items completely by returning false
 		return DbinItem{}, false
 	}
 
@@ -189,7 +189,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	return DbinItem{
 		Pkg:         pkgName,
 		Name:        item.Name,
-		BinId:       item.BinId,
+		PkgId:       item.PkgId,
+		AppStreamId: item.AppId,
 		Icon:        item.Icon,
 		Screenshots: item.Screenshots,
 		Description: item.Description,
@@ -239,19 +240,19 @@ func reorderItems(str []map[string]string, metadata DbinMetadata) {
 			// Replace str with str2
 			for oldStr, newStr := range replacements {
 				for i := range items {
-					items[i].BinId = strings.ReplaceAll(items[i].BinId, oldStr, newStr)
+					items[i].PkgId = strings.ReplaceAll(items[i].PkgId, oldStr, newStr)
 				}
 			}
 
 			// Sort items alphabetically by BinId
 			sort.Slice(items, func(i, j int) bool {
-				return items[i].BinId < items[j].BinId
+				return items[i].PkgId < items[j].PkgId
 			})
 
 			// Replace str2 back to str
 			for oldStr, newStr := range replacements {
 				for i := range items {
-					items[i].BinId = strings.ReplaceAll(items[i].BinId, newStr, oldStr)
+					items[i].PkgId = strings.ReplaceAll(items[i].PkgId, newStr, oldStr)
 				}
 			}
 
@@ -300,6 +301,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Provides = ""
 			items[i].Shasum = ""
 			items[i].Bsum = ""
+			items[i].AppStreamId = ""
 		}
 	}
 	saveAll(filename + ".web", webMetadata)
@@ -309,6 +311,8 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Icon = ""
 			items[i].Provides = ""
 			items[i].Shasum = ""
+			items[i].AppStreamId = ""
+			items[i].Screenshots = []string{}
 		}
 	}
 	return saveAll(filename + ".lite", metadata)

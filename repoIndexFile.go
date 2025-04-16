@@ -13,6 +13,7 @@ type binaryEntry struct {
 	Description string   			`json:"description,omitempty" `
 	Version     string   			`json:"version,omitempty"     `
 	DownloadURL string   			`json:"download_url,omitempty"`
+	Icon        string              `json:"icon,omitempty"        `
 	Size        string   			`json:"size,omitempty"        `
 	Bsum        string   			`json:"bsum,omitempty"        `
 	Shasum      string   			`json:"shasum,omitempty"      `
@@ -20,8 +21,9 @@ type binaryEntry struct {
 	BuildScript string   			`json:"build_script,omitempty"`
 	BuildLog    string   			`json:"build_log,omitempty"   `
 	Categories  string   			`json:"categories,omitempty"  `
+	Screenshots []string            `json:"screenshots,omitempty" `
 	ExtraBins   string   			`json:"provides,omitempty"    `
-	License     []string   			`json:"license,omitempty"       `
+	License     []string   			`json:"license,omitempty"     `
 	Snapshots   []snapshot          `json:"snapshots,omitempty"   `
 	Notes       []string 			`json:"notes,omitempty"       `
 	SrcURLs     []string 			`json:"src_urls,omitempty"    `

@@ -145,7 +145,7 @@ func overrideWithEnv(cfg *Config) {
 		return false
 	}
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		field := v.Field(i)
 		envTags := strings.Fields(t.Field(i).Tag.Get("env"))
 

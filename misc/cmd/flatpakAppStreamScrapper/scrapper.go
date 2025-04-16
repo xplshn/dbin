@@ -38,10 +38,12 @@ type Screenshot struct {
 }
 
 type Component struct {
-	Id          string       `xml:"id"`
+	Name        []Tag        `xml:"name"`
 	Screenshots []Screenshot `xml:"screenshots>screenshot"`
+	Summary     []Tag        `xml:"summary"`
 	Description []Tag        `xml:"description>p"`
 	Categories  []Tag        `xml:"categories>category"`
+	Keywords    []Tag        `xml:"keywords>keyword"`
 	Icons       []struct {
 		Type   string `xml:"type,attr"`
 		Width  string `xml:"width,attr"`
@@ -52,6 +54,13 @@ type Component struct {
 		Type string `xml:"type,attr"`
 		Url  string `xml:",chardata"`
 	} `xml:"url"`
+	Type           string `xml:"type,attr"`
+	Id             string `xml:"id"`
+	ProjectLicense string `xml:"project_license"`
+	Launchable     struct {
+		DesktopId string `xml:"desktop-id"`
+	} `xml:"launchable"`
+	ContentRating []Tag `xml:"content_rating"`
 }
 
 type Components struct {
@@ -60,11 +69,14 @@ type Components struct {
 }
 
 type AppStreamData struct {
-	AppId           string   `json:"app_id,omitempty"           `
-	Icons           []string `json:"icons,omitempty"            `
-	Screenshots     []string `json:"screenshots,omitempty"      `
-	Categories      string   `json:"categories,omitempty"       `
-	RichDescription string   `json:"rich_description,omitempty" `
+	AppId           string   `json:"app_id,omitempty"`
+	Name            string   `json:"name,omitempty"`
+	Summary         string   `json:"summary,omitempty"`
+	ContentRating   string   `json:"content_rating,omitempty"`
+	Icons           []string `json:"icons,omitempty"`
+	Screenshots     []string `json:"screenshots,omitempty"`
+	Categories      string   `json:"categories,omitempty"`
+	RichDescription string   `json:"rich_description,omitempty"`
 }
 
 func downloadFile(url string, dest string) error {
@@ -157,6 +169,33 @@ func getRichDescription(descriptions []Tag) string {
 	return richText.String()
 }
 
+func getName(names []Tag) string {
+	for _, name := range names {
+		if name.Lang == "en" {
+			return name.Content
+		}
+	}
+	return ""
+}
+
+func getSummary(summaries []Tag) string {
+	for _, summary := range summaries {
+		if summary.Lang == "en" {
+			return summary.Content
+		}
+	}
+	return ""
+}
+
+func getContentRating(ratings []Tag) string {
+	for _, rating := range ratings {
+		if rating.Lang == "en" {
+			return rating.Content
+		}
+	}
+	return ""
+}
+
 func main() {
 	tmpDir := os.TempDir()
 	xmlFilePath := filepath.Join(tmpDir, "FLATPAK_APPSTREAM.xml")
@@ -216,11 +255,16 @@ func main() {
 		}
 
 		categories := getCategoriesString(component.Categories)
-
 		richDescription := getRichDescription(component.Description)
+		name := getName(component.Name)
+		summary := getSummary(component.Summary)
+		contentRating := getContentRating(component.ContentRating)
 
 		metadata = append(metadata, AppStreamData{
 			AppId:           component.Id,
+			Name:            name,
+			Summary:         summary,
+			ContentRating:   contentRating,
 			Icons:           icons,
 			Screenshots:     screenshots,
 			Categories:      categories,

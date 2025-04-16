@@ -217,7 +217,7 @@ func getAuthToken(registry, repository string) (string, error) {
 	return tokenResponse.Token, nil
 }
 
-func downloadManifest(ctx context.Context, registry, repository, version, token string) (map[string]interface{}, error) {
+func downloadManifest(ctx context.Context, registry, repository, version, token string) (map[string]any, error) {
 	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s", registry, repository, version)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -232,30 +232,30 @@ func downloadManifest(ctx context.Context, registry, repository, version, token 
 	}
 	defer resp.Body.Close()
 
-	var manifest map[string]interface{}
+	var manifest map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
 		return nil, err
 	}
 	return manifest, nil
 }
 
-func downloadLayer(ctx context.Context, registry, repository string, manifest map[string]interface{}, token, title string) (*http.Response, error) {
-	layers, ok := manifest["layers"].([]interface{})
+func downloadLayer(ctx context.Context, registry, repository string, manifest map[string]any, token, title string) (*http.Response, error) {
+	layers, ok := manifest["layers"].([]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid manifest structure")
 	}
 
 	for _, layer := range layers {
-		layerMap, ok := layer.(map[string]interface{})
+		layerMap, ok := layer.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("invalid layer structure")
 		}
 
-		annotations := layerMap["annotations"].(map[string]interface{})
+		annotations := layerMap["annotations"].(map[string]any)
 		layerTitle := annotations["org.opencontainers.image.title"].(string)
 
 		titleNoExt := filepath.Ext(title)
-		titleNoExt = title[0:len(title)-len(titleNoExt)]
+		titleNoExt = title[0 : len(title)-len(titleNoExt)]
 		if layerTitle == title || layerTitle == titleNoExt {
 			digest := layerMap["digest"].(string)
 			url := fmt.Sprintf("https://%s/v2/%s/blobs/%s", registry, repository, digest)
