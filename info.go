@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
-	"strings"
 	"fmt"
 	"path/filepath"
+	"strings"
 
+	"github.com/fxamacker/cbor/v2"
+	"github.com/goccy/go-json"
+	"github.com/goccy/go-yaml"
 	"github.com/urfave/cli/v3"
 )
 
@@ -13,6 +16,20 @@ func infoCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "info",
 		Usage: "Show information about a specific binary OR display installed binaries",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "json",
+				Usage: "Print output as JSON",
+			},
+			&cli.BoolFlag{
+				Name:  "cbor",
+				Usage: "Print output as CBOR",
+			},
+			&cli.BoolFlag{
+				Name:  "yaml",
+				Usage: "Print output as YAML",
+			},
+		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
@@ -29,6 +46,34 @@ func infoCommand() *cli.Command {
 				if err != nil {
 					return err
 				}
+
+				if c.Bool("json") {
+					jsonData, err := json.MarshalIndent(binaryInfo, "", "  ")
+					if err != nil {
+						return err
+					}
+					fmt.Println(string(jsonData))
+					return nil
+				}
+
+				if c.Bool("cbor") {
+					cborData, err := cbor.Marshal(binaryInfo)
+					if err != nil {
+						return err
+					}
+					fmt.Println(string(cborData))
+					return nil
+				}
+
+				if c.Bool("yaml") {
+					yamlData, err := yaml.Marshal(binaryInfo)
+					if err != nil {
+						return err
+					}
+					fmt.Println(string(yamlData))
+					return nil
+				}
+
 				fields := []struct {
 					label string
 					value any
@@ -61,9 +106,9 @@ func infoCommand() *cli.Command {
 					case []string:
 						for n, str := range v {
 							prefixLength := len(field.label)
-							prefix := strings.Repeat(" ", prefixLength) + "\033[48;5;4m" + field.label + "\033[0m"
+							prefix := "\033[48;5;4m" + field.label + "\033[0m"
 							if n > 0 {
-								prefix = strings.Repeat(" ", prefixLength*2)
+								prefix = strings.Repeat(" ", prefixLength)
 							}
 							fmt.Printf("%s: %s\n", prefix, str)
 						}
