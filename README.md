@@ -193,7 +193,7 @@ NOTE: Not all fields are essential :)
 A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenerators/*/generator.go](https://github.com/xplshn/dbin/tree/master/misc/cmd/dbinRepoIndexGenerators)
 
 ### Libraries
-I am using these two libraries for `dbin`:
+I am using these libraries for `dbin`:
 1. https://github.com/urfave/cli (v3)
 2. https://github.com/hedzr/progressbar (an attractive-looking progressbar, but with a messy API and codebase. Currently the only good alternative to mpb/v8+)
 3. https://github.com/goccy/go-json (index files can be .json)
