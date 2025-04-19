@@ -446,8 +446,8 @@ func main() {
 		},
 		{
 			Repo: repository{
-				Name:   "appbundlehub",
-				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_x86_64-Linux.json",
+				Name:   "AppBundleHUB",
+				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_%s-Linux.json",
 				Single: true,
 			},
 			Handler: DbinHandler{},
