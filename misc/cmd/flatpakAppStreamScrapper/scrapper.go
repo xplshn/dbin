@@ -18,6 +18,8 @@ import (
 	mjson "github.com/tdewolff/minify/v2/json"
 )
 
+const lang = ""
+
 type Tag struct {
 	XMLName xml.Name
 	Content string `xml:",innerxml"`
@@ -157,7 +159,7 @@ func getRichDescription(descriptions []Tag) string {
 
 	var bestDesc string
 	for _, desc := range descriptions {
-		if desc.Lang == "en" {
+		if desc.Lang == lang {
 			bestDesc = desc.Content
 			break
 		} else if bestDesc == "" {
@@ -171,7 +173,7 @@ func getRichDescription(descriptions []Tag) string {
 
 func getName(names []Tag) string {
 	for _, name := range names {
-		if name.Lang == "en" {
+		if name.Lang == lang {
 			return name.Content
 		}
 	}
@@ -180,7 +182,7 @@ func getName(names []Tag) string {
 
 func getSummary(summaries []Tag) string {
 	for _, summary := range summaries {
-		if summary.Lang == "en" {
+		if summary.Lang == lang {
 			return summary.Content
 		}
 	}
@@ -189,7 +191,7 @@ func getSummary(summaries []Tag) string {
 
 func getContentRating(ratings []Tag) string {
 	for _, rating := range ratings {
-		if rating.Lang == "en" {
+		if rating.Lang == lang {
 			return rating.Content
 		}
 	}
