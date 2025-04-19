@@ -101,7 +101,29 @@ func (PkgForgeHandler) FetchMetadata(url string) ([]DbinItem, error) {
 type DbinHandler struct{}
 
 func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
-	return fetchAndConvertMetadata(url, downloadJSON, convertPkgForgeToDbinItem)
+    resp, err := http.Get(url)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    body, err := io.ReadAll(resp.Body)
+    if err != nil {
+        return nil, err
+    }
+
+    var metadata DbinMetadata
+    err = json.Unmarshal(body, &metadata)
+    if err != nil {
+        return nil, err
+    }
+
+    // Since the metadata is already in Dbin format, we just need to extract the items
+    for _, items := range metadata {
+        return items, nil
+    }
+
+    return nil, nil
 }
 
 type AppStreamMetadata struct {
@@ -447,7 +469,7 @@ func main() {
 		{
 			Repo: repository{
 				Name:   "AppBundleHUB",
-				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_%s-Linux.json",
+				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_%s.json",
 				Single: true,
 			},
 			Handler: DbinHandler{},
