@@ -26,6 +26,11 @@ type Tag struct {
 	Lang    string `xml:"lang,attr"`
 }
 
+type Components struct {
+	XMLName    xml.Name    `xml:"components"`
+	Components []Component `xml:"component"`
+}
+
 type ScreenshotImage struct {
 	Type   string `xml:"type,attr"`
 	Width  string `xml:"width,attr"`
@@ -37,6 +42,15 @@ type Screenshot struct {
 	Type    string            `xml:"type,attr"`
 	Caption string            `xml:"caption"`
 	Images  []ScreenshotImage `xml:"image"`
+}
+
+type Release struct {
+	Version string `xml:"version,attr"`
+	Date    string `xml:"date,attr"`
+}
+
+type Releases struct {
+	Release []Release `xml:"release"`
 }
 
 type Component struct {
@@ -62,12 +76,8 @@ type Component struct {
 	Launchable     struct {
 		DesktopId string `xml:"desktop-id"`
 	} `xml:"launchable"`
-	ContentRating []Tag `xml:"content_rating"`
-}
-
-type Components struct {
-	XMLName    xml.Name    `xml:"components"`
-	Components []Component `xml:"component"`
+	ContentRating []Tag    `xml:"content_rating"`
+	Releases      Releases `xml:"releases"`
 }
 
 type AppStreamData struct {
@@ -79,6 +89,7 @@ type AppStreamData struct {
 	Screenshots     []string `json:"screenshots,omitempty"`
 	Categories      string   `json:"categories,omitempty"`
 	RichDescription string   `json:"rich_description,omitempty"`
+	Version         string   `json:"version,omitempty"`
 }
 
 func downloadFile(url string, dest string) error {
@@ -155,44 +166,29 @@ func getCategoriesString(categories []Tag) string {
 }
 
 func getRichDescription(descriptions []Tag) string {
-	var richText strings.Builder
-
-	var bestDesc string
-	for _, desc := range descriptions {
-		if desc.Lang == lang {
-			bestDesc = desc.Content
-			break
-		} else if bestDesc == "" {
-			bestDesc = desc.Content
-		}
-	}
-
-	richText.WriteString(bestDesc)
-	return richText.String()
+	return getContentByLang(descriptions)
 }
 
 func getName(names []Tag) string {
-	for _, name := range names {
-		if name.Lang == lang {
-			return name.Content
-		}
-	}
-	return ""
+	return getContentByLang(names)
 }
 
 func getSummary(summaries []Tag) string {
-	for _, summary := range summaries {
-		if summary.Lang == lang {
-			return summary.Content
-		}
-	}
-	return ""
+	return getContentByLang(summaries)
 }
 
 func getContentRating(ratings []Tag) string {
+	var contentRating strings.Builder
 	for _, rating := range ratings {
-		if rating.Lang == lang {
-			return rating.Content
+		contentRating.WriteString(rating.Content)
+	}
+	return contentRating.String()
+}
+
+func getContentByLang(tags []Tag) string {
+	for _, tag := range tags {
+		if tag.Lang == lang {
+			return tag.Content
 		}
 	}
 	return ""
@@ -261,6 +257,10 @@ func main() {
 		name := getName(component.Name)
 		summary := getSummary(component.Summary)
 		contentRating := getContentRating(component.ContentRating)
+		version := ""
+		if len(component.Releases.Release) > 0 {
+			version = component.Releases.Release[0].Version
+		}
 
 		metadata = append(metadata, AppStreamData{
 			AppId:           component.Id,
@@ -271,6 +271,7 @@ func main() {
 			Screenshots:     screenshots,
 			Categories:      categories,
 			RichDescription: richDescription,
+			Version:         version,
 		})
 	}
 
