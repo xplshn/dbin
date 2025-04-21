@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	// _Mozilla's_ CA certs __list__
 	_ "github.com/breml/rootcerts"
@@ -19,7 +20,7 @@ import (
 	"github.com/zeebo/blake3"
 )
 
-func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination, checksum string) error {
+func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination string, bEntry binaryEntry, config *Config) error {
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return fmt.Errorf("failed to create parent directories for %s: %v", destination, err)
 	}
@@ -38,6 +39,26 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 	buf := make([]byte, 4096)
 	hash := blake3.New()
 
+	var fifo *os.File
+	var fifoPath string
+	if config.ProgressbarFIFO {
+		// Create FIFO for progress
+		fifoPath = filepath.Join(os.TempDir(), "dbin")
+		if err := os.MkdirAll(fifoPath, 0755); err != nil {
+			return fmt.Errorf("failed to create FIFO directory: %v", err)
+		}
+		fifoPath = filepath.Join(fifoPath, ternary(bEntry.PkgId != "", filepath.Base(bEntry.Name)+"#"+bEntry.PkgId, filepath.Base(bEntry.Name)))
+		if err := syscall.Mkfifo(fifoPath, 0666); err != nil && !os.IsExist(err) {
+			return fmt.Errorf("failed to create FIFO: %v", err)
+		}
+		fifo, err = os.OpenFile(fifoPath, os.O_WRONLY, 0666)
+		if err != nil {
+			return fmt.Errorf("failed to open FIFO: %v", err)
+		}
+		defer fifo.Close()
+		defer os.Remove(fifoPath)
+	}
+
 downloadLoop:
 	for {
 		select {
@@ -55,6 +76,14 @@ downloadLoop:
 					_ = os.Remove(tempFile)
 					return err
 				}
+
+				// Write progress to FIFO if enabled
+				if config.ProgressbarFIFO {
+					progress := bar.Percent()
+					if _, err := fifo.WriteString(progress + "\n"); err != nil {
+						return fmt.Errorf("failed to write to FIFO: %v", err)
+					}
+				}
 			}
 			if err == io.EOF {
 				break downloadLoop
@@ -66,10 +95,10 @@ downloadLoop:
 		}
 	}
 
-	if checksum != "" && checksum != "!no_check" {
+	if bEntry.Bsum != "" && bEntry.Bsum != "!no_check" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
-		if calculatedChecksum != checksum {
-			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s", checksum, calculatedChecksum)
+		if calculatedChecksum != bEntry.Bsum {
+			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s", bEntry.Bsum, calculatedChecksum)
 		}
 	} else {
 		fmt.Println("Warning: No checksum exists for this binary in the repository index, skipping verification.")
@@ -130,10 +159,10 @@ func validateFileType(filePath string) error {
 	return fmt.Errorf("file is neither a shell script nor an ELF. Please report this at @ https://github.com/xplshn/dbin")
 }
 
-func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string) (string, error) {
+func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string, config *Config) (string, error) {
 	if strings.HasPrefix(bEntry.DownloadURL, "oci://") {
 		bEntry.DownloadURL = strings.TrimPrefix(bEntry.DownloadURL, "oci://")
-		return fetchOCIImage(ctx, bar, bEntry, destination)
+		return fetchOCIImage(ctx, bar, bEntry, destination, config)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", bEntry.DownloadURL, nil)
@@ -152,14 +181,14 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry bi
 	}
 	defer resp.Body.Close()
 
-	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry.Bsum); err != nil {
+	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, config); err != nil {
 		return "", err
 	}
 
 	return destination, nil
 }
 
-func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string) (string, error) {
+func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string, config *Config) (string, error) {
 	parts := strings.SplitN(bEntry.DownloadURL, ":", 2)
 	if len(parts) != 2 {
 		return "", fmt.Errorf("invalid OCI reference format")
@@ -185,7 +214,7 @@ func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, 
 	}
 	defer resp.Body.Close()
 
-	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry.Bsum); err != nil {
+	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, config); err != nil {
 		return "", err
 	}
 

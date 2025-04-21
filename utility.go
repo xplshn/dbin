@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"strconv"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
@@ -372,7 +373,7 @@ func fetchMetadata(url string) (io.ReadCloser, error) {
 
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("dbin", Version)
+	req.Header.Set("dbin", strconv.FormatFloat(Version, 'f', -1, 32))
 
 	client := &http.Client{}
 	response, err := client.Do(req)

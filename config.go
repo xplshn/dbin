@@ -9,7 +9,9 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"context"
 
+	"github.com/urfave/cli/v3"
 	"github.com/goccy/go-yaml"
 )
 
@@ -24,6 +26,7 @@ type Config struct {
 	UseIntegrationHooks bool     `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS"`
 	DisableProgressbar  bool     `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR"`
 	NoConfig            bool     `yaml:"NoConfig" env:"DBIN_NOCONFIG"`
+	ProgressbarFIFO     bool     `env:"DBIN_PB_FIFO"`
 	Hooks               Hooks    `yaml:"Hooks,omitempty"`
 }
 
@@ -38,6 +41,45 @@ type HookCommands struct {
 	DeintegrationErrorMsg string   `yaml:"deintegrationErrorMsg"`
 	UseRunFromCache       bool     `yaml:"RunFromCache"`
 	NoOp                  bool     `yaml:"nop"`
+}
+
+func configCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "config",
+		Usage: "Manage configuration options",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "new",
+				Usage: "Create a new configuration file",
+			},
+			&cli.BoolFlag{
+				Name:  "show",
+				Usage: "Show the current configuration",
+			},
+			&cli.BoolFlag{
+				Name:  "help",
+				Usage: "Show help information for config options",
+			},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if c.Bool("new") {
+				return createDefaultConfig()
+			} else if c.Bool("show") {
+				config, err := loadConfig()
+				if err != nil {
+					return err
+				}
+				configYAML, err := yaml.Marshal(config)
+				if err != nil {
+					return fmt.Errorf("failed to marshal config to YAML: %v", err)
+				}
+				fmt.Println(string(configYAML))
+				return nil
+			} else {
+				return fmt.Errorf("invalid usage of config command")
+			}
+		},
+	}
 }
 
 func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension string, isIntegration bool, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
@@ -102,6 +144,19 @@ func loadConfig() (*Config, error) {
 	}
 
 	overrideWithEnv(&cfg)
+
+	// Tell user his repoUrls _may_ be outdated
+	arch := runtime.GOARCH + "_" + runtime.GOOS
+	for v := Version - 0.1; v >= Version - 0.3; v -= 0.1 {
+	    url := fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
+	    for _, repoURL := range cfg.RepoURLs {
+	        if url == repoURL {
+	            fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, Version)
+	            break
+	        }
+	    }
+	}
+
 	return &cfg, nil
 }
 
@@ -170,7 +225,7 @@ func setDefaultValues(config *Config) {
 	config.CacheDir = filepath.Join(tempDir, "dbin_cache")
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 	config.RepoURLs = []string{
-		"https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/" + Version + "/" + arch + ".lite.cbor.zst",
+		fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%d/%s%s", Version, arch, ".lite.cbor.zst"),
 	}
 	config.DisableTruncation = false
 	config.Limit = 90

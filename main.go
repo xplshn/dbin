@@ -1,9 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"context"
+	"strconv"
 
 	"github.com/urfave/cli/v3"
 )
@@ -13,8 +14,8 @@ type Verbosity int8
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	Indicator                           = "...>"
-	Version                             = "1.3"
-	maxCacheSize                        = 15
+	Version                             = 1.3
+	maxCacheSize                        = 1
 	binariesToDelete                    = 5
 	extraVerbose              Verbosity = 2
 	normalVerbosity           Verbosity = 1
@@ -26,7 +27,7 @@ func main() {
 	app := &cli.Command{
 		Name:        "dbin",
 		Usage:       "The easy to use, easy to get, software distribution system",
-		Version:     Version,
+		Version:     strconv.FormatFloat(Version, 'f', -1, 8),
 		Description: "The easy to use, easy to get, software distribution system",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -50,6 +51,7 @@ func main() {
 			infoCommand(),
 			runCommand(),
 			updateCommand(),
+			configCommand(),
 		},
 		EnableShellCompletion: true,
 	}
@@ -71,7 +73,6 @@ func getVerbosityLevel(c *cli.Command) Verbosity {
 	}
 	return normalVerbosity
 }
-
 
 func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
 	var uRepoIndex []binaryEntry
