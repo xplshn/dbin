@@ -14,7 +14,7 @@ type Verbosity int8
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	Indicator                           = "...>"
-	Version                             = 1.3
+	Version                             = 1.4
 	maxCacheSize                        = 1
 	binariesToDelete                    = 5
 	extraVerbose              Verbosity = 2
@@ -27,7 +27,7 @@ func main() {
 	app := &cli.Command{
 		Name:        "dbin",
 		Usage:       "The easy to use, easy to get, software distribution system",
-		Version:     strconv.FormatFloat(Version, 'f', -1, 8),
+		Version:     strconv.FormatFloat(Version, 'f', -1, 32),
 		Description: "The easy to use, easy to get, software distribution system",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
