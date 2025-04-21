@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-json"
 	"github.com/urfave/cli/v3"
 )
 
@@ -65,11 +66,14 @@ func configCommand() *cli.Command {
 				if err != nil {
 					return err
 				}
-				configYAML, err := yaml.Marshal(config)
+
+				j, err := json.MarshalIndent(config, "", "  ")
 				if err != nil {
-					return fmt.Errorf("failed to marshal config to YAML: %v", err)
+					return fmt.Errorf("Failed to marshall config struct: %w", err)
 				}
-				fmt.Println(string(configYAML))
+				fmt.Println(string(j))
+				fmt.Fprintln(os.Stderr, "\nwarning: This is the loaded struct printed as-is. This is the loaded config + overrides from the env. Some elements here only exist as env vars and cannot be used in the config")
+
 				return nil
 			} else {
 				return cli.ShowSubcommandHelp(c)
