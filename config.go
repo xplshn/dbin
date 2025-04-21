@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,10 +10,9 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"context"
 
-	"github.com/urfave/cli/v3"
 	"github.com/goccy/go-yaml"
+	"github.com/urfave/cli/v3"
 )
 
 type Config struct {
@@ -56,10 +56,6 @@ func configCommand() *cli.Command {
 				Name:  "show",
 				Usage: "Show the current configuration",
 			},
-			&cli.BoolFlag{
-				Name:  "help",
-				Usage: "Show help information for config options",
-			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Bool("new") {
@@ -76,7 +72,7 @@ func configCommand() *cli.Command {
 				fmt.Println(string(configYAML))
 				return nil
 			} else {
-				return fmt.Errorf("invalid usage of config command")
+				return cli.ShowSubcommandHelp(c)
 			}
 		},
 	}
@@ -147,14 +143,14 @@ func loadConfig() (*Config, error) {
 
 	// Tell user his repoUrls _may_ be outdated
 	arch := runtime.GOARCH + "_" + runtime.GOOS
-	for v := Version - 0.1; v >= Version - 0.3; v -= 0.1 {
-	    url := fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
-	    for _, repoURL := range cfg.RepoURLs {
-	        if url == repoURL {
-	            fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, Version)
-	            break
-	        }
-	    }
+	for v := Version - 0.1; v >= Version-0.3; v -= 0.1 {
+		url := fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
+		for _, repoURL := range cfg.RepoURLs {
+			if url == repoURL {
+				fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, Version)
+				break
+			}
+		}
 	}
 
 	return &cfg, nil
