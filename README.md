@@ -86,7 +86,7 @@ $ dbin --help
 - `dbin` can download random URLs and put them alongside the binaries in your `$DBIN_INSTALL_DIR` (~/.local/bin)
 - No breaking changes. Old releases of `dbin` do not break, until after at least 3 releases of newer versions.
 - `dbin` will survive even if the upstream repo disappears. `dbin` has a repository index that is held in its own repo. And given that the upstream binaries are held & built in GHCR, all build logs and binaries will continue to be usable/downloadable even if `pkgforge` disappears or experiences downtime
-- The binaries in `dbin` are specifically filtered for `portability` (meaning, they work on older kernel versions, they work on `Musl` and `Glibc` and even weird yet wonderful system like [AliceLinux](https://github.com/xplshn/alicelinux), [OasisLinux](https://github.com/oasislinux/oasis) or FreeBSD (with linuxlator, so that you don't have to set up an Ubuntu to install a Linux web browser and be able to watch DRM content.)
+- The binaries in `dbin` are specifically filtered for `portability` (meaning, they work on older kernel versions, they work on `Musl` and `Glibc` and even weird yet wonderful systems like [AliceLinux](https://github.com/xplshn/alicelinux), [OasisLinux](https://github.com/oasislinux/oasis) or FreeBSD (with linuxlator, so that you don't have to set up an Ubuntu chroot to install a Linux web browser and be able to watch DRM content, etc)
 
 #### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 ##### Flags that correspond to the `run` functionality
