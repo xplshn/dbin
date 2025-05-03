@@ -12,36 +12,35 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-json"
 	"github.com/urfave/cli/v3"
 )
 
 type Config struct {
-	RepoURLs            []string `yaml:"RepoURLs" env:"DBIN_REPO_URLS"`
-	InstallDir          string   `yaml:"InstallDir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME"`
-	CacheDir            string   `yaml:"CacheDir" env:"DBIN_CACHEDIR"`
-	Limit               uint     `yaml:"SearchResultsLimit"`
-	ProgressbarStyle    int      `yaml:"PbarStyle,omitempty"`
-	DisableTruncation   bool     `yaml:"Truncation" env:"DBIN_NOTRUNCATION"`
-	RetakeOwnership     bool     `yaml:"RetakeOwnership" env:"DBIN_REOWN"`
-	UseIntegrationHooks bool     `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS"`
-	DisableProgressbar  bool     `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR"`
-	NoConfig            bool     `yaml:"NoConfig" env:"DBIN_NOCONFIG"`
-	ProgressbarFIFO     bool     `env:"DBIN_PB_FIFO"`
+	RepoURLs            []string `yaml:"RepoURLs" env:"DBIN_REPO_URLS" description:"List of repository URLs to fetch binaries from."`
+	InstallDir          string   `yaml:"InstallDir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME" description:"Directory where binaries will be installed."`
+	CacheDir            string   `yaml:"CacheDir" env:"DBIN_CACHEDIR" description:"Directory where cached binaries will be stored."`
+	Limit               uint     `yaml:"SearchResultsLimit" description:"Limit the number of search results displayed."`
+	ProgressbarStyle    int      `yaml:"PbarStyle,omitempty" description:"Style of the progress bar."`
+	DisableTruncation   bool     `yaml:"Truncation" env:"DBIN_NOTRUNCATION" description:"Disable truncation of output."`
+	RetakeOwnership     bool     `yaml:"RetakeOwnership" env:"DBIN_REOWN" description:"Retake ownership of installed binaries."`
+	UseIntegrationHooks bool     `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS" description:"Use integration hooks for binaries."`
+	DisableProgressbar  bool     `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR" description:"Disable the progress bar."`
+	NoConfig            bool     `yaml:"NoConfig" env:"DBIN_NOCONFIG" description:"Disable configuration file usage."`
+	ProgressbarFIFO     bool     `env:"DBIN_PB_FIFO" description:"Use FIFO for progress bar."`
 	Hooks               Hooks    `yaml:"Hooks,omitempty"`
 }
 
 type Hooks struct {
-	Commands map[string]HookCommands `yaml:"commands"`
+	Commands map[string]HookCommands `yaml:"commands" description:"Commands for hooks."`
 }
 
 type HookCommands struct {
-	IntegrationCommands   []string `yaml:"integrationCommands"`
-	DeintegrationCommands []string `yaml:"deintegrationCommands"`
-	IntegrationErrorMsg   string   `yaml:"integrationErrorMsg"`
-	DeintegrationErrorMsg string   `yaml:"deintegrationErrorMsg"`
-	UseRunFromCache       bool     `yaml:"RunFromCache"`
-	NoOp                  bool     `yaml:"nop"`
+	IntegrationCommands   []string `yaml:"integrationCommands" description:"Commands to run for integration."`
+	DeintegrationCommands []string `yaml:"deintegrationCommands" description:"Commands to run for deintegration."`
+	IntegrationErrorMsg   string   `yaml:"integrationErrorMsg" description:"Error message for integration failures."`
+	DeintegrationErrorMsg string   `yaml:"deintegrationErrorMsg" description:"Error message for deintegration failures."`
+	UseRunFromCache       bool     `yaml:"RunFromCache" description:"Use run from cache for hooks."`
+	NoOp                  bool     `yaml:"nop" description:"No operation flag for hooks."`
 }
 
 func configCommand() *cli.Command {
@@ -67,18 +66,26 @@ func configCommand() *cli.Command {
 					return err
 				}
 
-				j, err := json.MarshalIndent(config, "", "  ")
-				if err != nil {
-					return fmt.Errorf("Failed to marshall config struct: %w", err)
-				}
-				fmt.Println(string(j))
-				fmt.Fprintln(os.Stderr, "\nwarning: This is the loaded struct printed as-is. This is the loaded config + overrides from the env. Some elements here only exist as env vars and cannot be used in the config")
-
+				printConfig(config)
 				return nil
 			} else {
 				return cli.ShowSubcommandHelp(c)
 			}
 		},
+	}
+}
+
+func printConfig(config *Config) {
+	v := reflect.ValueOf(config).Elem()
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+		description := fieldType.Tag.Get("description")
+		if description != "" {
+			fmt.Printf("%s: %v\nDescription: %s\n\n", fieldType.Name, field.Interface(), description)
+		}
 	}
 }
 
@@ -145,7 +152,7 @@ func loadConfig() (*Config, error) {
 
 	overrideWithEnv(&cfg)
 
-	// Tell user his repoUrls _may_ be outdated
+	// Tell user their repoUrls _may_ be outdated
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 	for v := Version - 0.1; v >= Version-0.3; v -= 0.1 {
 		url := fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
@@ -200,7 +207,7 @@ func overrideWithEnv(cfg *Config) {
 		return false
 	}
 
-	for i := range v.NumField() {
+	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		envTags := strings.Fields(t.Field(i).Tag.Get("env"))
 
@@ -225,7 +232,7 @@ func setDefaultValues(config *Config) {
 	config.CacheDir = filepath.Join(tempDir, "dbin_cache")
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 	config.RepoURLs = []string{
-		fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%d/%s%s", Version, arch, ".lite.cbor.zst"),
+		fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", Version, arch, ".lite.cbor.zst"),
 	}
 	config.DisableTruncation = false
 	config.Limit = 90

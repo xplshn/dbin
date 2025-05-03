@@ -77,6 +77,8 @@ func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) err
 		prefix := "[-]"
 		if bEntryOfinstalledBinary(filepath.Join(config.InstallDir, filepath.Base(result.Name))).PkgId == result.PkgId {
 			prefix = "[i]"
+		} else if _, err := isCached(config, result); err == nil {
+			prefix = "[c]"
 		}
 		truncatePrintf(disableTruncation, "%s %s - %s\n",
 			prefix, parseBinaryEntry(result, true), result.Description)

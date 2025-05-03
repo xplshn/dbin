@@ -51,27 +51,19 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 		}
 	}
 
-	// Check if the binary exists in cache and matches the requested version
-	baseName := filepath.Base(bEntry.Name)
-	cachedFile := filepath.Join(config.CacheDir, baseName)
-
-	if fileExists(cachedFile) && isExecutable(cachedFile) {
-		trackedBEntry, err := readEmbeddedBEntry(cachedFile)
-		if err == nil && (trackedBEntry.PkgId == bEntry.PkgId || bEntry.PkgId == "") {
-			if verbosityLevel >= normalVerbosity {
-				fmt.Printf("Running '%s' from cache...\n", bEntry.Name)
-			}
-			if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
-				return err
-			}
-			return cleanCache(config.CacheDir, verbosityLevel)
-		}
-
+	// Check if the binary is cached
+	cachedFile, err := isCached(config, bEntry)
+	if err == nil {
 		if verbosityLevel >= normalVerbosity {
-			fmt.Printf("Cached binary '%s' does not match requested binary '%s'. Fetching a new one...\n",
-				parseBinaryEntry(trackedBEntry, false), parseBinaryEntry(bEntry, false))
+			fmt.Printf("Running '%s' from cache...\n", bEntry.Name)
 		}
-	} else if verbosityLevel >= normalVerbosity {
+		if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
+			return err
+		}
+		return cleanCache(config.CacheDir, verbosityLevel)
+	}
+
+	if verbosityLevel >= normalVerbosity {
 		fmt.Printf("Couldn't find '%s' in the cache. Fetching a new one...\n", bEntry.Name)
 	}
 
@@ -82,7 +74,7 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 
 	uRepoIndex, err := fetchRepoIndex(&cacheConfig)
 	if err != nil {
-	    return err
+		return err
 	}
 	if err := installBinaries(context.Background(), &cacheConfig, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
 		return err
@@ -92,6 +84,19 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 		return err
 	}
 	return cleanCache(config.CacheDir, verbosityLevel)
+}
+
+func isCached(config *Config, bEntry binaryEntry) (string, error) {
+	cachedFile := filepath.Join(config.CacheDir, filepath.Base(bEntry.Name))
+
+	if fileExists(cachedFile) && isExecutable(cachedFile) {
+		trackedBEntry, err := readEmbeddedBEntry(cachedFile)
+		if err == nil && (trackedBEntry.PkgId == bEntry.PkgId || bEntry.PkgId == "") {
+			return cachedFile, nil
+		}
+	}
+
+	return "", fmt.Errorf("binary '%s' not found in cache or does not match the requested version", bEntry.Name)
 }
 
 func runBinary(binaryPath string, args []string, verbosityLevel Verbosity) error {
