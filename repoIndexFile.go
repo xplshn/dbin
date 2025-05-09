@@ -6,7 +6,6 @@ type snapshot struct {
 }
 
 type binaryEntry struct {
-	Rank        uint16   			`json:"rank,omitempty"        `
 	Name        string   			`json:"pkg"                   `
 	PrettyName  string   			`json:"pkg_name"              `
 	PkgId       string   			`json:"pkg_id"                `
@@ -21,11 +20,12 @@ type binaryEntry struct {
 	BuildScript string   			`json:"build_script,omitempty"`
 	BuildLog    string   			`json:"build_log,omitempty"   `
 	Categories  string   			`json:"categories,omitempty"  `
-	Screenshots []string            `json:"screenshots,omitempty" `
 	ExtraBins   string   			`json:"provides,omitempty"    `
+	Screenshots []string            `json:"screenshots,omitempty" `
 	License     []string   			`json:"license,omitempty"     `
-	Snapshots   []snapshot          `json:"snapshots,omitempty"   `
 	Notes       []string 			`json:"notes,omitempty"       `
 	SrcURLs     []string 			`json:"src_urls,omitempty"    `
 	WebURLs     []string 			`json:"web_urls,omitempty"    `
+	Snapshots   []snapshot          `json:"snapshots,omitempty"   `
+	Rank        uint16   			`json:"rank,omitempty"        `
 }
