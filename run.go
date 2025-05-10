@@ -55,7 +55,7 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 	cachedFile, err := isCached(config, bEntry)
 	if err == nil {
 		if verbosityLevel >= normalVerbosity {
-			fmt.Printf("Running '%s' from cache...\n", bEntry.Name)
+			fmt.Printf("Running '%s' from cache...\n", parseBinaryEntry(bEntry, true))
 		}
 		if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
 			return err
@@ -64,7 +64,7 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 	}
 
 	if verbosityLevel >= normalVerbosity {
-		fmt.Printf("Couldn't find '%s' in the cache. Fetching a new one...\n", bEntry.Name)
+		fmt.Printf("Couldn't find '%s' in the cache. Fetching a new one...\n", parseBinaryEntry(bEntry, true))
 	}
 
 	// Fetch and install the binary
@@ -78,6 +78,12 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 	}
 	if err := installBinaries(context.Background(), &cacheConfig, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
 		return err
+	}
+
+	// Check again if the binary is cached after installation
+	cachedFile, err = isCached(config, bEntry)
+	if err != nil {
+		return fmt.Errorf("failed to find binary after installation: %v", err)
 	}
 
 	if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
