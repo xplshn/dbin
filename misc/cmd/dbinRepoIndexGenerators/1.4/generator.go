@@ -18,9 +18,10 @@ import (
 )
 
 type repository struct {
-	URL    string
-	Name   string
-	Single bool
+	URL        string
+	Name       string
+	Standalone bool
+	Single     bool
 }
 
 type PkgForgeItem struct {
@@ -258,21 +259,22 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	//   | - If there are multiple packages with different names in a family, the format will be
 	//   |   "family/package_name" (e.g., "a-utils/ccat").
 	// - Applies to all occurrences
-	pkgName := item.Name
 	if useFamilyFormat[item.Family] {
-		pkgName = fmt.Sprintf("%s/%s", item.Family, item.Name)
+		item.Pkg = fmt.Sprintf("%s/%s", item.Family, item.Name)
 	}
 
 	if item.PkgType == "static" {
-		pkgName = strings.TrimSuffix(pkgName, ".static")
+		item.Pkg = strings.TrimSuffix(item.Pkg, ".static")
 	} else if item.PkgType == "archive" {
-			pkgName = strings.TrimSuffix(pkgName, ".archive")
+			item.Pkg = strings.TrimSuffix(item.Pkg, ".archive")
 	} else if item.PkgType != "" {
-		pkgName = pkgName + "." + item.PkgType
+		item.Pkg = item.Pkg + "." + item.PkgType
 	}
 
+	item.Pkg = strings.TrimPrefix(item.Pkg, "/")
+
 	return DbinItem{
-		Pkg:         pkgName,
+		Pkg:         item.Pkg,
 		Name:        item.Name,
 		PkgId:       item.PkgId,
 		AppstreamId: item.AppId,
@@ -471,6 +473,22 @@ func main() {
 		},
 		{
 			Repo: repository{
+				Name: "AM",
+				URL: "https://meta.pkgforge.dev/external/am/%s.json",
+				Standalone: true,
+			},
+			Handler: PkgForgeHandler{},
+		},
+		{
+			Repo: repository{
+				Name: "appimage-github-io",
+				URL: "https://meta.pkgforge.dev/external/appimage.github.io/%s.json.",
+				Standalone: true,
+			},
+			Handler: PkgForgeHandler{},
+		},
+		{
+			Repo: repository{
 				Name:   "AppBundleHUB",
 				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_%s.json",
 				Single: true,
@@ -512,9 +530,11 @@ func main() {
 				items = filteredItems
 			}
 
-			dbinMetadata[repo.Repo.Name] = append(dbinMetadata[repo.Repo.Name], items...)
+			if !repo.Repo.Standalone {
+				dbinMetadata[repo.Repo.Name] = append(dbinMetadata[repo.Repo.Name], items...)
+			}
 
-			if repo.Repo.Single {
+			if repo.Repo.Single || repo.Repo.Standalone {
 				singleMetadata := make(DbinMetadata)
 				singleMetadata[repo.Repo.Name] = items
 				singleOutputFile := fmt.Sprintf("%s_%s", repo.Repo.Name, outputArch)
