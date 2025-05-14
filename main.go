@@ -15,7 +15,7 @@ const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	Indicator                           = "...>"
 	Version                             = 1.4
-	maxCacheSize                        = 1
+	maxCacheSize                        = 15
 	binariesToDelete                    = 5
 	extraVerbose              Verbosity = 2
 	normalVerbosity           Verbosity = 1

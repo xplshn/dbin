@@ -100,6 +100,7 @@ func isCached(config *Config, bEntry binaryEntry) (string, error) {
 		if err == nil && (trackedBEntry.PkgId == bEntry.PkgId || bEntry.PkgId == "") {
 			return cachedFile, nil
 		}
+		fmt.Println(trackedBEntry)
 	}
 
 	return "", fmt.Errorf("binary '%s' not found in cache or does not match the requested version", bEntry.Name)
