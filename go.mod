@@ -12,7 +12,7 @@ require (
 	github.com/pkg/xattr v0.4.10
 	github.com/tdewolff/minify/v2 v2.22.4
 	github.com/tiendc/go-deepcopy v1.5.1
-	github.com/urfave/cli/v3 v3.3.2
+	github.com/urfave/cli/v3 v3.3.3
 	github.com/zeebo/blake3 v0.2.4
 	golang.org/x/term v0.32.0
 )
