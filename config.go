@@ -13,6 +13,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/urfave/cli/v3"
+	"slices"
 )
 
 type Config struct {
@@ -79,7 +80,7 @@ func printConfig(config *Config) {
 	v := reflect.ValueOf(config).Elem()
 	t := v.Type()
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		field := v.Field(i)
 		fieldType := t.Field(i)
 		description := fieldType.Tag.Get("description")
@@ -156,11 +157,8 @@ func loadConfig() (*Config, error) {
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 	for v := Version - 0.1; v >= Version-0.3; v -= 0.1 {
 		url := fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
-		for _, repoURL := range cfg.RepoURLs {
-			if url == repoURL {
-				fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, Version)
-				break
-			}
+		if slices.Contains(cfg.RepoURLs, url) {
+			fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, Version)
 		}
 	}
 
@@ -207,7 +205,7 @@ func overrideWithEnv(cfg *Config) {
 		return false
 	}
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		field := v.Field(i)
 		envTags := strings.Fields(t.Field(i).Tag.Get("env"))
 

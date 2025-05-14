@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
@@ -322,7 +322,8 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 		// Create a new reader from body bytes for decompression
 		bodyReader = io.NopCloser(bytes.NewReader(bodyBytes))
 
-		if strings.HasSuffix(url, ".gz") {
+		switch {
+		case strings.HasSuffix(url, ".gz"):
 			url = strings.TrimSuffix(url, ".gz")
 			gzipReader, err := gzip.NewReader(bodyReader)
 			if err != nil {
@@ -335,9 +336,7 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 			if err != nil {
 				return nil, fmt.Errorf("error reading gzip data from %s: %v", url, err)
 			}
-		}
-
-		if strings.HasSuffix(url, ".zst") {
+		case strings.HasSuffix(url, ".zst"):
 			url = strings.TrimSuffix(url, ".zst")
 			zstdReader, err := zstd.NewReader(bodyReader)
 			if err != nil {
@@ -370,8 +369,8 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 			return nil, fmt.Errorf("unsupported format for URL: %s", url)
 		}
 
-		for _, entries := range repoIndex {
-			binaryEntries = append(binaryEntries, entries...)
+		for _, bEntries := range repoIndex {
+			binaryEntries = append(binaryEntries, bEntries...)
 		}
 	}
 
