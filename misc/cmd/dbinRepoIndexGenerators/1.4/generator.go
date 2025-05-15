@@ -259,8 +259,9 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	//   | - If there are multiple packages with different names in a family, the format will be
 	//   |   "family/package_name" (e.g., "a-utils/ccat").
 	// - Applies to all occurrences
+	pkgName := item.Name
 	if useFamilyFormat[item.Family] {
-		item.Pkg = fmt.Sprintf("%s/%s", item.Family, item.Name)
+		pkgName = fmt.Sprintf("%s/%s", item.Family, item.Name)
 	}
 
 	if item.PkgType == "static" {
@@ -274,7 +275,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	item.Pkg = strings.TrimPrefix(item.Pkg, "/")
 
 	return DbinItem{
-		Pkg:         item.Pkg,
+		Pkg:         pkgName,
 		Name:        item.Name,
 		PkgId:       item.PkgId,
 		AppstreamId: item.AppId,
