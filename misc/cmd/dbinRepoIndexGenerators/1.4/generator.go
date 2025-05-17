@@ -265,11 +265,11 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	}
 
 	if item.PkgType == "static" {
-		item.Pkg = strings.TrimSuffix(item.Pkg, ".static")
+		pkgName = strings.TrimSuffix(pkgName, ".static")
 	} else if item.PkgType == "archive" {
-			item.Pkg = strings.TrimSuffix(item.Pkg, ".archive")
+		pkgName = strings.TrimSuffix(pkgName, ".archive")
 	} else if item.PkgType != "" {
-		item.Pkg = item.Pkg + "." + item.PkgType
+		pkgName = pkgName + "." + item.PkgType
 	}
 
 	item.Pkg = strings.TrimPrefix(item.Pkg, "/")
