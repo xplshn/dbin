@@ -75,7 +75,6 @@ func arrStringToArrBinaryEntry(args []string) []binaryEntry {
 	return entries
 }
 
-
 func binaryEntriesToArrString(entries []binaryEntry, ansi bool) []string {
 	var result []string
 	seen := make(map[string]bool)
@@ -256,17 +255,67 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	return stringToBinaryEntry(string(fullName)), nil
 }
 
+func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
+	cacheFilePath := filepath.Join(cfg.CacheDir, ternary(filename != "", "."+filename, "."+filepath.Base(url)))
+
+	if err := os.MkdirAll(cfg.CacheDir, 0755); err != nil {
+		return nil, fmt.Errorf("error creating cache directory %s: %v", cfg.CacheDir, err)
+	}
+
+	// Check if the file is already cached and not expired
+	fileInfo, err := os.Stat(cacheFilePath)
+	if err == nil && time.Since(fileInfo.ModTime()).Hours() < 6 {
+		// Read from cache file
+		bodyBytes, err := os.ReadFile(cacheFilePath)
+		if err != nil {
+			return nil, fmt.Errorf("error reading cached file %s: %v", cacheFilePath, err)
+		}
+		return bodyBytes, nil
+	}
+
+	// Fetch from remote
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for %s: %v", url, err)
+	}
+	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("dbin", strconv.FormatFloat(Version, 'f', -1, 32))
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching from %s: %v. Please check your configuration's repo_urls. Ensure your network has access to the internet", url, err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error fetching from %s: received status code %d", url, response.StatusCode)
+	}
+
+	// Read the entire body
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading from %s: %v", url, err)
+	}
+
+	// Write to cache file
+	err = os.WriteFile(cacheFilePath, bodyBytes, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("error writing to cached file %s: %v", cacheFilePath, err)
+	}
+
+	return bodyBytes, nil
+}
+
 func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 	var binaryEntries []binaryEntry
+	var parsedRepos = make(map[string]bool)
 
 	for _, repo := range config.Repositories {
-		if repo.URL == "" {
-			continue
+		if parsedRepos[repo.URL] {
+			continue // Skip if URL is already parsed
 		}
 
-		var bodyReader io.ReadCloser
-		var err error
 		var bodyBytes []byte
+		var err error
 
 		if strings.HasPrefix(repo.URL, "file://") {
 			filePath := strings.TrimPrefix(repo.URL, "file://")
@@ -275,58 +324,14 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 				return nil, fmt.Errorf("error opening file %s: %v", filePath, err)
 			}
 		} else {
-			if config.NoConfig {
-				bodyReader, err = fetchMetadata(repo.URL)
-				if err != nil {
-					return nil, err
-				}
-				defer bodyReader.Close()
-
-				// Read the entire body
-				bodyBytes, err = io.ReadAll(bodyReader)
-				if err != nil {
-					return nil, fmt.Errorf("error reading from %s: %v", repo.URL, err)
-				}
-			} else {
-				cachedFilePath := filepath.Join(config.CacheDir, "."+filepath.Base(repo.URL))
-
-				// Ensure the cache directory exists
-				if err := os.MkdirAll(config.CacheDir, 0755); err != nil {
-					return nil, fmt.Errorf("error creating cache directory %s: %v", config.CacheDir, err)
-				}
-
-				fileInfo, err := os.Stat(cachedFilePath)
-				if err == nil && time.Since(fileInfo.ModTime()).Hours() < repo.SyncInterval.Hours() {
-					// Read from cache file
-					bodyBytes, err = os.ReadFile(cachedFilePath)
-					if err != nil {
-						return nil, fmt.Errorf("error reading cached file %s: %v", cachedFilePath, err)
-					}
-				} else {
-					// Fetch from remote
-					bodyReader, err = fetchMetadata(repo.URL)
-					if err != nil {
-						return nil, err
-					}
-					defer bodyReader.Close()
-
-					// Read the entire body
-					bodyBytes, err = io.ReadAll(bodyReader)
-					if err != nil {
-						return nil, fmt.Errorf("error reading from %s: %v", repo.URL, err)
-					}
-
-					// Write to cache file
-					err = os.WriteFile(cachedFilePath, bodyBytes, 0644)
-					if err != nil {
-						return nil, fmt.Errorf("error writing to cached file %s: %v", cachedFilePath, err)
-					}
-				}
+			bodyBytes, err = accessCachedOrFetch(repo.URL, "", config)
+			if err != nil {
+				return nil, err
 			}
 		}
 
 		// Create a new reader from body bytes for decompression
-		bodyReader = io.NopCloser(bytes.NewReader(bodyBytes))
+		bodyReader := io.NopCloser(bytes.NewReader(bodyBytes))
 
 		switch {
 		case strings.HasSuffix(repo.URL, ".gz"):
@@ -382,30 +387,11 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 				binaryEntries = append(binaryEntries, entry)
 			}
 		}
+
+		parsedRepos[repo.URL] = true
 	}
 
 	return binaryEntries, nil
-}
-
-func fetchMetadata(url string) (io.ReadCloser, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error creating request for %s: %v", url, err)
-	}
-
-	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("dbin", strconv.FormatFloat(Version, 'f', -1, 32))
-
-	client := &http.Client{}
-	response, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching from %s: %v. Please check your configuration's repo_urls. Ensure your network has access to the internet", url, err)
-	}
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("error fetching from %s: received status code %d", url, response.StatusCode)
-	}
-	return response.Body, nil
 }
 
 func calculateChecksum(filePath string) (string, error) {

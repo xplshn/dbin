@@ -260,7 +260,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	//   |   "family/package_name" (e.g., "a-utils/ccat").
 	// - Applies to all occurrences
 	pkgName := item.Name
-	if useFamilyFormat[item.Family] {
+	if item.Family != "" && useFamilyFormat[item.Family] {
 		pkgName = fmt.Sprintf("%s/%s", item.Family, item.Name)
 	}
 

@@ -18,7 +18,7 @@ import (
 )
 
 // downloadWithProgress handles downloading a file with progress tracking
-func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination string, bEntry binaryEntry, config *Config) error {
+func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination string, bEntry *binaryEntry, config *Config) error {
 	// Create destination directory if needed
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return fmt.Errorf("failed to create parent directories for %s: %v", destination, err)
@@ -134,7 +134,7 @@ func validateFileType(filePath string) error {
 }
 
 // verifySignature verifies a binary against its signature using minisign
-func verifySignature(binaryPath string, sigData []byte, pubKeyURL string) error {
+func verifySignature(binaryPath string, sigData []byte, bEntry *binaryEntry, cfg *Config) error {
 	// Open the binary file
 	file, err := os.Open(binaryPath)
 	if err != nil {
@@ -142,57 +142,50 @@ func verifySignature(binaryPath string, sigData []byte, pubKeyURL string) error 
 	}
 	defer file.Close()
 
-	// Download the public key
-	pubKeyResp, err := http.Get(pubKeyURL)
-	if err != nil {
-		return fmt.Errorf("failed to download public key: %v", err)
-	}
-	defer pubKeyResp.Body.Close()
+	if pubKeyURL := bEntry.Repository.PubKeys[bEntry.Repository.Name]; pubKeyURL != "" {
+		// Download the public key using accessCachedOrFetch
+		pubKeyData, err := accessCachedOrFetch(pubKeyURL, bEntry.Repository.Name + ".minisign", cfg)
+		if err != nil {
+			return fmt.Errorf("failed to download public key: %v", err)
+		}
 
-	if pubKeyResp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download public key: status code %d", pubKeyResp.StatusCode)
-	}
+		// Parse the public key
+		pubKey, err := minisign.NewPublicKey(string(pubKeyData))
+		if err != nil {
+			return fmt.Errorf("failed to parse public key: %v", err)
+		}
 
-	pubKeyData, err := io.ReadAll(pubKeyResp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read public key: %v", err)
-	}
+		// Parse the signature
+		sig, err := minisign.DecodeSignature(string(sigData))
+		if err != nil {
+			return fmt.Errorf("failed to parse signature: %v", err)
+		}
 
-	// Parse the public key
-	pubKey, err := minisign.NewPublicKey(string(pubKeyData))
-	if err != nil {
-		return fmt.Errorf("failed to parse public key: %v", err)
-	}
+		// Read the binary data for verification
+		binaryData, err := io.ReadAll(file)
+		if err != nil {
+			return fmt.Errorf("failed to read binary data: %v", err)
+		}
 
-	// Parse the signature
-	sig, err := minisign.DecodeSignature(string(sigData))
-	if err != nil {
-		return fmt.Errorf("failed to parse signature: %v", err)
-	}
+		// Verify the signature
+		verified, err := pubKey.Verify(binaryData, sig)
+		if err != nil {
+			return fmt.Errorf("signature verification failed: %v", err)
+		}
+		if !verified {
+			return fmt.Errorf("signature verification failed: signature is invalid")
+		}
 
-	// Read the binary data for verification
-	binaryData, err := io.ReadAll(file)
-	if err != nil {
-		return fmt.Errorf("failed to read binary data: %v", err)
+		return nil
 	}
-
-	// Verify the signature
-	verified, err := pubKey.Verify(binaryData, sig)
-	if err != nil {
-		return fmt.Errorf("signature verification failed: %v", err)
-	}
-	if !verified {
-		return fmt.Errorf("signature verification failed: signature is invalid")
-	}
-
 	return nil
 }
 
 // fetchBinaryFromURLToDest handles downloading a binary from a URL with optional signature verification
-func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string, config *Config) (string, error) {
+func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *Config) (string, error) {
 	if strings.HasPrefix(bEntry.DownloadURL, "oci://") {
 		bEntry.DownloadURL = strings.TrimPrefix(bEntry.DownloadURL, "oci://")
-		return fetchOCIImage(ctx, bar, bEntry, destination, config)
+		return fetchOCIImage(ctx, bar, bEntry, destination, cfg)
 	}
 
 	// Check if we need to verify the signature
@@ -216,7 +209,7 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry bi
 	defer resp.Body.Close()
 
 	// First save the file to disk
-	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, config); err != nil {
+	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, cfg); err != nil {
 		return "", err
 	}
 
@@ -240,7 +233,7 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry bi
 		}
 
 		// Verify the signature
-		if err := verifySignature(destination, sigData, pubKeyURL); err != nil {
+		if err := verifySignature(destination, sigData, bEntry, cfg); err != nil {
 			// Remove the file if verification fails
 			os.Remove(destination)
 			return "", err
@@ -259,7 +252,7 @@ func setRequestHeaders(req *http.Request) {
 }
 
 // fetchOCIImage handles downloading an OCI image with optional signature verification
-func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string, config *Config) (string, error) {
+func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *Config) (string, error) {
 	parts := strings.SplitN(bEntry.DownloadURL, ":", 2)
 	if len(parts) != 2 {
 		return "", fmt.Errorf("invalid OCI reference format")
@@ -288,7 +281,7 @@ func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, 
 		defer sigResp.Body.Close()
 	}
 
-	if err := downloadWithProgress(ctx, bar, binaryResp, destination, bEntry, config); err != nil {
+	if err := downloadWithProgress(ctx, bar, binaryResp, destination, bEntry, cfg); err != nil {
 		return "", err
 	}
 
@@ -304,7 +297,7 @@ func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, 
 		}
 
 		// Verify the signature
-		if err := verifySignature(destination, sigData, pubKeyURL); err != nil {
+		if err := verifySignature(destination, sigData, bEntry, cfg); err != nil {
 			os.Remove(destination)
 			return "", fmt.Errorf("signature does not match: %v", err)
 		}

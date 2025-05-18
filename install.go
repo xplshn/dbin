@@ -87,7 +87,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 				progressbar.WithTaskAddBarOptions(pbarOpts...),
 				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
 					defer wg.Done()
-					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, bEntry, destination, config)
+					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, &bEntry, destination, config)
 					if fetchErr != nil {
 						errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v\n", bEntry.Name, fetchErr))
 						return
@@ -114,7 +114,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 		} else {
 			go func(bEntry binaryEntry, destination string) {
 				defer wg.Done()
-				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, bEntry, destination, config)
+				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, &bEntry, destination, config)
 				if fetchErr != nil {
 					errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v", bEntry.Name, fetchErr))
 					return
