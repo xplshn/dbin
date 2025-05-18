@@ -237,6 +237,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		downloadURL = "oci://" + item.GhcrPkg
 	} else if item.HfPkg != "" {
 		downloadURL = strings.Replace(item.HfPkg, "/tree/main", "/resolve/main", 1) + "/" + item.Pkg
+	} else if item.DownloadURL != "" {
+		downloadURL = item.DownloadURL
 	}
 
 	rank, _ := strconv.Atoi(item.Rank)
