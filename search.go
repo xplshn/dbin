@@ -42,7 +42,7 @@ func searchCommand() *cli.Command {
 func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) error {
 	var results []binaryEntry
 	for _, bin := range uRepoIndex {
-		name, pkgId, version, description, rank := bin.Name, bin.PkgId, bin.Version, bin.Description, bin.Rank
+		name, pkgId, version, description, rank, repo := bin.Name, bin.PkgId, bin.Version, bin.Description, bin.Rank, bin.Repository
 		if name == "" || description == "" {
 			continue
 		}
@@ -62,6 +62,7 @@ func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) err
 				Version:     version,
 				Description: description,
 				Rank:        rank,
+				Repository: repo,
 			})
 		}
 	}

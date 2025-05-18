@@ -10,25 +10,26 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
-
-	// _Mozilla's_ CA certs __list__
-	_ "github.com/breml/rootcerts"
 
 	"github.com/goccy/go-json"
 	"github.com/hedzr/progressbar"
+	"github.com/jedisct1/go-minisign"
 	"github.com/zeebo/blake3"
 )
 
+// downloadWithProgress handles downloading a file with progress tracking
 func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination string, bEntry binaryEntry, config *Config) error {
+	// Create destination directory if needed
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return fmt.Errorf("failed to create parent directories for %s: %v", destination, err)
 	}
 
+	// Initialize progress bar if provided
 	if bar != nil {
 		bar.UpdateRange(0, resp.ContentLength)
 	}
 
+	// Create temporary file
 	tempFile := destination + ".tmp"
 	out, err := os.Create(tempFile)
 	if err != nil {
@@ -36,30 +37,11 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 	}
 	defer out.Close()
 
+	// Initialize buffers and hash
 	buf := make([]byte, 4096)
 	hash := blake3.New()
 
-	var fifo *os.File
-	var fifoPath string
-	if config.ProgressbarFIFO {
-		// Create FIFO for progress
-		fifoPath = filepath.Join(os.TempDir(), "dbin")
-		if err := os.MkdirAll(fifoPath, 0755); err != nil {
-			return fmt.Errorf("failed to create FIFO directory: %v", err)
-		}
-		fifoPath = filepath.Join(fifoPath, ternary(bEntry.PkgId != "", filepath.Base(bEntry.Name)+"#"+bEntry.PkgId, filepath.Base(bEntry.Name)))
-		if err := syscall.Mkfifo(fifoPath, 0666); err != nil && !os.IsExist(err) {
-			return fmt.Errorf("failed to create FIFO: %v", err)
-		}
-		fifo, err = os.OpenFile(fifoPath, os.O_WRONLY, 0666)
-		if err != nil {
-			return fmt.Errorf("failed to open FIFO: %v", err)
-		}
-		defer fifo.Close()
-		defer os.Remove(fifoPath)
-	}
-
-downloadLoop:
+	// Download loop
 	for {
 		select {
 		case <-ctx.Done():
@@ -76,17 +58,34 @@ downloadLoop:
 					_ = os.Remove(tempFile)
 					return err
 				}
-
-				// Write progress to FIFO if enabled
-				if config.ProgressbarFIFO {
-					progress := bar.Percent()
-					if _, err := fifo.WriteString(progress + "\n"); err != nil {
-						return fmt.Errorf("failed to write to FIFO: %v", err)
-					}
-				}
 			}
 			if err == io.EOF {
-				break downloadLoop
+				// Verify checksum if provided
+				if bEntry.Bsum != "" && bEntry.Bsum != "!no_check" {
+					calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
+					if calculatedChecksum != bEntry.Bsum {
+						return fmt.Errorf("checksum verification failed: expected %s, got %s", bEntry.Bsum, calculatedChecksum)
+					}
+				}
+
+				// Validate file type
+				if err := validateFileType(tempFile); err != nil {
+					_ = os.Remove(tempFile)
+					return err
+				}
+
+				// Finalize the downloaded file
+				if err := os.Rename(tempFile, destination); err != nil {
+					_ = os.Remove(tempFile)
+					return err
+				}
+
+				if err := os.Chmod(destination, 0755); err != nil {
+					_ = os.Remove(destination)
+					return fmt.Errorf("failed to set executable bit for %s: %v", destination, err)
+				}
+
+				return nil
 			}
 			if err != nil {
 				_ = os.Remove(tempFile)
@@ -94,34 +93,9 @@ downloadLoop:
 			}
 		}
 	}
-
-	if bEntry.Bsum != "" && bEntry.Bsum != "!no_check" {
-		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
-		if calculatedChecksum != bEntry.Bsum {
-			fmt.Fprintf(os.Stderr, "checksum verification failed: expected %s, got %s", bEntry.Bsum, calculatedChecksum)
-		}
-	} else {
-		fmt.Println("Warning: No checksum exists for this binary in the repository index, skipping verification.")
-	}
-
-	if err := validateFileType(tempFile); err != nil {
-		_ = os.Remove(tempFile)
-		return err
-	}
-
-	if err := os.Rename(tempFile, destination); err != nil {
-		_ = os.Remove(tempFile)
-		return err
-	}
-
-	if err := os.Chmod(destination, 0755); err != nil {
-		_ = os.Remove(destination)
-		return fmt.Errorf("failed to set executable bit for %s: %v", destination, err)
-	}
-
-	return nil
 }
 
+// validateFileType checks if the downloaded file is a valid executable
 func validateFileType(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -159,20 +133,80 @@ func validateFileType(filePath string) error {
 	return fmt.Errorf("file is neither a shell script nor an ELF. Please report this at @ https://github.com/xplshn/dbin")
 }
 
+// verifySignature verifies a binary against its signature using minisign
+func verifySignature(binaryPath string, sigData []byte, pubKeyURL string) error {
+	// Open the binary file
+	file, err := os.Open(binaryPath)
+	if err != nil {
+		return fmt.Errorf("failed to open binary file: %v", err)
+	}
+	defer file.Close()
+
+	// Download the public key
+	pubKeyResp, err := http.Get(pubKeyURL)
+	if err != nil {
+		return fmt.Errorf("failed to download public key: %v", err)
+	}
+	defer pubKeyResp.Body.Close()
+
+	if pubKeyResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download public key: status code %d", pubKeyResp.StatusCode)
+	}
+
+	pubKeyData, err := io.ReadAll(pubKeyResp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read public key: %v", err)
+	}
+
+	// Parse the public key
+	pubKey, err := minisign.NewPublicKey(string(pubKeyData))
+	if err != nil {
+		return fmt.Errorf("failed to parse public key: %v", err)
+	}
+
+	// Parse the signature
+	sig, err := minisign.DecodeSignature(string(sigData))
+	if err != nil {
+		return fmt.Errorf("failed to parse signature: %v", err)
+	}
+
+	// Read the binary data for verification
+	binaryData, err := io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("failed to read binary data: %v", err)
+	}
+
+	// Verify the signature
+	verified, err := pubKey.Verify(binaryData, sig)
+	if err != nil {
+		return fmt.Errorf("signature verification failed: %v", err)
+	}
+	if !verified {
+		return fmt.Errorf("signature verification failed: signature is invalid")
+	}
+
+	return nil
+}
+
+// fetchBinaryFromURLToDest handles downloading a binary from a URL with optional signature verification
 func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string, config *Config) (string, error) {
 	if strings.HasPrefix(bEntry.DownloadURL, "oci://") {
 		bEntry.DownloadURL = strings.TrimPrefix(bEntry.DownloadURL, "oci://")
 		return fetchOCIImage(ctx, bar, bEntry, destination, config)
 	}
 
+	// Check if we need to verify the signature
+	var pubKeyURL string
+	if bEntry.Repository.PubKeys != nil {
+		pubKeyURL = bEntry.Repository.PubKeys[bEntry.Repository.Name]
+	}
+
+	// Download the binary
 	req, err := http.NewRequestWithContext(ctx, "GET", bEntry.DownloadURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request for %s: %v", bEntry.DownloadURL, err)
 	}
-	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("Expires", "0")
-	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%s", Version))
+	setRequestHeaders(req)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -181,13 +215,50 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry bi
 	}
 	defer resp.Body.Close()
 
+	// First save the file to disk
 	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, config); err != nil {
 		return "", err
+	}
+
+	// If we need to verify the signature
+	if pubKeyURL != "" {
+		// Download the signature file
+		sigURL := bEntry.DownloadURL + ".sig"
+		sigResp, err := http.Get(sigURL)
+		if err != nil {
+			return "", fmt.Errorf("failed to download signature file: %v", err)
+		}
+		defer sigResp.Body.Close()
+
+		if sigResp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("failed to download signature file: status code %d", sigResp.StatusCode)
+		}
+
+		sigData, err := io.ReadAll(sigResp.Body)
+		if err != nil {
+			return "", fmt.Errorf("failed to read signature file: %v", err)
+		}
+
+		// Verify the signature
+		if err := verifySignature(destination, sigData, pubKeyURL); err != nil {
+			// Remove the file if verification fails
+			os.Remove(destination)
+			return "", err
+		}
 	}
 
 	return destination, nil
 }
 
+// setRequestHeaders sets common headers for HTTP requests
+func setRequestHeaders(req *http.Request) {
+	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Expires", "0")
+	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", Version))
+}
+
+// fetchOCIImage handles downloading an OCI image with optional signature verification
 func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, destination string, config *Config) (string, error) {
 	parts := strings.SplitN(bEntry.DownloadURL, ":", 2)
 	if len(parts) != 2 {
@@ -208,19 +279,41 @@ func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry binaryEntry, 
 	}
 
 	title := filepath.Base(destination)
-	resp, err := downloadLayer(ctx, registry, repository, manifest, token, title)
+	binaryResp, sigResp, err := downloadLayerWithSignature(ctx, registry, repository, manifest, token, title)
 	if err != nil {
 		return "", fmt.Errorf("failed to get layer: %v", err)
 	}
-	defer resp.Body.Close()
+	defer binaryResp.Body.Close()
+	if sigResp != nil {
+		defer sigResp.Body.Close()
+	}
 
-	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, config); err != nil {
+	if err := downloadWithProgress(ctx, bar, binaryResp, destination, bEntry, config); err != nil {
 		return "", err
+	}
+
+	var pubKeyURL string
+	if bEntry.Repository.PubKeys != nil {
+		pubKeyURL = bEntry.Repository.PubKeys[bEntry.Repository.Name]
+	}
+
+	if pubKeyURL != "" && sigResp != nil {
+		sigData, err := io.ReadAll(sigResp.Body)
+		if err != nil {
+			return "", fmt.Errorf("failed to read signature data: %v", err)
+		}
+
+		// Verify the signature
+		if err := verifySignature(destination, sigData, pubKeyURL); err != nil {
+			os.Remove(destination)
+			return "", fmt.Errorf("signature does not match: %v", err)
+		}
 	}
 
 	return destination, nil
 }
 
+// parseImage parses an OCI image reference into registry and repository
 func parseImage(image string) (string, string) {
 	parts := strings.SplitN(image, "/", 2)
 	if len(parts) == 1 {
@@ -229,6 +322,7 @@ func parseImage(image string) (string, string) {
 	return parts[0], parts[1]
 }
 
+// getAuthToken gets an authentication token for an OCI registry
 func getAuthToken(registry, repository string) (string, error) {
 	url := fmt.Sprintf("https://%s/token?service=%s&scope=repository:%s:pull", registry, registry, repository)
 	resp, err := http.Get(url)
@@ -246,6 +340,7 @@ func getAuthToken(registry, repository string) (string, error) {
 	return tokenResponse.Token, nil
 }
 
+// downloadManifest downloads an OCI manifest
 func downloadManifest(ctx context.Context, registry, repository, version, token string) (map[string]any, error) {
 	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s", registry, repository, version)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -268,36 +363,82 @@ func downloadManifest(ctx context.Context, registry, repository, version, token 
 	return manifest, nil
 }
 
-func downloadLayer(ctx context.Context, registry, repository string, manifest map[string]any, token, title string) (*http.Response, error) {
+// downloadLayerWithSignature downloads an OCI layer and its signature if available
+func downloadLayerWithSignature(ctx context.Context, registry, repository string, manifest map[string]any, token, title string) (*http.Response, *http.Response, error) {
+	titleNoExt := filepath.Ext(title)
+	titleNoExt = title[0 : len(title)-len(titleNoExt)]
+
 	layers, ok := manifest["layers"].([]any)
 	if !ok {
-		return nil, fmt.Errorf("invalid manifest structure")
+		return nil, nil, fmt.Errorf("invalid manifest structure")
 	}
 
+	var binaryResp, sigResp *http.Response
+	var binaryDigest, sigDigest string
+
+	// First find the binary layer
 	for _, layer := range layers {
 		layerMap, ok := layer.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("invalid layer structure")
+			return nil, nil, fmt.Errorf("invalid layer structure")
 		}
 
 		annotations := layerMap["annotations"].(map[string]any)
 		layerTitle := annotations["org.opencontainers.image.title"].(string)
 
-		titleNoExt := filepath.Ext(title)
-		titleNoExt = title[0 : len(title)-len(titleNoExt)]
 		if layerTitle == title || layerTitle == titleNoExt {
-			digest := layerMap["digest"].(string)
-			url := fmt.Sprintf("https://%s/v2/%s/blobs/%s", registry, repository, digest)
-
-			req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-			if err != nil {
-				return nil, err
-			}
-			req.Header.Set("Authorization", "Bearer "+token)
-
-			return http.DefaultClient.Do(req)
+			binaryDigest = layerMap["digest"].(string)
+			break
 		}
 	}
 
-	return nil, fmt.Errorf("file with title '%s' not found in manifest", title)
+	// Then find the signature layer
+	for _, layer := range layers {
+		layerMap, ok := layer.(map[string]any)
+		if !ok {
+			return nil, nil, fmt.Errorf("invalid layer structure")
+		}
+
+		annotations := layerMap["annotations"].(map[string]any)
+		layerTitle := annotations["org.opencontainers.image.title"].(string)
+
+		if layerTitle == title+".sig" || layerTitle == titleNoExt+".sig" {
+			sigDigest = layerMap["digest"].(string)
+			break
+		}
+	}
+
+	if binaryDigest == "" {
+		return nil, nil, fmt.Errorf("file with title '%s' not found in manifest", title)
+	}
+
+	// Download the binary
+	binaryURL := fmt.Sprintf("https://%s/v2/%s/blobs/%s", registry, repository, binaryDigest)
+	req, err := http.NewRequestWithContext(ctx, "GET", binaryURL, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	binaryResp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Download the signature if we found one
+	if sigDigest != "" {
+		sigURL := fmt.Sprintf("https://%s/v2/%s/blobs/%s", registry, repository, sigDigest)
+		sigReq, err := http.NewRequestWithContext(ctx, "GET", sigURL, nil)
+		if err != nil {
+			return binaryResp, nil, err
+		}
+		sigReq.Header.Set("Authorization", "Bearer "+token)
+
+		sigResp, err = http.DefaultClient.Do(sigReq)
+		if err != nil {
+			return binaryResp, nil, err
+		}
+	}
+
+	return binaryResp, sigResp, nil
 }

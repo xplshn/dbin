@@ -92,7 +92,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 		parsedURL, err := url.ParseRequestURI(bEntry.Name)
 		if err == nil && parsedURL.Scheme != "" && parsedURL.Host != "" {
 			if verbosityLevel >= extraVerbose {
-				fmt.Printf("\033[2K\rFound \"%s\" is already a valid URL", bEntry.Name)
+				fmt.Printf("\033[2K\rFound \"%s\" is already a valid URL\n", bEntry.Name)
 			}
 			results = append(results, bEntry)
 			allFailed = false
@@ -111,7 +111,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 				DownloadURL: "!not_found",
 				Bsum:        "!no_check",
 			})
-			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]", parseBinaryEntry(bEntry, false)))
+			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]\n", parseBinaryEntry(bEntry, false)))
 			continue
 		}
 
@@ -121,7 +121,7 @@ func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, u
 		results = append(results, selectedBin)
 
 		if verbosityLevel >= extraVerbose {
-			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s", bEntry.Name, selectedBin.PkgId, selectedBin.Version)
+			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s\n", bEntry.Name, selectedBin.PkgId, selectedBin.Version)
 		}
 	}
 

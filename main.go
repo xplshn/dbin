@@ -14,7 +14,7 @@ type Verbosity int8
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	Indicator                           = "...>"
-	Version                             = 1.4
+	Version                             = 1.5
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
 	extraVerbose              Verbosity = 2
@@ -78,13 +78,13 @@ func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
 	var uRepoIndex []binaryEntry
 	var errMsg string
 
-	for _, url := range config.RepoURLs {
+	for _, repo := range config.Repositories {
 		repoIndex, err := decodeRepoIndex(config)
 		if err != nil {
 			if errMsg != "" {
 				errMsg += "\n"
 			}
-			errMsg += fmt.Sprintf("failed to fetch and decode binary information from %s: %v", url, err)
+			errMsg += fmt.Sprintf("failed to fetch and decode binary information from %s: %v", repo.URL, err)
 			continue
 		}
 		uRepoIndex = append(uRepoIndex, repoIndex...)

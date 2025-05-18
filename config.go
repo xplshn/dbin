@@ -10,25 +10,32 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/goccy/go-yaml"
 	"github.com/urfave/cli/v3"
-	"slices"
 )
 
+type Repository struct {
+	Name         string            `yaml:"Name,omitempty"`
+	URL          string            `yaml:"URL" env:"DBIN_REPO_URLs" description:"URL of the repository."`
+	PubKeys      map[string]string `yaml:"pubKeys" description:"URLs to the public keys for signature verification."`
+	SyncInterval time.Duration     `yaml:"syncInterval" description:"Interval for syncing this repository."`
+}
+
 type Config struct {
-	RepoURLs            []string `yaml:"RepoURLs" env:"DBIN_REPO_URLS" description:"List of repository URLs to fetch binaries from."`
-	InstallDir          string   `yaml:"InstallDir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME" description:"Directory where binaries will be installed."`
-	CacheDir            string   `yaml:"CacheDir" env:"DBIN_CACHEDIR" description:"Directory where cached binaries will be stored."`
-	Limit               uint     `yaml:"SearchResultsLimit" description:"Limit the number of search results displayed."`
-	ProgressbarStyle    int      `yaml:"PbarStyle,omitempty" description:"Style of the progress bar."`
-	DisableTruncation   bool     `yaml:"Truncation" env:"DBIN_NOTRUNCATION" description:"Disable truncation of output."`
-	RetakeOwnership     bool     `yaml:"RetakeOwnership" env:"DBIN_REOWN" description:"Retake ownership of installed binaries."`
-	UseIntegrationHooks bool     `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS" description:"Use integration hooks for binaries."`
-	DisableProgressbar  bool     `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR" description:"Disable the progress bar."`
-	NoConfig            bool     `yaml:"NoConfig" env:"DBIN_NOCONFIG" description:"Disable configuration file usage."`
-	ProgressbarFIFO     bool     `env:"DBIN_PB_FIFO" description:"Use FIFO for progress bar."`
-	Hooks               Hooks    `yaml:"Hooks,omitempty"`
+	Repositories        []Repository `yaml:"Repositories" env:"DBIN_REPO_URLS" description:"List of repositories to fetch binaries from."`
+	InstallDir          string       `yaml:"InstallDir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME" description:"Directory where binaries will be installed."`
+	CacheDir            string       `yaml:"CacheDir" env:"DBIN_CACHEDIR" description:"Directory where cached binaries will be stored."`
+	Limit               uint         `yaml:"SearchResultsLimit" description:"Limit the number of search results displayed."`
+	ProgressbarStyle    int          `yaml:"PbarStyle,omitempty" description:"Style of the progress bar."`
+	DisableTruncation   bool         `yaml:"Truncation" env:"DBIN_NOTRUNCATION" description:"Disable truncation of output."`
+	RetakeOwnership     bool         `yaml:"RetakeOwnership" env:"DBIN_REOWN" description:"Retake ownership of installed binaries."`
+	UseIntegrationHooks bool         `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS" description:"Use integration hooks for binaries."`
+	DisableProgressbar  bool         `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR" description:"Disable the progress bar."`
+	NoConfig            bool         `yaml:"NoConfig" env:"DBIN_NOCONFIG" description:"Disable configuration file usage."`
+	ProgressbarFIFO     bool         `env:"DBIN_PB_FIFO" description:"Use FIFO for progress bar."`
+	Hooks               Hooks        `yaml:"Hooks,omitempty"`
 }
 
 type Hooks struct {
@@ -156,9 +163,11 @@ func loadConfig() (*Config, error) {
 	// Tell user their repoUrls _may_ be outdated
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 	for v := Version - 0.1; v >= Version-0.3; v -= 0.1 {
-		url := fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
-		if slices.Contains(cfg.RepoURLs, url) {
-			fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, Version)
+		url := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
+		for _, repo := range cfg.Repositories {
+			if repo.URL == url {
+				fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, Version)
+			}
 		}
 	}
 
@@ -185,6 +194,7 @@ func overrideWithEnv(cfg *Config) {
 				case reflect.String:
 					field.SetString(value)
 				case reflect.Slice:
+					// TODO: The bareminimum for a repository is having a URL. The env variable DBIN_REPO_URLs should allow overriding the config's repos
 					field.Set(reflect.ValueOf(strings.Split(value, ",")))
 				case reflect.Bool:
 					if val, err := strconv.ParseBool(value); err == nil {
@@ -229,9 +239,19 @@ func setDefaultValues(config *Config) {
 	}
 	config.CacheDir = filepath.Join(tempDir, "dbin_cache")
 	arch := runtime.GOARCH + "_" + runtime.GOOS
-	config.RepoURLs = []string{
-		fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", Version, arch, ".lite.cbor.zst"),
+
+	// Set default repositories
+	config.Repositories = []Repository{
+		{
+			URL:             fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", Version, arch, ".lite.cbor.zst"),
+			PubKeys: map[string]string{
+				"bincache": "https://meta.pkgforge.dev/bincache/minisign.pub",
+				"pkgcache": "https://meta.pkgforge.dev/pkgcache/minisign.pub",
+			},
+			SyncInterval:     6 * time.Hour,
+		},
 	}
+
 	config.DisableTruncation = false
 	config.Limit = 90
 	config.UseIntegrationHooks = true

@@ -28,4 +28,5 @@ type binaryEntry struct {
 	WebURLs     []string 			`json:"web_urls,omitempty"    `
 	Snapshots   []snapshot          `json:"snapshots,omitempty"   `
 	Rank        uint16   			`json:"rank,omitempty"        `
+	Repository  Repository
 }
