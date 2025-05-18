@@ -311,7 +311,7 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 
 	for _, repo := range config.Repositories {
 		if parsedRepos[repo.URL] {
-			continue // Skip if URL is already parsed
+			continue
 		}
 
 		var bodyBytes []byte

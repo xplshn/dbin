@@ -75,25 +75,9 @@ func getVerbosityLevel(c *cli.Command) Verbosity {
 }
 
 func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
-	var uRepoIndex []binaryEntry
-	var errMsg string
-
-	for _, repo := range config.Repositories {
-		repoIndex, err := decodeRepoIndex(config)
-		if err != nil {
-			if errMsg != "" {
-				errMsg += "\n"
-			}
-			errMsg += fmt.Sprintf("failed to fetch and decode binary information from %s: %v", repo.URL, err)
-			continue
-		}
-		uRepoIndex = append(uRepoIndex, repoIndex...)
+	uRepoIndex, err := decodeRepoIndex(config)
+	if err != nil {
+		return nil, fmt.Errorf("%v: Consider checking if DBIN_NOCONFIG=1 works, if so, consider modifying your config, your repository URLs may be outdated.\nAlso consider removing dbin's cache if the above fails.\n", err)
 	}
-
-	if errMsg != "" {
-		advice := "Consider checking if DBIN_NOCONFIG=1 works, if so, consider modifying your config, your repository URLs may be outdated.\nAlso consider removing dbin's cache if the above fails."
-		return uRepoIndex, fmt.Errorf("%s\n%s", errMsg, advice)
-	}
-
 	return uRepoIndex, nil
 }

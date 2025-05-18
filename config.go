@@ -267,27 +267,27 @@ func createDefaultConfig() error {
 
 	cfg.Hooks = Hooks{
 		Commands: map[string]HookCommands{
-			".AppBundle": {
-				IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
-				DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
-				IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
-				DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
-				UseRunFromCache:       true,
-			},
-			".AppImage": {
-				IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
-				DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
-				IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
-				DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
-				UseRunFromCache:       true,
-			},
-			".NixAppImage": {
-				IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
-				DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
-				IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
-				DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
-				UseRunFromCache:       true,
-			},
+			//".AppBundle": {
+			//	IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
+			//	DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
+			//	IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
+			//	DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
+			//	UseRunFromCache:       true,
+			//},
+			//".AppImage": {
+			//	IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
+			//	DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
+			//	IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
+			//	DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
+			//	UseRunFromCache:       true,
+			//},
+			//".NixAppImage": {
+			//	IntegrationCommands:   []string{"pelfd --integrate {{binary}}"},
+			//	DeintegrationCommands: []string{"pelfd --deintegrate {{binary}}"},
+			//	IntegrationErrorMsg:   "[%s] Could not integrate with the system via pelfd; Error: %v",
+			//	DeintegrationErrorMsg: "[%s] Could not deintegrate from the system via pelfd; Error: %v",
+			//	UseRunFromCache:       true,
+			//},
 			"": {
 				IntegrationCommands:   []string{"upx {{binary}}"},
 				DeintegrationCommands: []string{""},
