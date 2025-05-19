@@ -321,7 +321,7 @@ func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry,
 		return "", fmt.Errorf("failed to get manifest: %v", err)
 	}
 	title := filepath.Base(destination)
-	binaryResp, sigResp, err := downloadLayerWithSignatureOCI(ctx, registry, repository, manifest, token, title, destination+".tmp")
+	binaryResp, sigResp, err := downloadOCILayer(ctx, registry, repository, manifest, token, title, destination+".tmp")
 	if err != nil {
 		return "", fmt.Errorf("failed to get layer: %v", err)
 	}
@@ -393,8 +393,8 @@ func downloadManifest(ctx context.Context, registry, repository, version, token 
 	return manifest, nil
 }
 
-// downloadLayerWithSignatureOCI supports resuming via xattr and .tmp.
-func downloadLayerWithSignatureOCI(ctx context.Context, registry, repository string, manifest map[string]any, token, title, tmpPath string) (*http.Response, *http.Response, error) {
+// downloadOCILayer supports resuming via xattr and .tmp.
+func downloadOCILayer(ctx context.Context, registry, repository string, manifest map[string]any, token, title, tmpPath string) (*http.Response, *http.Response, error) {
 	titleNoExt := strings.TrimSuffix(title, filepath.Ext(title))
 	layers, ok := manifest["layers"].([]any)
 	if !ok {
