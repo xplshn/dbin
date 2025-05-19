@@ -81,6 +81,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 			}
 
 			err = os.Remove(installPath)
+
 			if err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
 					fmt.Fprintf(os.Stderr, "error: failed to remove '%s' from %s. %v\n", bEntry.Name, installDir, err)

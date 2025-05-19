@@ -23,9 +23,9 @@ func installCommand() *cli.Command {
 				return err
 			}
 			uRepoIndex, err := fetchRepoIndex(config)
-            if err != nil {
-                return err
-            }
+			if err != nil {
+				return err
+			}
 			return installBinaries(context.Background(), config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
 		},
 	}
@@ -37,14 +37,13 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 
 	var wg sync.WaitGroup
 	var errors []string
+	var errorsMu sync.Mutex
 
-	// New version using the binaryEntryResult
 	binResults, err := findURL(config, bEntries, verbosityLevel, uRepoIndex)
 	if err != nil {
 		return err
 	}
 
-	// Only create the progress bar if not in silent mode
 	var bar progressbar.MultiPB
 	var tasks *progressbar.Tasks
 	if verbosityLevel >= normalVerbosity {
@@ -85,30 +84,39 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 			tasks.Add(
 				progressbar.WithTaskAddBarTitle(barTitle),
 				progressbar.WithTaskAddBarOptions(pbarOpts...),
-				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) {
+				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) (stop bool) {
 					defer wg.Done()
 					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, &bEntry, destination, config)
 					if fetchErr != nil {
+						errorsMu.Lock()
 						errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v\n", bEntry.Name, fetchErr))
+						errorsMu.Unlock()
 						return
 					}
 
 					if err := os.Chmod(destination, 0755); err != nil {
+						errorsMu.Lock()
 						errors = append(errors, fmt.Sprintf("error: error making binary executable %s: %v\n", destination, err))
+						errorsMu.Unlock()
 						return
 					}
 
 					if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
+						errorsMu.Lock()
 						errors = append(errors, fmt.Sprintf("error: [%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
+						errorsMu.Unlock()
 						return
 					}
 
-					// Use the binary entry from the result directly since it already has the correct version info
 					binInfo := &bEntry
 					if err := embedBEntry(destination, *binInfo); err != nil {
+						errorsMu.Lock()
 						errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
+						errorsMu.Unlock()
 						return
 					}
+
+					return
 				}),
 			)
 		} else {
@@ -116,24 +124,31 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 				defer wg.Done()
 				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, &bEntry, destination, config)
 				if fetchErr != nil {
+					errorsMu.Lock()
 					errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v", bEntry.Name, fetchErr))
+					errorsMu.Unlock()
 					return
 				}
 
 				if err := os.Chmod(destination, 0755); err != nil {
+					errorsMu.Lock()
 					errors = append(errors, fmt.Sprintf("error: error making binary executable %s: %v", destination, err))
+					errorsMu.Unlock()
 					return
 				}
 
 				if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
+					errorsMu.Lock()
 					errors = append(errors, fmt.Sprintf("error: [%s] could not be handled by its default hooks: %v", bEntry.Name, err))
+					errorsMu.Unlock()
 					return
 				}
 
-				// Use the binaryEntry directly with its correct version info
 				binInfo := &bEntry
 				if err := embedBEntry(destination, *binInfo); err != nil {
+					errorsMu.Lock()
 					errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v", destination, err))
+					errorsMu.Unlock()
 					return
 				}
 
