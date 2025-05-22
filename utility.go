@@ -37,15 +37,45 @@ func isExecutable(filePath string) bool {
 }
 
 func parseBinaryEntry(entry binaryEntry, ansi bool) string {
+	result := entry.Name
+
 	if ansi && term.IsTerminal(int(os.Stdout.Fd())) {
-		return entry.Name + "\033[94m" + ternary(entry.PkgId != "", "#"+entry.PkgId, "") + "\033[0m" + ternary(entry.Repository.Name != "", "\033[92m"+"@"+entry.Repository.Name+"\033[0m", "")
+		if entry.PkgId != "" {
+			result += "\033[94m" + "#" + entry.PkgId + "\033[0m"
+		}
+		//if entry.Version != "" {
+		//	result += "\033[92m" + ":" + entry.Version + "\033[0m"
+		//}
+		if entry.Repository.Name != "" {
+			result += "\033[92m" + "@" + entry.Repository.Name + "\033[0m"
+		}
+		return result
 	}
-	return entry.Name + ternary(entry.PkgId != "", "#"+entry.PkgId, "") + ternary(entry.Repository.Name != "", "@"+entry.Repository.Name, "")
+
+	if entry.PkgId != "" {
+		result += "#" + entry.PkgId
+	}
+	//if entry.Version != "" {
+	//	result += ":" + entry.Version
+	//}
+	if entry.Repository.Name != "" {
+		result += "@" + entry.Repository.Name
+	}
+	return result
 }
 
 func stringToBinaryEntry(input string) binaryEntry {
 	var bEntry binaryEntry
 
+	/* Accepted strings:
+	.name
+	.name#.id
+	.name#.id:.version
+	.name#.id@.repo
+	.name#id:.version@repo
+	*/
+
+	// Split the input string into parts based on '@' and '#'
 	parts := strings.SplitN(input, "@", 2)
 	bEntry.Name = parts[0]
 
@@ -95,45 +125,73 @@ func binaryEntriesToArrString(entries []binaryEntry, ansi bool) []string {
 }
 
 func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
-	programsEntries, err := listBinaries(uRepoIndex)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list remote binaries: %w", err)
+	var (
+		programsEntries []binaryEntry
+		validPrograms   []binaryEntry
+		err             error
+		files           []string
+	)
+
+	if config.RetakeOwnership {
+		programsEntries, err = listBinaries(uRepoIndex)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list remote binaries: %w", err)
+		}
 	}
 
-	files, err := listFilesInDir(config.InstallDir)
+	files, err = listFilesInDir(config.InstallDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files in %s: %w", config.InstallDir, err)
 	}
 
-	validPrograms := make([]binaryEntry, 0, len(programsToValidate))
-
-	validate := func(file string) (binaryEntry, bool) {
-		trackedBEntry := bEntryOfinstalledBinary(file)
-		if config.RetakeOwnership {
-			trackedBEntry.Name = filepath.Base(file)
-			if trackedBEntry.PkgId == "" {
-				trackedBEntry.PkgId = "!retake"
-			}
+	var toProcess []string
+	if len(programsToValidate) == 0 {
+		// All files in install dir
+		toProcess = files
+	} else {
+		// Only the specific binaries requested
+		toProcess = toProcess[:0]
+		for i := range programsToValidate {
+			file := filepath.Join(config.InstallDir, programsToValidate[i].Name)
+			toProcess = append(toProcess, file)
 		}
-		for _, remoteEntry := range programsEntries {
-			if remoteEntry.Name == trackedBEntry.Name && (remoteEntry.PkgId == trackedBEntry.PkgId || trackedBEntry.PkgId == "!retake") {
-				return trackedBEntry, true
-			}
-		}
-		return binaryEntry{}, false
 	}
 
-	if len(programsToValidate) == 0 {
-		for _, file := range files {
-			if bEntry, valid := validate(file); valid {
-				validPrograms = append(validPrograms, bEntry)
-			}
+	// Only allocate once, at most as many entries as files to process
+	validPrograms = make([]binaryEntry, 0, len(toProcess))
+
+	for i := range toProcess {
+		file := toProcess[i]
+		if !isExecutable(file) || (len(programsToValidate) != 0 && !fileExists(file)) {
+			continue
 		}
-	} else {
-		for _, program := range programsToValidate {
-			file := filepath.Join(config.InstallDir, program.Name)
-			if bEntry, valid := validate(file); valid {
-				validPrograms = append(validPrograms, bEntry)
+
+		baseName := filepath.Base(file)
+		trackedBEntry := bEntryOfinstalledBinary(file)
+
+		if config.RetakeOwnership {
+			if trackedBEntry.Name == "" {
+				trackedBEntry.Name = baseName
+				trackedBEntry.PkgId = "!retake"
+			}
+
+			for j := range programsEntries {
+				if programsEntries[j].Name == trackedBEntry.Name {
+					validPrograms = append(validPrograms, trackedBEntry)
+					break
+				}
+			}
+			continue
+		}
+
+		// Non-retake: must have metadata and match uRepoIndex
+		if trackedBEntry.Name == "" {
+			continue
+		}
+		for j := range uRepoIndex {
+			if uRepoIndex[j].Name == trackedBEntry.Name && uRepoIndex[j].PkgId == trackedBEntry.PkgId {
+				validPrograms = append(validPrograms, trackedBEntry)
+				break
 			}
 		}
 	}
@@ -252,7 +310,10 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 		return binaryEntry{}, fmt.Errorf("xattr: user.FullName attribute not found for binary: %s", binaryPath)
 	}
 
-	return stringToBinaryEntry(string(fullName)), nil
+	bEntry := stringToBinaryEntry(string(fullName))
+	bEntry.Version = ""
+
+	return bEntry, nil
 }
 
 func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {

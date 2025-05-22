@@ -16,8 +16,6 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-var verbosityLevel Verbosity
-
 type Repository struct {
 	Name         string            `yaml:"Name,omitempty"`
 	URL          string            `yaml:"URL" env:"DBIN_REPO_URLs" description:"URL of the repository."`
@@ -333,10 +331,10 @@ func createDefaultConfigAt(configFilePath string) error {
 	cfg.Hooks = Hooks{
 		Commands: map[string]HookCommands{
 			"": {
-				IntegrationCommand:   "upx {{binary}}",
+				IntegrationCommand:   "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",
 				DeintegrationCommand: "",
 				UseRunFromCache:      true,
-				NoOp:                 true,
+				NoOp:                 false,
 			},
 		},
 	}

@@ -47,7 +47,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 			trackedBEntry, err := readEmbeddedBEntry(installPath)
 			if err != nil {
 				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s#%s'. Skipping removal because this program may not have been installed by dbin.\n", bEntry.Name, bEntry.PkgId)
+					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s'. Skipping removal because this program may not have been installed by dbin.\n", parseBinaryEntry(bEntry, true))
 				}
 				return
 			}

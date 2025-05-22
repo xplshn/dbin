@@ -10,6 +10,7 @@ import (
 )
 
 type Verbosity int8
+var verbosityLevel Verbosity
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "

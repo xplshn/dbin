@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+	"strings"
 
 	"github.com/urfave/cli/v3"
 )
@@ -137,6 +138,11 @@ func cleanCache(cacheDir string, verbosityLevel Verbosity) error {
 
 	var filesWithAtime []fileWithAtime
 	for _, entry := range files {
+		// Skip files that start with "."
+		if strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+
 		filePath := filepath.Join(cacheDir, entry.Name())
 
 		if !isExecutable(filePath) {
