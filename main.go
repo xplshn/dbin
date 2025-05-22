@@ -82,3 +82,4 @@ func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
 	}
 	return uRepoIndex, nil
 }
+

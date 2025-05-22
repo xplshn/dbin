@@ -17,6 +17,7 @@ require (
 	github.com/tiendc/go-deepcopy v1.5.1
 	github.com/urfave/cli/v3 v3.3.3
 	github.com/zeebo/blake3 v0.2.4
+	github.com/zeebo/errs v1.4.0
 	golang.org/x/term v0.32.0
 )
 
