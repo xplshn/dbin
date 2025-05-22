@@ -27,15 +27,15 @@ var (
 	errSplitArgs        = errs.Class("split args error")
 )
 
-type Repository struct {
+type repository struct {
 	Name         string            `yaml:"Name,omitempty"`
 	URL          string            `yaml:"URL" env:"DBIN_REPO_URLs" description:"URL of the repository."`
 	PubKeys      map[string]string `yaml:"pubKeys" description:"URLs to the public keys for signature verification."`
 	SyncInterval time.Duration     `yaml:"syncInterval" description:"Interval for syncing this repository."`
 }
 
-type Config struct {
-	Repositories        []Repository `yaml:"Repositories" env:"DBIN_REPO_URLS" description:"List of repositories to fetch binaries from."`
+type config struct {
+	Repositories        []repository `yaml:"Repositories" env:"DBIN_REPO_URLS" description:"List of repositories to fetch binaries from."`
 	InstallDir          string       `yaml:"InstallDir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME" description:"Directory where binaries will be installed."`
 	CacheDir            string       `yaml:"CacheDir" env:"DBIN_CACHE_DIR" description:"Directory where cached binaries will be stored."`
 	Limit               uint         `yaml:"SearchResultsLimit" description:"Limit the number of search results displayed."`
@@ -46,14 +46,14 @@ type Config struct {
 	DisableProgressbar  bool         `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR" description:"Disable the progress bar."`
 	NoConfig            bool         `yaml:"NoConfig" env:"DBIN_NOCONFIG" description:"Disable configuration file usage."`
 	ProgressbarFIFO     bool         `env:"DBIN_PB_FIFO" description:"Use FIFO for progress bar."`
-	Hooks               Hooks        `yaml:"Hooks,omitempty"`
+	Hooks               hooks        `yaml:"Hooks,omitempty"`
 }
 
-type Hooks struct {
-	Commands map[string]HookCommands `yaml:"commands" description:"Commands for hooks."`
+type hooks struct {
+	Commands map[string]hookCommands `yaml:"commands" description:"Commands for hooks."`
 }
 
-type HookCommands struct {
+type hookCommands struct {
 	IntegrationCommand   string `yaml:"integrationCommand" description:"Command to run for integration."`
 	DeintegrationCommand string `yaml:"deintegrationCommand" description:"Command to run for deintegration."`
 	UseRunFromCache      bool   `yaml:"runFromCache" description:"Use run from cache for hooks."`
@@ -75,7 +75,7 @@ func configCommand() *cli.Command {
 				Usage: "Show the current configuration",
 			},
 		},
-		Action: func(ctx context.Context, c *cli.Command) error {
+		Action: func(_ context.Context, c *cli.Command) error {
 			if c.Bool("new") {
 				return createDefaultConfig()
 			} else if c.Bool("show") {
@@ -93,7 +93,7 @@ func configCommand() *cli.Command {
 	}
 }
 
-func printConfig(config *Config) {
+func printConfig(config *config) {
 	v := reflect.ValueOf(config).Elem()
 	t := v.Type()
 
@@ -147,7 +147,7 @@ func splitArgs(cmd string) ([]string, error) {
 	return args, nil
 }
 
-func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension string, isIntegration bool) error {
+func executeHookCommand(config *config, cmdTemplate, bEntryPath, extension string, isIntegration bool) error {
 	hookCommands, exists := config.Hooks.Commands[extension]
 	if !exists {
 		return errCommandExecution.New("no commands found for extension: %s", extension)
@@ -198,8 +198,8 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	return nil
 }
 
-func loadConfig() (*Config, error) {
-	cfg := Config{}
+func loadConfig() (*config, error) {
+	cfg := config{}
 	setDefaultValues(&cfg)
 
 	if nocfg, ok := os.LookupEnv("DBIN_NOCONFIG"); ok && (nocfg == "1" || strings.ToLower(nocfg) == "true" || nocfg == "yes") {
@@ -242,7 +242,7 @@ func loadConfig() (*Config, error) {
 	return &cfg, nil
 }
 
-func loadYAML(filePath string, cfg *Config) error {
+func loadYAML(filePath string, cfg *config) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return errConfigFileAccess.Wrap(err)
@@ -251,7 +251,7 @@ func loadYAML(filePath string, cfg *Config) error {
 	return yaml.NewDecoder(file).Decode(cfg)
 }
 
-func overrideWithEnv(cfg *Config) {
+func overrideWithEnv(cfg *config) {
 	v := reflect.ValueOf(cfg).Elem()
 	t := v.Type()
 
@@ -263,11 +263,11 @@ func overrideWithEnv(cfg *Config) {
 					field.SetString(value)
 				case reflect.Slice:
 					// Special handling for []Repository
-					if field.Type() == reflect.TypeOf([]Repository{}) {
+					if field.Type() == reflect.TypeOf([]repository{}) {
 						urls := strings.Split(value, ",")
-						var repos []Repository
+						var repos []repository
 						for _, url := range urls {
-							repos = append(repos, Repository{
+							repos = append(repos, repository{
 								URL: strings.TrimSpace(url),
 							})
 						}
@@ -304,7 +304,7 @@ func overrideWithEnv(cfg *Config) {
 	}
 }
 
-func setDefaultValues(config *Config) {
+func setDefaultValues(config *config) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Printf("failed to get user's Home directory: %v\n", err)
@@ -319,7 +319,7 @@ func setDefaultValues(config *Config) {
 	config.CacheDir = filepath.Join(tempDir, "dbin_cache")
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 
-	config.Repositories = []Repository{
+	config.Repositories = []repository{
 		{
 			URL: fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", Version, arch, ".lite.cbor.zst"),
 			PubKeys: map[string]string{
@@ -348,11 +348,11 @@ func createDefaultConfig() error {
 }
 
 func createDefaultConfigAt(configFilePath string) error {
-	cfg := Config{}
+	cfg := config{}
 	setDefaultValues(&cfg)
 
-	cfg.Hooks = Hooks{
-		Commands: map[string]HookCommands{
+	cfg.Hooks = hooks{
+		Commands: map[string]hookCommands{
 			"": {
 				IntegrationCommand:   "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",
 				DeintegrationCommand: "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",

@@ -20,7 +20,7 @@ func updateCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "update",
 		Usage: "Update binaries, by checking their b3sum[:256] against the repo's",
-		Action: func(ctx context.Context, c *cli.Command) error {
+		Action: func(_ context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
 				return errUpdateFailed.Wrap(err)
@@ -34,7 +34,7 @@ func updateCommand() *cli.Command {
 	}
 }
 
-func update(config *Config, programsToUpdate []binaryEntry, uRepoIndex []binaryEntry) error {
+func update(config *config, programsToUpdate []binaryEntry, uRepoIndex []binaryEntry) error {
 	var (
 		skipped, updated, errors uint32
 		checked                  uint32

@@ -22,7 +22,7 @@ func installCommand() *cli.Command {
 		Name:    "install",
 		Aliases: []string{"add"},
 		Usage:   "Install binaries",
-		Action: func(ctx context.Context, c *cli.Command) error {
+		Action: func(_ context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
 				return err
@@ -36,7 +36,7 @@ func installCommand() *cli.Command {
 	}
 }
 
-func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry, uRepoIndex []binaryEntry) error {
+func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry, uRepoIndex []binaryEntry) error {
 	cursor.Hide()
 	defer cursor.Show()
 
@@ -177,7 +177,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 	return nil
 }
 
-func runIntegrationHooks(config *Config, binaryPath string) error {
+func runIntegrationHooks(config *config, binaryPath string) error {
 	if config.UseIntegrationHooks {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {

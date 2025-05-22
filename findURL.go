@@ -84,7 +84,7 @@ func selectHighestRankedBin(matchingBins []binaryEntry, highestRank uint16) bina
 	return binaryEntry{}
 }
 
-func findURL(config *Config, bEntries []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
+func findURL(config *config, bEntries []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
 	var results []binaryEntry
 	var allErrors []error
 	allFailed := true

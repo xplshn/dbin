@@ -35,7 +35,7 @@ func infoCommand() *cli.Command {
 				Usage: "Print output as YAML",
 			},
 		},
-		Action: func(ctx context.Context, c *cli.Command) error {
+		Action: func(_ context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
 				return err
@@ -157,7 +157,7 @@ func findBinaryInfo(bEntry binaryEntry, uRepoIndex []binaryEntry) (binaryEntry, 
 	return selectedBin, true
 }
 
-func getBinaryInfo(config *Config, bEntry binaryEntry, uRepoIndex []binaryEntry) (*binaryEntry, error) {
+func getBinaryInfo(config *config, bEntry binaryEntry, uRepoIndex []binaryEntry) (*binaryEntry, error) {
 	if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); bEntry.PkgID == "" && instBEntry.PkgID != "" {
 		bEntry = instBEntry
 	}

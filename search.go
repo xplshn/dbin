@@ -24,7 +24,7 @@ func searchCommand() *cli.Command {
 				Usage:   "Set the limit of entries to be shown at once on the screen",
 			},
 		},
-		Action: func(ctx context.Context, c *cli.Command) error {
+		Action: func(_ context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
 				return errSearchFailed.Wrap(err)
@@ -43,7 +43,7 @@ func searchCommand() *cli.Command {
 	}
 }
 
-func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) error {
+func fSearch(config *config, searchTerms []string, uRepoIndex []binaryEntry) error {
 	var results []binaryEntry
 	for _, bin := range uRepoIndex {
 		name, pkgID, version, description, rank, repo := bin.Name, bin.PkgID, bin.Version, bin.Description, bin.Rank, bin.Repository

@@ -217,7 +217,7 @@ func validateFileType(filePath string) error {
 	return errFileTypeInvalid.New("file is neither a shell script nor an ELF. Please report this at @ https://github.com/xplshn/dbin")
 }
 
-func verifySignature(binaryPath string, sigData []byte, bEntry *binaryEntry, cfg *Config) error {
+func verifySignature(binaryPath string, sigData []byte, bEntry *binaryEntry, cfg *config) error {
 	file, err := os.Open(binaryPath)
 	if err != nil {
 		return errSignatureVerify.Wrap(err)
@@ -252,7 +252,7 @@ func verifySignature(binaryPath string, sigData []byte, bEntry *binaryEntry, cfg
 	return nil
 }
 
-func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *Config) error {
+func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *config) error {
 	if strings.HasPrefix(bEntry.DownloadURL, "oci://") {
 		bEntry.DownloadURL = strings.TrimPrefix(bEntry.DownloadURL, "oci://")
 		return fetchOCIImage(ctx, bar, bEntry, destination, cfg)
@@ -312,7 +312,7 @@ func setRequestHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", Version))
 }
 
-func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *Config) error {
+func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *config) error {
 	parts := strings.SplitN(bEntry.DownloadURL, ":", 2)
 	if len(parts) != 2 {
 		return errOCIReference.New("invalid OCI reference format")

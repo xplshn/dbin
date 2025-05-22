@@ -22,7 +22,7 @@ func listCommand() *cli.Command {
 				Usage: "List binaries with descriptions",
 			},
 		},
-		Action: func(ctx context.Context, c *cli.Command) error {
+		Action: func(_ context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
 				return errListBinariesFailed.Wrap(err)

@@ -1,16 +1,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strconv"
+	"context"
 
 	"github.com/urfave/cli/v3"
 )
 
-type Verbosity int8
-var verbosityLevel Verbosity
+type verbosity int8
+var verbosityLevel verbosity
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
@@ -18,10 +18,10 @@ const (
 	Version                             = 1.5
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
-	extraVerbose              Verbosity = 2
-	normalVerbosity           Verbosity = 1
-	silentVerbosityWithErrors Verbosity = -1
-	extraSilent               Verbosity = -2
+	extraVerbose              verbosity = 2
+	normalVerbosity           verbosity = 1
+	silentVerbosityWithErrors verbosity = -1
+	extraSilent               verbosity = -2
 )
 
 func main() {
@@ -64,7 +64,7 @@ func main() {
 	}
 }
 
-func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
+func fetchRepoIndex(config *config) ([]binaryEntry, error) {
 	uRepoIndex, err := decodeRepoIndex(config)
 	if err != nil {
 		return nil, fmt.Errorf("%v: Consider checking if DBIN_NOCONFIG=1 works, if so, consider modifying your config, your repository URLs may be outdated.\nAlso consider removing dbin's cache if the above fails", err)

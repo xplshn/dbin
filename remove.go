@@ -21,7 +21,7 @@ func removeCommand() *cli.Command {
 		Name:    "remove",
 		Aliases: []string{"del"},
 		Usage:   "Remove binaries",
-		Action: func(ctx context.Context, c *cli.Command) error {
+		Action: func(_ context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
 				return errRemoveFailed.Wrap(err)
@@ -31,7 +31,7 @@ func removeCommand() *cli.Command {
 	}
 }
 
-func removeBinaries(config *Config, bEntries []binaryEntry) error {
+func removeBinaries(config *config, bEntries []binaryEntry) error {
 	var wg sync.WaitGroup
 	var removeErrors []string
 	var mutex sync.Mutex
@@ -105,7 +105,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry) error {
 	return nil
 }
 
-func runDeintegrationHooks(config *Config, binaryPath string) error {
+func runDeintegrationHooks(config *config, binaryPath string) error {
 	if config.UseIntegrationHooks {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {

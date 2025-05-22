@@ -29,7 +29,7 @@ func runCommand() *cli.Command {
 			},
 		},
 		SkipFlagParsing: true,
-		Action: func(ctx context.Context, c *cli.Command) error {
+		Action: func(_ context.Context, c *cli.Command) error {
 			if c.NArg() == 0 {
 				return errRunFailed.New("no binary name provided for run command")
 			}
@@ -45,7 +45,7 @@ func runCommand() *cli.Command {
 	}
 }
 
-func runFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, env []string) error {
+func runFromCache(config *config, bEntry binaryEntry, args []string, transparentMode bool, env []string) error {
 	if transparentMode {
 		binaryPath, err := exec.LookPath(bEntry.Name)
 		if err == nil {
@@ -97,7 +97,7 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 	return cleanCache(config.CacheDir)
 }
 
-func isCached(config *Config, bEntry binaryEntry) (string, error) {
+func isCached(config *config, bEntry binaryEntry) (string, error) {
 	cachedFile := filepath.Join(config.CacheDir, filepath.Base(bEntry.Name))
 
 	if fileExists(cachedFile) && isExecutable(cachedFile) {

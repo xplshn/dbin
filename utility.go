@@ -135,7 +135,7 @@ func binaryEntriesToArrString(entries []binaryEntry, ansi bool) []string {
 	return result
 }
 
-func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
+func validateProgramsFrom(config *config, programsToValidate []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
 	var (
 		programsEntries []binaryEntry
 		validPrograms   []binaryEntry
@@ -336,7 +336,7 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	return stringToBinaryEntry(string(fullName)), nil
 }
 
-func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
+func accessCachedOrFetch(url, filename string, cfg *config) ([]byte, error) {
 	cacheFilePath := filepath.Join(cfg.CacheDir, ternary(filename != "", "."+filename, "."+filepath.Base(url)))
 
 	if err := os.MkdirAll(cfg.CacheDir, 0755); err != nil {
@@ -381,7 +381,7 @@ func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
 	return bodyBytes, nil
 }
 
-func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
+func decodeRepoIndex(config *config) ([]binaryEntry, error) {
 	var binaryEntries []binaryEntry
 	var parsedRepos = make(map[string]bool)
 
