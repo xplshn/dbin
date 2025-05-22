@@ -10,6 +10,11 @@ import (
 	"github.com/hedzr/progressbar"
 	"github.com/hedzr/progressbar/cursor"
 	"github.com/urfave/cli/v3"
+	"github.com/zeebo/errs"
+)
+
+var (
+	ErrInstallFailed = errs.Class("installation failed")
 )
 
 func installCommand() *cli.Command {
@@ -41,7 +46,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 
 	binResults, err := findURL(config, bEntries, uRepoIndex)
 	if err != nil {
-		return err
+		return ErrInstallFailed.Wrap(err)
 	}
 
 	var bar progressbar.MultiPB
@@ -89,21 +94,21 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, &bEntry, destination, config)
 					if fetchErr != nil {
 						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v\n", bEntry.Name, fetchErr))
+						errors = append(errors, fmt.Sprintf("error fetching binary %s: %v\n", bEntry.Name, fetchErr))
 						errorsMu.Unlock()
 						return
 					}
 
 					if err := os.Chmod(destination, 0755); err != nil {
 						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("error: error making binary executable %s: %v\n", destination, err))
+						errors = append(errors, fmt.Sprintf("error making binary executable %s: %v\n", destination, err))
 						errorsMu.Unlock()
 						return
 					}
 
 					if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
 						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("error: [%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
+						errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
 						errorsMu.Unlock()
 						return
 					}
@@ -111,7 +116,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 					binInfo := &bEntry
 					if err := embedBEntry(destination, *binInfo); err != nil {
 						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
+						errors = append(errors, fmt.Sprintf("failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
 						errorsMu.Unlock()
 						return
 					}
@@ -125,21 +130,21 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, &bEntry, destination, config)
 				if fetchErr != nil {
 					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("error: error fetching binary %s: %v", bEntry.Name, fetchErr))
+					errors = append(errors, fmt.Sprintf("error fetching binary %s: %v", bEntry.Name, fetchErr))
 					errorsMu.Unlock()
 					return
 				}
 
 				if err := os.Chmod(destination, 0755); err != nil {
 					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("error: error making binary executable %s: %v", destination, err))
+					errors = append(errors, fmt.Sprintf("error making binary executable %s: %v", destination, err))
 					errorsMu.Unlock()
 					return
 				}
 
 				if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
 					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("error: [%s] could not be handled by its default hooks: %v", bEntry.Name, err))
+					errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err))
 					errorsMu.Unlock()
 					return
 				}
@@ -147,7 +152,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 				binInfo := &bEntry
 				if err := embedBEntry(destination, *binInfo); err != nil {
 					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("error: failed to add fullName property to the binary's xattr %s: %v", destination, err))
+					errors = append(errors, fmt.Sprintf("failed to add fullName property to the binary's xattr %s: %v", destination, err))
 					errorsMu.Unlock()
 					return
 				}
@@ -177,7 +182,7 @@ func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbo
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			if err := executeHookCommand(config, hookCommands.IntegrationCommand, binaryPath, ext, true); err != nil {
-				return err
+				return ErrInstallFailed.Wrap(err)
 			}
 		}
 	}

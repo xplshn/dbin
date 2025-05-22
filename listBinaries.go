@@ -5,6 +5,11 @@ import (
 	"context"
 
 	"github.com/urfave/cli/v3"
+	"github.com/zeebo/errs"
+)
+
+var (
+	ErrListBinariesFailed = errs.Class("list binaries failed")
 )
 
 func listCommand() *cli.Command {
@@ -20,18 +25,18 @@ func listCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
-				return err
+				return ErrListBinariesFailed.Wrap(err)
 			}
 			uRepoIndex, err := fetchRepoIndex(config)
             if err != nil {
-                return err
+                return ErrListBinariesFailed.Wrap(err)
             }
 			if c.Bool("described") {
 				return fSearch(config, []string{""}, uRepoIndex)
 			}
 			bEntries, err := listBinaries(uRepoIndex)
 			if err != nil {
-				return err
+				return ErrListBinariesFailed.Wrap(err)
 			}
 			for _, binary := range binaryEntriesToArrString(bEntries, true) {
 				fmt.Println(binary)

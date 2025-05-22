@@ -9,6 +9,11 @@ import (
 	"context"
 
 	"github.com/urfave/cli/v3"
+	"github.com/zeebo/errs"
+)
+
+var (
+	ErrRemoveFailed = errs.Class("removal failed")
 )
 
 func removeCommand() *cli.Command {
@@ -19,11 +24,11 @@ func removeCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
-				return err
+				return ErrRemoveFailed.Wrap(err)
 			}
 			uRepoIndex, err := fetchRepoIndex(config)
 			if err != nil {
-				return err
+				return ErrRemoveFailed.Wrap(err)
 			}
 			return removeBinaries(config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
 		},
@@ -72,7 +77,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 
 			if err := runDeintegrationHooks(config, installPath, verbosityLevel, uRepoIndex); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
-					fmt.Fprintf(os.Stderr, "error: %s\n", err)
+					fmt.Fprintf(os.Stderr, "%s\n", err)
 				}
 				mutex.Lock()
 				removeErrors = append(removeErrors, err.Error())
@@ -84,7 +89,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 
 			if err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
-					fmt.Fprintf(os.Stderr, "error: failed to remove '%s' from %s. %v\n", bEntry.Name, installDir, err)
+					fmt.Fprintf(os.Stderr, "failed to remove '%s' from %s. %v\n", bEntry.Name, installDir, err)
 				}
 				mutex.Lock()
 				removeErrors = append(removeErrors, fmt.Sprintf("failed to remove '%s' from %s: %v", bEntry.Name, installDir, err))
@@ -98,7 +103,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 	wg.Wait()
 
 	if len(removeErrors) > 0 {
-		return fmt.Errorf(strings.Join(removeErrors, "\n"))
+		return ErrRemoveFailed.New(strings.Join(removeErrors, "\n"))
 	}
 
 	return nil
@@ -109,7 +114,7 @@ func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Ver
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			if err := executeHookCommand(config, hookCommands.DeintegrationCommand, binaryPath, ext, false); err != nil {
-				return err
+				return ErrRemoveFailed.Wrap(err)
 			}
 		}
 	}

@@ -10,6 +10,11 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
 	"github.com/urfave/cli/v3"
+	"github.com/zeebo/errs"
+)
+
+var (
+	ErrBinaryInfoNotFound = errs.Class("binary info not found")
 )
 
 func infoCommand() *cli.Command {
@@ -44,7 +49,7 @@ func infoCommand() *cli.Command {
 				bEntry = stringToBinaryEntry(c.Args().First())
 				binaryInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
 				if err != nil {
-					return err
+					return ErrBinaryInfoNotFound.Wrap(err)
 				}
 
 				if c.Bool("json") {
@@ -162,5 +167,5 @@ func getBinaryInfo(config *Config, bEntry binaryEntry, uRepoIndex []binaryEntry)
 		return &binInfo, nil
 	}
 
-	return nil, fmt.Errorf("error: info for the requested binary ('%s') not found in any of the repository index files", parseBinaryEntry(bEntry, false))
+	return nil, ErrBinaryInfoNotFound.New("info for the requested binary ('%s') not found in any of the repository index files", parseBinaryEntry(bEntry, false))
 }

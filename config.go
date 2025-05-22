@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,9 +10,21 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/goccy/go-yaml"
 	"github.com/urfave/cli/v3"
+	"github.com/zeebo/errs"
+)
+
+var (
+	ErrConfigLoad       = errs.Class("config load error")
+	ErrConfigCreate     = errs.Class("config create error")
+	ErrConfigOverride   = errs.Class("config override error")
+	ErrConfigDefault    = errs.Class("config default error")
+	ErrConfigFileAccess = errs.Class("config file access error")
+	ErrCommandExecution = errs.Class("command execution error")
+	ErrSplitArgs        = errs.Class("split args error")
 )
 
 type Repository struct {
@@ -70,7 +81,7 @@ func configCommand() *cli.Command {
 			} else if c.Bool("show") {
 				config, err := loadConfig()
 				if err != nil {
-					return err
+					return ErrConfigLoad.Wrap(err)
 				}
 
 				printConfig(config)
@@ -131,7 +142,7 @@ func splitArgs(cmd string) ([]string, error) {
 		args = append(args, string(arg))
 	}
 	if inQuote != 0 {
-		return nil, fmt.Errorf("unterminated quote")
+		return nil, ErrSplitArgs.New("unterminated quote")
 	}
 	return args, nil
 }
@@ -139,7 +150,7 @@ func splitArgs(cmd string) ([]string, error) {
 func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension string, isIntegration bool) error {
 	hookCommands, exists := config.Hooks.Commands[extension]
 	if !exists {
-		return fmt.Errorf("no commands found for extension: %s", extension)
+		return ErrCommandExecution.New("no commands found for extension: %s", extension)
 	}
 
 	if hookCommands.NoOp {
@@ -149,7 +160,7 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	cmd := strings.ReplaceAll(cmdTemplate, "{{binary}}", bEntryPath)
 	commandParts, err := splitArgs(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to parse command: %v", err)
+		return ErrCommandExecution.Wrap(err)
 	}
 	if len(commandParts) == 0 {
 		return nil
@@ -182,7 +193,7 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	cmdExec.Stdout = os.Stdout
 	cmdExec.Stderr = os.Stderr
 	if err := cmdExec.Run(); err != nil {
-		return fmt.Errorf("command execution failed: %v", err)
+		return ErrCommandExecution.Wrap(err)
 	}
 	return nil
 }
@@ -201,19 +212,19 @@ func loadConfig() (*Config, error) {
 	if configFilePath == "" {
 		userConfigDir, err := os.UserConfigDir()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get user config directory: %v", err)
+			return nil, ErrConfigFileAccess.Wrap(err)
 		}
 		configFilePath = filepath.Join(userConfigDir, "dbin.yaml")
 	}
 
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
 		if err := createDefaultConfigAt(configFilePath); err != nil {
-			return nil, fmt.Errorf("failed to create default config file: %v", err)
+			return nil, ErrConfigCreate.Wrap(err)
 		}
 	}
 
 	if err := loadYAML(configFilePath, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to load YAML file: %v", err)
+		return nil, ErrConfigLoad.Wrap(err)
 	}
 
 	overrideWithEnv(&cfg)
@@ -234,7 +245,7 @@ func loadConfig() (*Config, error) {
 func loadYAML(filePath string, cfg *Config) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return err
+		return ErrConfigFileAccess.Wrap(err)
 	}
 	defer file.Close()
 	return yaml.NewDecoder(file).Decode(cfg)
@@ -331,7 +342,7 @@ func setDefaultValues(config *Config) {
 func createDefaultConfig() error {
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
-		return fmt.Errorf("failed to get user config directory: %v", err)
+		return ErrConfigFileAccess.Wrap(err)
 	}
 	return createDefaultConfigAt(filepath.Join(userConfigDir, "dbin.yaml"))
 }
@@ -353,15 +364,15 @@ func createDefaultConfigAt(configFilePath string) error {
 
 	dir := filepath.Dir(configFilePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %v", err)
+		return ErrConfigCreate.Wrap(err)
 	}
 	configYAML, err := yaml.Marshal(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to marshal config to YAML: %v", err)
+		return ErrConfigCreate.Wrap(err)
 	}
 
 	if err := os.WriteFile(configFilePath, configYAML, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %v", err)
+		return ErrConfigCreate.Wrap(err)
 	}
 
 	fmt.Printf("Default config file created at: %s\n", configFilePath)

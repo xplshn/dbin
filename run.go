@@ -11,6 +11,11 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v3"
+	"github.com/zeebo/errs"
+)
+
+var (
+	ErrRunFailed = errs.Class("run failed")
 )
 
 func runCommand() *cli.Command {
@@ -26,12 +31,12 @@ func runCommand() *cli.Command {
 		SkipFlagParsing: true,
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.NArg() == 0 {
-				return fmt.Errorf("no binary name provided for run command")
+				return ErrRunFailed.New("no binary name provided for run command")
 			}
 
 			config, err := loadConfig()
 			if err != nil {
-				return err
+				return ErrRunFailed.Wrap(err)
 			}
 
 			bEntry := stringToBinaryEntry(c.Args().First())
@@ -57,7 +62,7 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 			fmt.Printf("Running '%s' from cache...\n", parseBinaryEntry(bEntry, true))
 		}
 		if err := runBinary(cachedFile, args, verbosityLevel, env); err != nil {
-			return err
+			return ErrRunFailed.Wrap(err)
 		}
 		return cleanCache(config.CacheDir, verbosityLevel)
 	}
@@ -72,19 +77,19 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 
 	uRepoIndex, err := fetchRepoIndex(&cacheConfig)
 	if err != nil {
-		return err
+		return ErrRunFailed.Wrap(err)
 	}
 	if err := installBinaries(context.Background(), &cacheConfig, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
-		return err
+		return ErrRunFailed.Wrap(err)
 	}
 
 	cachedFile, err = isCached(config, bEntry)
 	if err != nil {
-		return fmt.Errorf("failed to find binary after installation: %v", err)
+		return ErrRunFailed.New("failed to find binary after installation: %v", err)
 	}
 
 	if err := runBinary(cachedFile, args, verbosityLevel, env); err != nil {
-		return err
+		return ErrRunFailed.Wrap(err)
 	}
 	return cleanCache(config.CacheDir, verbosityLevel)
 }
@@ -100,7 +105,7 @@ func isCached(config *Config, bEntry binaryEntry) (string, error) {
 		fmt.Println(trackedBEntry)
 	}
 
-	return "", fmt.Errorf("binary '%s' not found in cache or does not match the requested version", bEntry.Name)
+	return "", ErrRunFailed.New("binary '%s' not found in cache or does not match the requested version", bEntry.Name)
 }
 
 func runBinary(binaryPath string, args []string, verbosityLevel Verbosity, env []string) error {
@@ -118,13 +123,13 @@ func runBinary(binaryPath string, args []string, verbosityLevel Verbosity, env [
 	if err != nil && verbosityLevel == extraVerbose {
 		fmt.Printf("The program (%s) errored out with a non-zero exit code (%d).\n", binaryPath, cmd.ProcessState.ExitCode())
 	}
-	return err
+	return ErrRunFailed.Wrap(err)
 }
 
 func cleanCache(cacheDir string, verbosityLevel Verbosity) error {
 	files, err := os.ReadDir(cacheDir)
 	if err != nil {
-		return fmt.Errorf("error reading cache directory, cannot proceed with cleanup: %v", err)
+		return ErrRunFailed.Wrap(err)
 	}
 
 	if len(files) <= maxCacheSize {

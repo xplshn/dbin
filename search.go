@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli/v3"
+	"github.com/zeebo/errs"
+)
+
+var (
+	ErrSearchFailed = errs.Class("search failed")
 )
 
 func searchCommand() *cli.Command {
@@ -23,7 +27,7 @@ func searchCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
-				return err
+				return ErrSearchFailed.Wrap(err)
 			}
 
 			if uint(c.Uint("limit")) > 0 {
@@ -32,7 +36,7 @@ func searchCommand() *cli.Command {
 
 			uRepoIndex, err := fetchRepoIndex(config)
 			if err != nil {
-			    return err
+			    return ErrSearchFailed.Wrap(err)
 			}
 			return fSearch(config, c.Args().Slice(), uRepoIndex)
 		},
@@ -67,11 +71,9 @@ func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) err
 		}
 	}
 	if len(results) == 0 {
-		return fmt.Errorf("no matching binaries found for '%s'",
-			strings.Join(searchTerms, " "))
+		return ErrSearchFailed.New("no matching binaries found for '%s'", strings.Join(searchTerms, " "))
 	} else if uint(len(results)) > config.Limit {
-		return fmt.Errorf("too many matching binaries (+%d. [Use --limit or -l before your query]) found for '%s'",
-			len(results), strings.Join(searchTerms, " "))
+		return ErrSearchFailed.New("too many matching binaries (+%d. [Use --limit or -l before your query]) found for '%s'", len(results), strings.Join(searchTerms, " "))
 	}
 	disableTruncation := config.DisableTruncation
 	for _, result := range results {

@@ -9,6 +9,11 @@ import (
 	"context"
 
 	"github.com/urfave/cli/v3"
+	"github.com/zeebo/errs"
+)
+
+var (
+	ErrUpdateFailed = errs.Class("update failed")
 )
 
 func updateCommand() *cli.Command {
@@ -18,11 +23,11 @@ func updateCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
-				return err
+				return ErrUpdateFailed.Wrap(err)
 			}
 			uRepoIndex, err := fetchRepoIndex(config)
 			if err != nil {
-			    return err
+			    return ErrUpdateFailed.Wrap(err)
 			}
 			return update(config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
 		},
@@ -40,7 +45,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 
 	programsToUpdate, err := validateProgramsFrom(config, programsToUpdate, uRepoIndex)
 	if err != nil {
-		return err
+		return ErrUpdateFailed.Wrap(err)
 	}
 
 	toBeChecked := uint32(len(programsToUpdate))
