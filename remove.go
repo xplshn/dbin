@@ -47,7 +47,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 			trackedBEntry, err := readEmbeddedBEntry(installPath)
 			if err != nil {
 				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s#%s'. Skipping removal.\n", bEntry.Name, bEntry.PkgId)
+					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s#%s'. Skipping removal because this program may not have been installed by dbin.\n", bEntry.Name, bEntry.PkgId)
 				}
 				return
 			}
@@ -58,7 +58,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry, verbosityLevel Verbo
 
 			if !fileExists(installPath) {
 				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s. Skipping removal.\n", bEntry.Name, installDir)
+					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s\n", bEntry.Name, installDir)
 				}
 				return
 			}
@@ -108,10 +108,8 @@ func runDeintegrationHooks(config *Config, binaryPath string, verbosityLevel Ver
 	if config.UseIntegrationHooks {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
-			for _, cmd := range hookCommands.DeintegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, false, verbosityLevel, uRepoIndex); err != nil {
-					return err
-				}
+			if err := executeHookCommand(config, hookCommands.DeintegrationCommand, binaryPath, ext, false); err != nil {
+				return err
 			}
 		}
 	}

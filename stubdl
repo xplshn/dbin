@@ -20,12 +20,12 @@ fi
 
 # Function to download the binary
 download_dbin() {
-    if command -v wget >/dev/null 2>&1; then
-        wget -q "$DBIN_URL" -O "$DEST"
-    elif command -v curl >/dev/null 2>&1; then
+    if command -v curl >/dev/null 2>&1; then
         curl -qfsSL "$DBIN_URL" -o "$DEST"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$DBIN_URL" -O "$DEST"
     else
-        echo "Neither wget nor curl is available."
+        echo "Neither curl nor wget are available."
         exit 1
     fi
 }

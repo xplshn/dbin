@@ -262,10 +262,8 @@ func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
 		return nil, fmt.Errorf("error creating cache directory %s: %v", cfg.CacheDir, err)
 	}
 
-	// Check if the file is already cached and not expired
 	fileInfo, err := os.Stat(cacheFilePath)
 	if err == nil && time.Since(fileInfo.ModTime()).Hours() < 6 {
-		// Read from cache file
 		bodyBytes, err := os.ReadFile(cacheFilePath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading cached file %s: %v", cacheFilePath, err)
@@ -273,7 +271,6 @@ func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
 		return bodyBytes, nil
 	}
 
-	// Fetch from remote
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request for %s: %v", url, err)
@@ -290,13 +287,11 @@ func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
 		return nil, fmt.Errorf("error fetching from %s: received status code %d", url, response.StatusCode)
 	}
 
-	// Read the entire body
 	bodyBytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading from %s: %v", url, err)
 	}
 
-	// Write to cache file
 	err = os.WriteFile(cacheFilePath, bodyBytes, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("error writing to cached file %s: %v", cacheFilePath, err)
@@ -330,7 +325,6 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 			}
 		}
 
-		// Create a new reader from body bytes for decompression
 		bodyReader := io.NopCloser(bytes.NewReader(bodyBytes))
 
 		switch {
@@ -342,7 +336,6 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 			}
 			defer gzipReader.Close()
 
-			// Read the decompressed data
 			bodyBytes, err = io.ReadAll(gzipReader)
 			if err != nil {
 				return nil, fmt.Errorf("error reading gzip data from %s: %v", repo.URL, err)
@@ -355,7 +348,6 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 			}
 			defer zstdReader.Close()
 
-			// Read the decompressed data
 			bodyBytes, err = io.ReadAll(zstdReader.IOReadCloser())
 			if err != nil {
 				return nil, fmt.Errorf("error reading zstd data from %s: %v", repo.URL, err)

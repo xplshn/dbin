@@ -34,30 +34,28 @@ func runCommand() *cli.Command {
 			}
 
 			bEntry := stringToBinaryEntry(c.Args().First())
-			return runFromCache(config, bEntry, c.Args().Tail(), c.Bool("transparent"), getVerbosityLevel(c))
+			return runFromCache(config, bEntry, c.Args().Tail(), c.Bool("transparent"), getVerbosityLevel(c), nil)
 		},
 	}
 }
 
-func runFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity) error {
-	// Try running from PATH if transparent mode is enabled
+func runFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity, env []string) error {
 	if transparentMode {
 		binaryPath, err := exec.LookPath(bEntry.Name)
 		if err == nil {
 			if verbosityLevel >= normalVerbosity {
 				fmt.Printf("Running '%s' from PATH...\n", bEntry.Name)
 			}
-			return runBinary(binaryPath, args, verbosityLevel)
+			return runBinary(binaryPath, args, verbosityLevel, env)
 		}
 	}
 
-	// Check if the binary is cached
 	cachedFile, err := isCached(config, bEntry)
 	if err == nil {
 		if verbosityLevel >= normalVerbosity {
 			fmt.Printf("Running '%s' from cache...\n", parseBinaryEntry(bEntry, true))
 		}
-		if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
+		if err := runBinary(cachedFile, args, verbosityLevel, env); err != nil {
 			return err
 		}
 		return cleanCache(config.CacheDir, verbosityLevel)
@@ -67,7 +65,6 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 		fmt.Printf("Couldn't find '%s' in the cache. Fetching a new one...\n", parseBinaryEntry(bEntry, true))
 	}
 
-	// Fetch and install the binary
 	cacheConfig := *config
 	cacheConfig.UseIntegrationHooks = false
 	cacheConfig.InstallDir = config.CacheDir
@@ -80,13 +77,12 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 		return err
 	}
 
-	// Check again if the binary is cached after installation
 	cachedFile, err = isCached(config, bEntry)
 	if err != nil {
 		return fmt.Errorf("failed to find binary after installation: %v", err)
 	}
 
-	if err := runBinary(cachedFile, args, verbosityLevel); err != nil {
+	if err := runBinary(cachedFile, args, verbosityLevel, env); err != nil {
 		return err
 	}
 	return cleanCache(config.CacheDir, verbosityLevel)
@@ -106,8 +102,13 @@ func isCached(config *Config, bEntry binaryEntry) (string, error) {
 	return "", fmt.Errorf("binary '%s' not found in cache or does not match the requested version", bEntry.Name)
 }
 
-func runBinary(binaryPath string, args []string, verbosityLevel Verbosity) error {
+func runBinary(binaryPath string, args []string, verbosityLevel Verbosity, env []string) error {
 	cmd := exec.Command(binaryPath, args...)
+	if env == nil {
+		cmd.Env = os.Environ()
+	} else {
+		cmd.Env = env
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin

@@ -39,7 +39,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 	var errors []string
 	var errorsMu sync.Mutex
 
-	binResults, err := findURL(config, bEntries, verbosityLevel, uRepoIndex)
+	binResults, err := findURL(config, bEntries, uRepoIndex)
 	if err != nil {
 		return err
 	}
@@ -176,10 +176,8 @@ func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbo
 	if config.UseIntegrationHooks {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
-			for _, cmd := range hookCommands.IntegrationCommands {
-				if err := executeHookCommand(config, cmd, binaryPath, ext, config.UseIntegrationHooks, verbosityLevel, uRepoIndex); err != nil {
-					return err
-				}
+			if err := executeHookCommand(config, hookCommands.IntegrationCommand, binaryPath, ext, true); err != nil {
+				return err
 			}
 		}
 	}

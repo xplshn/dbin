@@ -12,27 +12,19 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) ([]binaryEnt
 	var highestRank uint16
 
 	for _, bin := range uRepoIndex {
-		// Basic match criteria (name and optional package ID)
 		if bin.Name == bEntry.Name && (bEntry.PkgId == "" || bin.PkgId == bEntry.PkgId) {
 			if bEntry.Version != "" {
-				// Handle snapshot request: check if this binary has the requested snapshot
 				for _, snap := range bin.Snapshots {
-					// Match by commit or version
 					if bEntry.Version == snap.Version || bEntry.Version == snap.Commit {
-						// Modify the URL to use the snapshot's commit
 						if strings.HasPrefix(bin.DownloadURL, "oci://") {
-							// For OCI URLs, replace the tag part by locating the last colon.
 							idx := strings.LastIndex(bin.DownloadURL, ":")
 							if idx != -1 {
-								// Everything before the tag remains intact; the new tag is the snapshot commit.
 								bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
-								// Disable checksum verification
 								bin.Bsum = "!no_check"
 								bin.Version = snap.Version
 							}
 						}
 					}
-
 				}
 			}
 			matchingBins = append(matchingBins, bin)
@@ -83,7 +75,7 @@ func selectHighestRankedBin(matchingBins []binaryEntry, highestRank uint16) bina
 	return binaryEntry{}
 }
 
-func findURL(config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
+func findURL(config *Config, bEntries []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
 	var results []binaryEntry
 	var allErrors []error
 	allFailed := true

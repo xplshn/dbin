@@ -9,7 +9,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.8.0
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.17.1
-	github.com/hedzr/progressbar v1.2.6
+	github.com/hedzr/progressbar v1.2.8
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7
 	github.com/klauspost/compress v1.18.0
 	github.com/pkg/xattr v0.4.10

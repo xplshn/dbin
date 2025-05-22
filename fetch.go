@@ -46,9 +46,6 @@ func xattrRemoveOCIMeta(path string) error {
 	return xattr.Remove(path, xattrOCIKey())
 }
 
-// downloadWithProgress downloads from resp to destination, supporting resume via xattr for OCI and .tmp for HTTP.
-// Always resumes .tmp files if found. For OCI, saves xattr progress. On interrupt (CTRL+C), saves progress before exit.
-// It enforces checksum verification, but it only verificaties signatures if a pubkey is available for the repo
 func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination string, bEntry *binaryEntry, config *Config, isOCI bool) error {
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return fmt.Errorf("failed to create parent directories for %s: %v", destination, err)
@@ -304,7 +301,6 @@ func setRequestHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", Version))
 }
 
-// fetchOCIImage downloads an OCI image layer with resume support and xattr.
 func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *Config) (string, error) {
 	parts := strings.SplitN(bEntry.DownloadURL, ":", 2)
 	if len(parts) != 2 {
@@ -393,7 +389,6 @@ func downloadManifest(ctx context.Context, registry, repository, version, token 
 	return manifest, nil
 }
 
-// downloadOCILayer supports resuming via xattr and .tmp.
 func downloadOCILayer(ctx context.Context, registry, repository string, manifest map[string]any, token, title, tmpPath string) (*http.Response, *http.Response, error) {
 	titleNoExt := strings.TrimSuffix(title, filepath.Ext(title))
 	layers, ok := manifest["layers"].([]any)
