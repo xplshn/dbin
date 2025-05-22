@@ -20,8 +20,6 @@ import (
 var (
 	errConfigLoad       = errs.Class("config load error")
 	errConfigCreate     = errs.Class("config create error")
-	errConfigOverride   = errs.Class("config override error")
-	errConfigDefaults   = errs.Class("config defaults error")
 	errConfigFileAccess = errs.Class("config file access error")
 	errCommandExecution = errs.Class("command execution error")
 	errSplitArgs        = errs.Class("split args error")

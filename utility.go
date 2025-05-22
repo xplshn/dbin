@@ -27,11 +27,9 @@ import (
 var (
 	errFileAccess       = errs.Class("file access error")
 	errFileTypeInvalid  = errs.Class("invalid file type")
-	errFileNotExecutable = errs.Class("file not executable")
 	errFileNotFound     = errs.Class("file not found")
 	errXAttr            = errs.Class("xattr error")
 	errCacheAccess      = errs.Class("cache access error")
-	errCacheCleanup    = errs.Class("cache cleanup error")
 )
 
 func fileExists(filePath string) bool {
