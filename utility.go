@@ -310,10 +310,7 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 		return binaryEntry{}, fmt.Errorf("xattr: user.FullName attribute not found for binary: %s", binaryPath)
 	}
 
-	bEntry := stringToBinaryEntry(string(fullName))
-	bEntry.Version = ""
-
-	return bEntry, nil
+	return stringToBinaryEntry(string(fullName)), nil
 }
 
 func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
