@@ -86,7 +86,7 @@ func printConfig(config *Config) {
 	v := reflect.ValueOf(config).Elem()
 	t := v.Type()
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		field := v.Field(i)
 		fieldType := t.Field(i)
 		description := fieldType.Tag.Get("description")
@@ -97,43 +97,43 @@ func printConfig(config *Config) {
 }
 
 func splitArgs(cmd string) ([]string, error) {
-    var args []string
-    var arg []rune
-    var inQuote rune
-    escaped := false
-    for _, c := range cmd {
-        switch {
-        case escaped:
-            arg = append(arg, c)
-            escaped = false
-        case c == '\\':
-            escaped = true
-        case c == '"' || c == '\'':
-            if inQuote == 0 {
-                inQuote = c
-            } else if inQuote == c {
-                inQuote = 0
-            } else {
-                arg = append(arg, c)
-            }
-        case c == ' ' || c == '\t':
-            if inQuote != 0 {
-                arg = append(arg, c)
-            } else if len(arg) > 0 {
-                args = append(args, string(arg))
-                arg = nil
-            }
-        default:
-            arg = append(arg, c)
-        }
-    }
-    if len(arg) > 0 {
-        args = append(args, string(arg))
-    }
-    if inQuote != 0 {
-        return nil, fmt.Errorf("unterminated quote")
-    }
-    return args, nil
+	var args []string
+	var arg []rune
+	var inQuote rune
+	escaped := false
+	for _, c := range cmd {
+		switch {
+		case escaped:
+			arg = append(arg, c)
+			escaped = false
+		case c == '\\':
+			escaped = true
+		case c == '"' || c == '\'':
+			if inQuote == 0 {
+				inQuote = c
+			} else if inQuote == c {
+				inQuote = 0
+			} else {
+				arg = append(arg, c)
+			}
+		case c == ' ' || c == '\t':
+			if inQuote != 0 {
+				arg = append(arg, c)
+			} else if len(arg) > 0 {
+				args = append(args, string(arg))
+				arg = nil
+			}
+		default:
+			arg = append(arg, c)
+		}
+	}
+	if len(arg) > 0 {
+		args = append(args, string(arg))
+	}
+	if inQuote != 0 {
+		return nil, fmt.Errorf("unterminated quote")
+	}
+	return args, nil
 }
 
 func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension string, isIntegration bool) error {
@@ -149,8 +149,8 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	cmd := strings.ReplaceAll(cmdTemplate, "{{binary}}", bEntryPath)
 	commandParts, err := splitArgs(cmd)
 	if err != nil {
-        return fmt.Errorf("failed to parse command: %v", err)
-    }
+		return fmt.Errorf("failed to parse command: %v", err)
+	}
 	if len(commandParts) == 0 {
 		return nil
 	}
@@ -251,7 +251,19 @@ func overrideWithEnv(cfg *Config) {
 				case reflect.String:
 					field.SetString(value)
 				case reflect.Slice:
-					field.Set(reflect.ValueOf(strings.Split(value, ",")))
+					// Special handling for []Repository
+					if field.Type() == reflect.TypeOf([]Repository{}) {
+						urls := strings.Split(value, ",")
+						var repos []Repository
+						for _, url := range urls {
+							repos = append(repos, Repository{
+								URL: strings.TrimSpace(url),
+							})
+						}
+						field.Set(reflect.ValueOf(repos))
+					} else {
+						field.Set(reflect.ValueOf(strings.Split(value, ",")))
+					}
 				case reflect.Bool:
 					if val, err := strconv.ParseBool(value); err == nil {
 						field.SetBool(val)
@@ -271,7 +283,7 @@ func overrideWithEnv(cfg *Config) {
 		return false
 	}
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		field := v.Field(i)
 		envTags := strings.Fields(t.Field(i).Tag.Get("env"))
 
@@ -332,7 +344,7 @@ func createDefaultConfigAt(configFilePath string) error {
 		Commands: map[string]HookCommands{
 			"": {
 				IntegrationCommand:   "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",
-				DeintegrationCommand: "",
+				DeintegrationCommand: "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",
 				UseRunFromCache:      true,
 				NoOp:                 false,
 			},

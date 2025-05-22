@@ -127,19 +127,12 @@ func infoCommand() *cli.Command {
 					}
 				}
 			} else {
-				files, err := listFilesInDir(config.InstallDir)
+				binaryEntries, err := validateProgramsFrom(config, nil, nil)
 				if err != nil {
 					return err
 				}
-				installedPrograms := make([]string, 0)
-				for _, file := range files {
-					trackedBEntry := bEntryOfinstalledBinary(file)
-					if trackedBEntry.Name != "" {
-						installedPrograms = append(installedPrograms, parseBinaryEntry(trackedBEntry, true))
-					}
-				}
-				for _, program := range installedPrograms {
-					fmt.Println(program)
+				for _, program := range binaryEntries {
+					fmt.Println(parseBinaryEntry(program, true))
 				}
 			}
 			return nil

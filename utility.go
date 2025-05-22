@@ -133,6 +133,13 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, uRep
 	)
 
 	if config.RetakeOwnership {
+		if uRepoIndex == nil {
+			uRepoIndex, err = fetchRepoIndex(config)
+            if err != nil {
+                return nil, err
+            }
+		}
+
 		programsEntries, err = listBinaries(uRepoIndex)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list remote binaries: %w", err)
@@ -169,32 +176,37 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, uRep
 		baseName := filepath.Base(file)
 		trackedBEntry := bEntryOfinstalledBinary(file)
 
-		if config.RetakeOwnership {
-			if trackedBEntry.Name == "" {
-				trackedBEntry.Name = baseName
-				trackedBEntry.PkgId = "!retake"
-			}
+        if config.RetakeOwnership {
+            if trackedBEntry.Name == "" {
+                trackedBEntry.Name = baseName
+                trackedBEntry.PkgId = "!retake"
+            }
 
-			for j := range programsEntries {
-				if programsEntries[j].Name == trackedBEntry.Name {
-					validPrograms = append(validPrograms, trackedBEntry)
-					break
-				}
-			}
-			continue
-		}
+            for j := range programsEntries {
+                if programsEntries[j].Name == trackedBEntry.Name {
+                    validPrograms = append(validPrograms, trackedBEntry)
+                    break
+                }
+            }
+            continue
+        }
 
-		// Non-retake: must have metadata and match uRepoIndex
-		if trackedBEntry.Name == "" {
-			continue
-		}
-		for j := range uRepoIndex {
-			if uRepoIndex[j].Name == trackedBEntry.Name && uRepoIndex[j].PkgId == trackedBEntry.PkgId {
-				validPrograms = append(validPrograms, trackedBEntry)
-				break
-			}
-		}
-	}
+        // Non-retake: must have metadata and match uRepoIndex
+        if trackedBEntry.Name == "" {
+            continue
+        }
+        if uRepoIndex == nil {
+            // If uRepoIndex is nil, append any entry with Name != ""
+            validPrograms = append(validPrograms, trackedBEntry)
+            continue
+        }
+        for j := range uRepoIndex {
+            if uRepoIndex[j].Name == trackedBEntry.Name && uRepoIndex[j].PkgId == trackedBEntry.PkgId {
+                validPrograms = append(validPrograms, trackedBEntry)
+                break
+            }
+        }
+    }
 
 	return validPrograms, nil
 }
