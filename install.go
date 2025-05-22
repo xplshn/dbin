@@ -91,10 +91,10 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 				progressbar.WithTaskAddBarOptions(pbarOpts...),
 				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) (stop bool) {
 					defer wg.Done()
-					_, fetchErr := fetchBinaryFromURLToDest(ctx, bar, &bEntry, destination, config)
-					if fetchErr != nil {
+					err := fetchBinaryFromURLToDest(ctx, bar, &bEntry, destination, config)
+					if err != nil {
 						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("error fetching binary %s: %v\n", bEntry.Name, fetchErr))
+						errors = append(errors, fmt.Sprintf("error fetching binary %s: %v\n", bEntry.Name, err))
 						errorsMu.Unlock()
 						return
 					}
@@ -106,7 +106,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 						return
 					}
 
-					if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
+					if err := runIntegrationHooks(config, destination); err != nil {
 						errorsMu.Lock()
 						errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
 						errorsMu.Unlock()
@@ -127,10 +127,10 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 		} else {
 			go func(bEntry binaryEntry, destination string) {
 				defer wg.Done()
-				_, fetchErr := fetchBinaryFromURLToDest(ctx, nil, &bEntry, destination, config)
-				if fetchErr != nil {
+				err := fetchBinaryFromURLToDest(ctx, nil, &bEntry, destination, config)
+				if err != nil {
 					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("error fetching binary %s: %v", bEntry.Name, fetchErr))
+					errors = append(errors, fmt.Sprintf("error fetching binary %s: %v", bEntry.Name, err))
 					errorsMu.Unlock()
 					return
 				}
@@ -142,7 +142,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 					return
 				}
 
-				if err := runIntegrationHooks(config, destination, verbosityLevel, uRepoIndex); err != nil {
+				if err := runIntegrationHooks(config, destination); err != nil {
 					errorsMu.Lock()
 					errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err))
 					errorsMu.Unlock()
@@ -177,7 +177,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 	return nil
 }
 
-func runIntegrationHooks(config *Config, binaryPath string, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
+func runIntegrationHooks(config *Config, binaryPath string) error {
 	if config.UseIntegrationHooks {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {

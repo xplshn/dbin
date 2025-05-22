@@ -78,7 +78,7 @@ func getVerbosityLevel(c *cli.Command) Verbosity {
 func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
 	uRepoIndex, err := decodeRepoIndex(config)
 	if err != nil {
-		return nil, fmt.Errorf("%v: Consider checking if DBIN_NOCONFIG=1 works, if so, consider modifying your config, your repository URLs may be outdated.\nAlso consider removing dbin's cache if the above fails.\n", err)
+		return nil, fmt.Errorf("%v: Consider checking if DBIN_NOCONFIG=1 works, if so, consider modifying your config, your repository URLs may be outdated.\nAlso consider removing dbin's cache if the above fails", err)
 	}
 	return uRepoIndex, nil
 }

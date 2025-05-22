@@ -63,5 +63,9 @@ func listBinaries(uRepoIndex []binaryEntry) ([]binaryEntry, error) {
 		}
 	}
 
+	if len(allBinaries) == 0 {
+		return nil, ErrListBinariesFailed.New("no binaries found in the repository index")
+	}
+
 	return allBinaries, nil
 }

@@ -21,7 +21,7 @@ var (
 	ErrConfigLoad       = errs.Class("config load error")
 	ErrConfigCreate     = errs.Class("config create error")
 	ErrConfigOverride   = errs.Class("config override error")
-	ErrConfigDefault    = errs.Class("config default error")
+	ErrConfigDefaults   = errs.Class("config defaults error")
 	ErrConfigFileAccess = errs.Class("config file access error")
 	ErrCommandExecution = errs.Class("command execution error")
 	ErrSplitArgs        = errs.Class("split args error")

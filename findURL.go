@@ -9,10 +9,6 @@ import (
 	"github.com/zeebo/errs"
 )
 
-var (
-	ErrURLNotFound = errs.Class("URL not found")
-)
-
 func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, uint16) {
 	var matchingBins []binaryEntry
 	var highestRank uint16
@@ -116,7 +112,7 @@ func findURL(config *Config, bEntries []binaryEntry, uRepoIndex []binaryEntry) (
 				DownloadURL: "!not_found",
 				Bsum:        "!no_check",
 			})
-			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]\n", parseBinaryEntry(bEntry, false)))
+			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]", parseBinaryEntry(bEntry, false)))
 			continue
 		}
 
@@ -135,7 +131,7 @@ func findURL(config *Config, bEntries []binaryEntry, uRepoIndex []binaryEntry) (
 		for _, e := range allErrors {
 			errorMessages = append(errorMessages, e.Error())
 		}
-		return nil, ErrURLNotFound.New(ternary(len(bEntries) != 1, "no valid download URLs found for any of the requested binaries.\n%s\n", "%s\n"), strings.Join(errorMessages, "\n"))
+		return nil, errs.New(ternary(len(bEntries) != 1, "no valid download URLs found for any of the requested binaries.\n%s\n", "%s\n"), strings.Join(errorMessages, "\n"))
 	}
 
 	return results, nil
