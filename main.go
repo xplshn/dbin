@@ -1,3 +1,7 @@
+// PROGRAM: DBIN
+// MAINTAINER: IDIOT (xplshn)
+// PURPOSE: Package manager done right
+// DESCRIPTION: A package manager that uses one-file packages (statically linked binaries, self-contained binaries)
 package main
 
 import (
@@ -14,8 +18,7 @@ var verbosityLevel verbosity
 
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
-	Indicator                           = "...>"
-	Version                             = 1.5
+	version                             = 1.5
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
 	extraVerbose              verbosity = 2
@@ -28,7 +31,7 @@ func main() {
 	app := &cli.Command{
 		Name:        "dbin",
 		Usage:       "The easy to use, easy to get, software distribution system",
-		Version:     strconv.FormatFloat(Version, 'f', -1, 32),
+		Version:     strconv.FormatFloat(version, 'f', -1, 32),
 		Description: "The easy to use, easy to get, software distribution system",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{

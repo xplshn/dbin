@@ -22,12 +22,12 @@ import (
 )
 
 var (
-	errDownloadFailed    = errs.Class("download failed")
-	errSignatureVerify   = errs.Class("signature verification failed")
-	errChecksumMismatch  = errs.Class("checksum mismatch")
-	errOCIReference      = errs.Class("invalid OCI reference")
-	errAuthToken         = errs.Class("failed to get auth token")
-	errManifestDownload  = errs.Class("failed to download manifest")
+	errDownloadFailed   = errs.Class("download failed")
+	errSignatureVerify  = errs.Class("signature verification failed")
+	errChecksumMismatch = errs.Class("checksum mismatch")
+	errOCIReference     = errs.Class("invalid OCI reference")
+	errAuthToken        = errs.Class("failed to get auth token")
+	errManifestDownload = errs.Class("failed to download manifest")
 	errOCILayerDownload = errs.Class("failed to download OCI layer")
 )
 
@@ -203,17 +203,20 @@ func validateFileType(filePath string) error {
 		return errFileTypeInvalid.Wrap(err)
 	}
 	shebangBuf := make([]byte, 128)
-	if n, err := file.Read(shebangBuf); err != nil && err != io.EOF {
+
+	n, err := file.Read(shebangBuf)
+	if err != nil && err != io.EOF {
 		return errFileTypeInvalid.Wrap(err)
-	} else {
-		shebang := string(shebangBuf[:n])
-		if strings.HasPrefix(shebang, "#!") {
-			if regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`).MatchString(shebang) {
-				return errFileTypeInvalid.New("file contains invalid shebang (nix object/garbage): %s", shebang)
-			}
-			return nil
-		}
 	}
+
+	shebang := string(shebangBuf[:n])
+	if strings.HasPrefix(shebang, "#!") {
+		if regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`).MatchString(shebang) {
+			return errFileTypeInvalid.New("file contains invalid shebang (nix object/garbage): %s", shebang)
+		}
+		return nil
+	}
+
 	return errFileTypeInvalid.New("file is neither a shell script nor an ELF. Please report this at @ https://github.com/xplshn/dbin")
 }
 
@@ -309,7 +312,7 @@ func setRequestHeaders(req *http.Request) {
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
 	req.Header.Set("Expires", "0")
-	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", Version))
+	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", version))
 }
 
 func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *config) error {

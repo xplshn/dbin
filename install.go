@@ -89,7 +89,7 @@ func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry
 			tasks.Add(
 				progressbar.WithTaskAddBarTitle(barTitle),
 				progressbar.WithTaskAddBarOptions(pbarOpts...),
-				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, exitCh <-chan struct{}) (stop bool) {
+				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, _ <-chan struct{}) (stop bool) {
 					defer wg.Done()
 					err := fetchBinaryFromURLToDest(ctx, bar, &bEntry, destination, config)
 					if err != nil {
@@ -169,7 +169,7 @@ func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry
 	if len(errors) > 0 {
 		var errN = uint8(0)
 		for _, errMsg := range errors {
-			errN += 1
+			errN++
 			fmt.Printf("%d. %v\n", errN, errMsg)
 		}
 	}

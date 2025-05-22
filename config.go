@@ -86,9 +86,9 @@ func configCommand() *cli.Command {
 
 				printConfig(config)
 				return nil
-			} else {
-				return cli.ShowSubcommandHelp(c)
 			}
+
+			return cli.ShowSubcommandHelp(c)
 		},
 	}
 }
@@ -230,11 +230,11 @@ func loadConfig() (*config, error) {
 	overrideWithEnv(&cfg)
 
 	arch := runtime.GOARCH + "_" + runtime.GOOS
-	for v := Version - 0.1; v >= Version-0.3; v -= 0.1 {
+	for v := version - 0.1; v >= version-0.3; v -= 0.1 {
 		url := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
 		for _, repo := range cfg.Repositories {
 			if repo.URL == url {
-				fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, Version)
+				fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, version)
 			}
 		}
 	}
@@ -321,7 +321,7 @@ func setDefaultValues(config *config) {
 
 	config.Repositories = []repository{
 		{
-			URL: fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", Version, arch, ".lite.cbor.zst"),
+			URL: fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", version, arch, ".lite.cbor.zst"),
 			PubKeys: map[string]string{
 				"bincache": "https://meta.pkgforge.dev/bincache/minisign.pub",
 				"pkgcache": "https://meta.pkgforge.dev/pkgcache/minisign.pub",

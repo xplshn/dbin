@@ -297,7 +297,7 @@ func truncatePrintf(disableTruncation bool, format string, a ...any) (n int, err
 	if disableTruncation {
 		return fmt.Printf(format, a...)
 	}
-	text := truncateSprintf(Indicator, format, a...)
+	text := truncateSprintf("..>", format, a...)
 	return fmt.Print(text)
 }
 
@@ -358,7 +358,7 @@ func accessCachedOrFetch(url, filename string, cfg *config) ([]byte, error) {
 	}
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("dbin", strconv.FormatFloat(Version, 'f', -1, 32))
+	req.Header.Set("dbin", strconv.FormatFloat(version, 'f', -1, 32))
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
