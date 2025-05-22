@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	ErrSearchFailed = errs.Class("search failed")
+	errSearchFailed = errs.Class("search failed")
 )
 
 func searchCommand() *cli.Command {
@@ -27,7 +27,7 @@ func searchCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
-				return ErrSearchFailed.Wrap(err)
+				return errSearchFailed.Wrap(err)
 			}
 
 			if uint(c.Uint("limit")) > 0 {
@@ -36,7 +36,7 @@ func searchCommand() *cli.Command {
 
 			uRepoIndex, err := fetchRepoIndex(config)
 			if err != nil {
-			    return ErrSearchFailed.Wrap(err)
+			    return errSearchFailed.Wrap(err)
 			}
 			return fSearch(config, c.Args().Slice(), uRepoIndex)
 		},
@@ -46,7 +46,7 @@ func searchCommand() *cli.Command {
 func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) error {
 	var results []binaryEntry
 	for _, bin := range uRepoIndex {
-		name, pkgId, version, description, rank, repo := bin.Name, bin.PkgId, bin.Version, bin.Description, bin.Rank, bin.Repository
+		name, pkgID, version, description, rank, repo := bin.Name, bin.PkgID, bin.Version, bin.Description, bin.Rank, bin.Repository
 		if name == "" || description == "" {
 			continue
 		}
@@ -54,7 +54,7 @@ func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) err
 		for _, term := range searchTerms {
 			if !strings.Contains(strings.ToLower(name), strings.ToLower(term)) &&
 				!strings.Contains(strings.ToLower(description), strings.ToLower(term)) &&
-				!strings.Contains(strings.ToLower(pkgId), strings.ToLower(term)) {
+				!strings.Contains(strings.ToLower(pkgID), strings.ToLower(term)) {
 				match = false
 				break
 			}
@@ -62,7 +62,7 @@ func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) err
 		if match {
 			results = append(results, binaryEntry{
 				Name:        name,
-				PkgId:       pkgId,
+				PkgID:       pkgID,
 				Version:     version,
 				Description: description,
 				Rank:        rank,
@@ -71,14 +71,14 @@ func fSearch(config *Config, searchTerms []string, uRepoIndex []binaryEntry) err
 		}
 	}
 	if len(results) == 0 {
-		return ErrSearchFailed.New("no matching binaries found for '%s'", strings.Join(searchTerms, " "))
+		return errSearchFailed.New("no matching binaries found for '%s'", strings.Join(searchTerms, " "))
 	} else if uint(len(results)) > config.Limit {
-		return ErrSearchFailed.New("too many matching binaries (+%d. [Use --limit or -l before your query]) found for '%s'", len(results), strings.Join(searchTerms, " "))
+		return errSearchFailed.New("too many matching binaries (+%d. [Use --limit or -l before your query]) found for '%s'", len(results), strings.Join(searchTerms, " "))
 	}
 	disableTruncation := config.DisableTruncation
 	for _, result := range results {
 		prefix := "[-]"
-		if bEntryOfinstalledBinary(filepath.Join(config.InstallDir, filepath.Base(result.Name))).PkgId == result.PkgId {
+		if bEntryOfinstalledBinary(filepath.Join(config.InstallDir, filepath.Base(result.Name))).PkgID == result.PkgID {
 			prefix = "[i]"
 		} else if _, err := isCached(config, result); err == nil {
 			prefix = "[c]"

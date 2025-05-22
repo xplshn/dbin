@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	ErrUpdateFailed = errs.Class("update failed")
+	errUpdateFailed = errs.Class("update failed")
 )
 
 func updateCommand() *cli.Command {
@@ -23,18 +23,18 @@ func updateCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
-				return ErrUpdateFailed.Wrap(err)
+				return errUpdateFailed.Wrap(err)
 			}
 			uRepoIndex, err := fetchRepoIndex(config)
 			if err != nil {
-			    return ErrUpdateFailed.Wrap(err)
+			    return errUpdateFailed.Wrap(err)
 			}
-			return update(config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
+			return update(config, arrStringToArrBinaryEntry(c.Args().Slice()), uRepoIndex)
 		},
 	}
 }
 
-func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
+func update(config *Config, programsToUpdate []binaryEntry, uRepoIndex []binaryEntry) error {
 	var (
 		skipped, updated, errors uint32
 		checked                  uint32
@@ -45,7 +45,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 
 	programsToUpdate, err := validateProgramsFrom(config, programsToUpdate, uRepoIndex)
 	if err != nil {
-		return ErrUpdateFailed.Wrap(err)
+		return errUpdateFailed.Wrap(err)
 	}
 
 	toBeChecked := uint32(len(programsToUpdate))
@@ -140,7 +140,7 @@ func update(config *Config, programsToUpdate []binaryEntry, verbosityLevel Verbo
 
 	if len(outdatedPrograms) > 0 {
 		fmt.Print("\033[2K\r")
-		if err := installBinaries(context.Background(), config, outdatedPrograms, 1, uRepoIndex); err != nil {
+		if err := installBinaries(context.Background(), config, outdatedPrograms, uRepoIndex); err != nil {
 			atomic.AddUint32(&errors, 1)
 			if verbosityLevel >= silentVerbosityWithErrors {
 				fmt.Printf("Failed to update programs: %v\n", outdatedPrograms)

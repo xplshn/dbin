@@ -18,13 +18,13 @@ import (
 )
 
 var (
-	ErrConfigLoad       = errs.Class("config load error")
-	ErrConfigCreate     = errs.Class("config create error")
-	ErrConfigOverride   = errs.Class("config override error")
-	ErrConfigDefaults   = errs.Class("config defaults error")
-	ErrConfigFileAccess = errs.Class("config file access error")
-	ErrCommandExecution = errs.Class("command execution error")
-	ErrSplitArgs        = errs.Class("split args error")
+	errConfigLoad       = errs.Class("config load error")
+	errConfigCreate     = errs.Class("config create error")
+	errConfigOverride   = errs.Class("config override error")
+	errConfigDefaults   = errs.Class("config defaults error")
+	errConfigFileAccess = errs.Class("config file access error")
+	errCommandExecution = errs.Class("command execution error")
+	errSplitArgs        = errs.Class("split args error")
 )
 
 type Repository struct {
@@ -81,7 +81,7 @@ func configCommand() *cli.Command {
 			} else if c.Bool("show") {
 				config, err := loadConfig()
 				if err != nil {
-					return ErrConfigLoad.Wrap(err)
+					return errConfigLoad.Wrap(err)
 				}
 
 				printConfig(config)
@@ -142,7 +142,7 @@ func splitArgs(cmd string) ([]string, error) {
 		args = append(args, string(arg))
 	}
 	if inQuote != 0 {
-		return nil, ErrSplitArgs.New("unterminated quote")
+		return nil, errSplitArgs.New("unterminated quote")
 	}
 	return args, nil
 }
@@ -150,7 +150,7 @@ func splitArgs(cmd string) ([]string, error) {
 func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension string, isIntegration bool) error {
 	hookCommands, exists := config.Hooks.Commands[extension]
 	if !exists {
-		return ErrCommandExecution.New("no commands found for extension: %s", extension)
+		return errCommandExecution.New("no commands found for extension: %s", extension)
 	}
 
 	if hookCommands.NoOp {
@@ -160,7 +160,7 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	cmd := strings.ReplaceAll(cmdTemplate, "{{binary}}", bEntryPath)
 	commandParts, err := splitArgs(cmd)
 	if err != nil {
-		return ErrCommandExecution.Wrap(err)
+		return errCommandExecution.Wrap(err)
 	}
 	if len(commandParts) == 0 {
 		return nil
@@ -185,7 +185,7 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	}
 
 	if hookCommands.UseRunFromCache {
-		return runFromCache(config, stringToBinaryEntry(command), args, true, verbosityLevel, env)
+		return runFromCache(config, stringToBinaryEntry(command), args, true, env)
 	}
 
 	cmdExec := exec.Command(command, args...)
@@ -193,7 +193,7 @@ func executeHookCommand(config *Config, cmdTemplate, bEntryPath, extension strin
 	cmdExec.Stdout = os.Stdout
 	cmdExec.Stderr = os.Stderr
 	if err := cmdExec.Run(); err != nil {
-		return ErrCommandExecution.Wrap(err)
+		return errCommandExecution.Wrap(err)
 	}
 	return nil
 }
@@ -212,19 +212,19 @@ func loadConfig() (*Config, error) {
 	if configFilePath == "" {
 		userConfigDir, err := os.UserConfigDir()
 		if err != nil {
-			return nil, ErrConfigFileAccess.Wrap(err)
+			return nil, errConfigFileAccess.Wrap(err)
 		}
 		configFilePath = filepath.Join(userConfigDir, "dbin.yaml")
 	}
 
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
 		if err := createDefaultConfigAt(configFilePath); err != nil {
-			return nil, ErrConfigCreate.Wrap(err)
+			return nil, errConfigCreate.Wrap(err)
 		}
 	}
 
 	if err := loadYAML(configFilePath, &cfg); err != nil {
-		return nil, ErrConfigLoad.Wrap(err)
+		return nil, errConfigLoad.Wrap(err)
 	}
 
 	overrideWithEnv(&cfg)
@@ -245,7 +245,7 @@ func loadConfig() (*Config, error) {
 func loadYAML(filePath string, cfg *Config) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return ErrConfigFileAccess.Wrap(err)
+		return errConfigFileAccess.Wrap(err)
 	}
 	defer file.Close()
 	return yaml.NewDecoder(file).Decode(cfg)
@@ -342,7 +342,7 @@ func setDefaultValues(config *Config) {
 func createDefaultConfig() error {
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
-		return ErrConfigFileAccess.Wrap(err)
+		return errConfigFileAccess.Wrap(err)
 	}
 	return createDefaultConfigAt(filepath.Join(userConfigDir, "dbin.yaml"))
 }
@@ -364,15 +364,15 @@ func createDefaultConfigAt(configFilePath string) error {
 
 	dir := filepath.Dir(configFilePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return ErrConfigCreate.Wrap(err)
+		return errConfigCreate.Wrap(err)
 	}
 	configYAML, err := yaml.Marshal(cfg)
 	if err != nil {
-		return ErrConfigCreate.Wrap(err)
+		return errConfigCreate.Wrap(err)
 	}
 
 	if err := os.WriteFile(configFilePath, configYAML, 0644); err != nil {
-		return ErrConfigCreate.Wrap(err)
+		return errConfigCreate.Wrap(err)
 	}
 
 	fmt.Printf("Default config file created at: %s\n", configFilePath)

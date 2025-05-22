@@ -8,7 +8,7 @@ type snapshot struct {
 type binaryEntry struct {
 	Name        string   			`json:"pkg"                   `
 	PrettyName  string   			`json:"pkg_name"              `
-	PkgId       string   			`json:"pkg_id"                `
+	PkgID       string   			`json:"pkg_id"                `
 	Description string   			`json:"description,omitempty" `
 	Version     string   			`json:"version,omitempty"     `
 	DownloadURL string   			`json:"download_url,omitempty"`

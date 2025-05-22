@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ErrListBinariesFailed = errs.Class("list binaries failed")
+	errListBinariesFailed = errs.Class("list binaries failed")
 )
 
 func listCommand() *cli.Command {
@@ -25,18 +25,18 @@ func listCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
-				return ErrListBinariesFailed.Wrap(err)
+				return errListBinariesFailed.Wrap(err)
 			}
 			uRepoIndex, err := fetchRepoIndex(config)
             if err != nil {
-                return ErrListBinariesFailed.Wrap(err)
+                return errListBinariesFailed.Wrap(err)
             }
 			if c.Bool("described") {
 				return fSearch(config, []string{""}, uRepoIndex)
 			}
 			bEntries, err := listBinaries(uRepoIndex)
 			if err != nil {
-				return ErrListBinariesFailed.Wrap(err)
+				return errListBinariesFailed.Wrap(err)
 			}
 			for _, binary := range binaryEntriesToArrString(bEntries, true) {
 				fmt.Println(binary)
@@ -50,12 +50,12 @@ func listBinaries(uRepoIndex []binaryEntry) ([]binaryEntry, error) {
 	var allBinaries []binaryEntry
 
 	for _, bin := range uRepoIndex {
-		name, pkgId, version, description, rank := bin.Name, bin.PkgId, bin.Version, bin.Description, bin.Rank
+		name, pkgID, version, description, rank := bin.Name, bin.PkgID, bin.Version, bin.Description, bin.Rank
 
 		if name != "" {
 			allBinaries = append(allBinaries, binaryEntry{
 				Name:        name,
-				PkgId:       pkgId,
+				PkgID:       pkgID,
 				Version:     version,
 				Description: description,
 				Rank:        rank,
@@ -64,7 +64,7 @@ func listBinaries(uRepoIndex []binaryEntry) ([]binaryEntry, error) {
 	}
 
 	if len(allBinaries) == 0 {
-		return nil, ErrListBinariesFailed.New("no binaries found in the repository index")
+		return nil, errListBinariesFailed.New("no binaries found in the repository index")
 	}
 
 	return allBinaries, nil

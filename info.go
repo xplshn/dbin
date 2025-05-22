@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ErrBinaryInfoNotFound = errs.Class("binary info not found")
+	errBinaryInfoNotFound = errs.Class("binary info not found")
 )
 
 func infoCommand() *cli.Command {
@@ -49,7 +49,7 @@ func infoCommand() *cli.Command {
 				bEntry = stringToBinaryEntry(c.Args().First())
 				binaryInfo, err := getBinaryInfo(config, bEntry, uRepoIndex)
 				if err != nil {
-					return ErrBinaryInfoNotFound.Wrap(err)
+					return errBinaryInfoNotFound.Wrap(err)
 				}
 
 				if c.Bool("json") {
@@ -83,8 +83,8 @@ func infoCommand() *cli.Command {
 					label string
 					value any
 				}{
-					{"Name", binaryInfo.Name + "#" + binaryInfo.PkgId},
-					{"Pkg ID", binaryInfo.PkgId},
+					{"Name", binaryInfo.Name + "#" + binaryInfo.PkgID},
+					{"Pkg ID", binaryInfo.PkgID},
 					{"Pretty Name", binaryInfo.PrettyName},
 					{"Description", binaryInfo.Description},
 					{"Version", binaryInfo.Version},
@@ -158,7 +158,7 @@ func findBinaryInfo(bEntry binaryEntry, uRepoIndex []binaryEntry) (binaryEntry, 
 }
 
 func getBinaryInfo(config *Config, bEntry binaryEntry, uRepoIndex []binaryEntry) (*binaryEntry, error) {
-	if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); bEntry.PkgId == "" && instBEntry.PkgId != "" {
+	if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); bEntry.PkgID == "" && instBEntry.PkgID != "" {
 		bEntry = instBEntry
 	}
 
@@ -167,5 +167,5 @@ func getBinaryInfo(config *Config, bEntry binaryEntry, uRepoIndex []binaryEntry)
 		return &binInfo, nil
 	}
 
-	return nil, ErrBinaryInfoNotFound.New("info for the requested binary ('%s') not found in any of the repository index files", parseBinaryEntry(bEntry, false))
+	return nil, errBinaryInfoNotFound.New("info for the requested binary ('%s') not found in any of the repository index files", parseBinaryEntry(bEntry, false))
 }

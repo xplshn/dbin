@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	ErrRemoveFailed = errs.Class("removal failed")
+	errRemoveFailed = errs.Class("removal failed")
 )
 
 func removeCommand() *cli.Command {
@@ -24,7 +24,7 @@ func removeCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			config, err := loadConfig()
 			if err != nil {
-				return ErrRemoveFailed.Wrap(err)
+				return errRemoveFailed.Wrap(err)
 			}
 			return removeBinaries(config, arrStringToArrBinaryEntry(c.Args().Slice()))
 		},
@@ -64,7 +64,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry) error {
 				return
 			}
 
-			if trackedBEntry.PkgId == "" {
+			if trackedBEntry.PkgID == "" {
 				if verbosityLevel >= normalVerbosity {
 					fmt.Fprintf(os.Stderr, "Skipping '%s': it was not installed by dbin\n", bEntry.Name)
 				}
@@ -99,7 +99,7 @@ func removeBinaries(config *Config, bEntries []binaryEntry) error {
 	wg.Wait()
 
 	if len(removeErrors) > 0 {
-		return ErrRemoveFailed.New(strings.Join(removeErrors, "\n"))
+		return errRemoveFailed.New(strings.Join(removeErrors, "\n"))
 	}
 
 	return nil
@@ -110,7 +110,7 @@ func runDeintegrationHooks(config *Config, binaryPath string) error {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			if err := executeHookCommand(config, hookCommands.DeintegrationCommand, binaryPath, ext, false); err != nil {
-				return ErrRemoveFailed.Wrap(err)
+				return errRemoveFailed.Wrap(err)
 			}
 		}
 	}

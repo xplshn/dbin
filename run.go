@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ErrRunFailed = errs.Class("run failed")
+	errRunFailed = errs.Class("run failed")
 )
 
 func runCommand() *cli.Command {
@@ -31,28 +31,28 @@ func runCommand() *cli.Command {
 		SkipFlagParsing: true,
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.NArg() == 0 {
-				return ErrRunFailed.New("no binary name provided for run command")
+				return errRunFailed.New("no binary name provided for run command")
 			}
 
 			config, err := loadConfig()
 			if err != nil {
-				return ErrRunFailed.Wrap(err)
+				return errRunFailed.Wrap(err)
 			}
 
 			bEntry := stringToBinaryEntry(c.Args().First())
-			return runFromCache(config, bEntry, c.Args().Tail(), c.Bool("transparent"), getVerbosityLevel(c), nil)
+			return runFromCache(config, bEntry, c.Args().Tail(), c.Bool("transparent"), nil)
 		},
 	}
 }
 
-func runFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, verbosityLevel Verbosity, env []string) error {
+func runFromCache(config *Config, bEntry binaryEntry, args []string, transparentMode bool, env []string) error {
 	if transparentMode {
 		binaryPath, err := exec.LookPath(bEntry.Name)
 		if err == nil {
 			if verbosityLevel >= normalVerbosity {
 				fmt.Printf("Running '%s' from PATH...\n", bEntry.Name)
 			}
-			return runBinary(binaryPath, args, verbosityLevel, env)
+			return runBinary(binaryPath, args, env)
 		}
 	}
 
@@ -61,10 +61,10 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 		if verbosityLevel >= normalVerbosity {
 			fmt.Printf("Running '%s' from cache...\n", parseBinaryEntry(bEntry, true))
 		}
-		if err := runBinary(cachedFile, args, verbosityLevel, env); err != nil {
-			return ErrRunFailed.Wrap(err)
+		if err := runBinary(cachedFile, args, env); err != nil {
+			return errRunFailed.Wrap(err)
 		}
-		return cleanCache(config.CacheDir, verbosityLevel)
+		return cleanCache(config.CacheDir)
 	}
 
 	if verbosityLevel >= normalVerbosity {
@@ -77,21 +77,24 @@ func runFromCache(config *Config, bEntry binaryEntry, args []string, transparent
 
 	uRepoIndex, err := fetchRepoIndex(&cacheConfig)
 	if err != nil {
-		return ErrRunFailed.Wrap(err)
+		return errRunFailed.Wrap(err)
 	}
-	if err := installBinaries(context.Background(), &cacheConfig, []binaryEntry{bEntry}, silentVerbosityWithErrors, uRepoIndex); err != nil {
-		return ErrRunFailed.Wrap(err)
+
+	verbosityLevel = silentVerbosityWithErrors
+
+	if err := installBinaries(context.Background(), &cacheConfig, []binaryEntry{bEntry}, uRepoIndex); err != nil {
+		return errRunFailed.Wrap(err)
 	}
 
 	cachedFile, err = isCached(config, bEntry)
 	if err != nil {
-		return ErrRunFailed.New("failed to find binary after installation: %v", err)
+		return errRunFailed.New("failed to find binary after installation: %v", err)
 	}
 
-	if err := runBinary(cachedFile, args, verbosityLevel, env); err != nil {
-		return ErrRunFailed.Wrap(err)
+	if err := runBinary(cachedFile, args, env); err != nil {
+		return errRunFailed.Wrap(err)
 	}
-	return cleanCache(config.CacheDir, verbosityLevel)
+	return cleanCache(config.CacheDir)
 }
 
 func isCached(config *Config, bEntry binaryEntry) (string, error) {
@@ -99,16 +102,16 @@ func isCached(config *Config, bEntry binaryEntry) (string, error) {
 
 	if fileExists(cachedFile) && isExecutable(cachedFile) {
 		trackedBEntry, err := readEmbeddedBEntry(cachedFile)
-		if err == nil && (trackedBEntry.PkgId == bEntry.PkgId || bEntry.PkgId == "") {
+		if err == nil && (trackedBEntry.PkgID == bEntry.PkgID || bEntry.PkgID == "") {
 			return cachedFile, nil
 		}
 		fmt.Println(trackedBEntry)
 	}
 
-	return "", ErrRunFailed.New("binary '%s' not found in cache or does not match the requested version", bEntry.Name)
+	return "", errRunFailed.New("binary '%s' not found in cache or does not match the requested version", bEntry.Name)
 }
 
-func runBinary(binaryPath string, args []string, verbosityLevel Verbosity, env []string) error {
+func runBinary(binaryPath string, args []string, env []string) error {
 	cmd := exec.Command(binaryPath, args...)
 	if env == nil {
 		cmd.Env = os.Environ()
@@ -123,13 +126,13 @@ func runBinary(binaryPath string, args []string, verbosityLevel Verbosity, env [
 	if err != nil && verbosityLevel == extraVerbose {
 		fmt.Printf("The program (%s) errored out with a non-zero exit code (%d).\n", binaryPath, cmd.ProcessState.ExitCode())
 	}
-	return ErrRunFailed.Wrap(err)
+	return errRunFailed.Wrap(err)
 }
 
-func cleanCache(cacheDir string, verbosityLevel Verbosity) error {
+func cleanCache(cacheDir string) error {
 	files, err := os.ReadDir(cacheDir)
 	if err != nil {
-		return ErrRunFailed.Wrap(err)
+		return errRunFailed.Wrap(err)
 	}
 
 	if len(files) <= maxCacheSize {

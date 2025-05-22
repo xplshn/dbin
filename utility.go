@@ -25,13 +25,13 @@ import (
 )
 
 var (
-	ErrFileAccess       = errs.Class("file access error")
-	ErrFileTypeInvalid  = errs.Class("invalid file type")
-	ErrFileNotExecutable = errs.Class("file not executable")
-	ErrFileNotFound     = errs.Class("file not found")
-	ErrXAttr            = errs.Class("xattr error")
-	ErrCacheAccess      = errs.Class("cache access error")
-	ErrCacheCleanup    = errs.Class("cache cleanup error")
+	errFileAccess       = errs.Class("file access error")
+	errFileTypeInvalid  = errs.Class("invalid file type")
+	errFileNotExecutable = errs.Class("file not executable")
+	errFileNotFound     = errs.Class("file not found")
+	errXAttr            = errs.Class("xattr error")
+	errCacheAccess      = errs.Class("cache access error")
+	errCacheCleanup    = errs.Class("cache cleanup error")
 )
 
 func fileExists(filePath string) bool {
@@ -51,8 +51,8 @@ func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 	result := entry.Name
 
 	if ansi && term.IsTerminal(int(os.Stdout.Fd())) {
-		if entry.PkgId != "" {
-			result += "\033[94m" + "#" + entry.PkgId + "\033[0m"
+		if entry.PkgID != "" {
+			result += "\033[94m" + "#" + entry.PkgID + "\033[0m"
 		}
 		//if entry.Version != "" {
 		//	result += "\033[92m" + ":" + entry.Version + "\033[0m"
@@ -63,8 +63,8 @@ func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 		return result
 	}
 
-	if entry.PkgId != "" {
-		result += "#" + entry.PkgId
+	if entry.PkgID != "" {
+		result += "#" + entry.PkgID
 	}
 	//if entry.Version != "" {
 	//	result += ":" + entry.Version
@@ -99,7 +99,7 @@ func stringToBinaryEntry(input string) binaryEntry {
 
 	if len(nameParts) > 1 {
 		idVer := strings.SplitN(nameParts[1], ":", 2)
-		bEntry.PkgId = idVer[0]
+		bEntry.PkgID = idVer[0]
 		if len(idVer) > 1 {
 			bEntry.Version = idVer[1]
 		}
@@ -190,7 +190,7 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, uRep
         if config.RetakeOwnership {
             if trackedBEntry.Name == "" {
                 trackedBEntry.Name = baseName
-                trackedBEntry.PkgId = "!retake"
+                trackedBEntry.PkgID = "!retake"
             }
 
             for j := range programsEntries {
@@ -212,7 +212,7 @@ func validateProgramsFrom(config *Config, programsToValidate []binaryEntry, uRep
             continue
         }
         for j := range uRepoIndex {
-            if uRepoIndex[j].Name == trackedBEntry.Name && uRepoIndex[j].PkgId == trackedBEntry.PkgId {
+            if uRepoIndex[j].Name == trackedBEntry.Name && uRepoIndex[j].PkgID == trackedBEntry.PkgID {
                 validPrograms = append(validPrograms, trackedBEntry)
                 break
             }
@@ -304,7 +304,7 @@ func truncatePrintf(disableTruncation bool, format string, a ...any) (n int, err
 func listFilesInDir(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, ErrFileAccess.Wrap(err)
+		return nil, errFileAccess.Wrap(err)
 	}
 	files := make([]string, 0, len(entries))
 	for _, entry := range entries {
@@ -318,19 +318,19 @@ func listFilesInDir(dir string) ([]string, error) {
 func embedBEntry(binaryPath string, bEntry binaryEntry) error {
 	bEntry.Version = ""
 	if err := xattr.Set(binaryPath, "user.FullName", []byte(parseBinaryEntry(bEntry, false))); err != nil {
-		return ErrXAttr.Wrap(err)
+		return errXAttr.Wrap(err)
 	}
 	return nil
 }
 
 func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	if !fileExists(binaryPath) {
-		return binaryEntry{}, ErrFileNotFound.New("Tried to get EmbeddedBEntry of non-existant file: %s", binaryPath)
+		return binaryEntry{}, errFileNotFound.New("Tried to get EmbeddedBEntry of non-existant file: %s", binaryPath)
 	}
 
 	fullName, err := xattr.Get(binaryPath, "user.FullName")
 	if err != nil {
-		return binaryEntry{}, ErrXAttr.New("xattr: user.FullName attribute not found for binary: %s", binaryPath)
+		return binaryEntry{}, errXAttr.New("xattr: user.FullName attribute not found for binary: %s", binaryPath)
 	}
 
 	return stringToBinaryEntry(string(fullName)), nil
@@ -340,21 +340,21 @@ func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
 	cacheFilePath := filepath.Join(cfg.CacheDir, ternary(filename != "", "."+filename, "."+filepath.Base(url)))
 
 	if err := os.MkdirAll(cfg.CacheDir, 0755); err != nil {
-		return nil, ErrCacheAccess.Wrap(err)
+		return nil, errCacheAccess.Wrap(err)
 	}
 
 	fileInfo, err := os.Stat(cacheFilePath)
 	if err == nil && time.Since(fileInfo.ModTime()).Hours() < 6 {
 		bodyBytes, err := os.ReadFile(cacheFilePath)
 		if err != nil {
-			return nil, ErrCacheAccess.Wrap(err)
+			return nil, errCacheAccess.Wrap(err)
 		}
 		return bodyBytes, nil
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, ErrCacheAccess.Wrap(err)
+		return nil, errCacheAccess.Wrap(err)
 	}
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
@@ -362,20 +362,20 @@ func accessCachedOrFetch(url, filename string, cfg *Config) ([]byte, error) {
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
-		return nil, ErrCacheAccess.Wrap(err)
+		return nil, errCacheAccess.Wrap(err)
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, ErrCacheAccess.New("received status code %d", response.StatusCode)
+		return nil, errCacheAccess.New("received status code %d", response.StatusCode)
 	}
 
 	bodyBytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, ErrCacheAccess.Wrap(err)
+		return nil, errCacheAccess.Wrap(err)
 	}
 
 	err = os.WriteFile(cacheFilePath, bodyBytes, 0644)
 	if err != nil {
-		return nil, ErrCacheAccess.Wrap(err)
+		return nil, errCacheAccess.Wrap(err)
 	}
 
 	return bodyBytes, nil
@@ -397,7 +397,7 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 			filePath := strings.TrimPrefix(repo.URL, "file://")
 			bodyBytes, err = os.ReadFile(filePath)
 			if err != nil {
-				return nil, ErrCacheAccess.Wrap(err)
+				return nil, errCacheAccess.Wrap(err)
 			}
 		} else {
 			bodyBytes, err = accessCachedOrFetch(repo.URL, "", config)
@@ -413,25 +413,25 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 			repo.URL = strings.TrimSuffix(repo.URL, ".gz")
 			gzipReader, err := gzip.NewReader(bodyReader)
 			if err != nil {
-				return nil, ErrCacheAccess.Wrap(err)
+				return nil, errCacheAccess.Wrap(err)
 			}
 			defer gzipReader.Close()
 
 			bodyBytes, err = io.ReadAll(gzipReader)
 			if err != nil {
-				return nil, ErrCacheAccess.Wrap(err)
+				return nil, errCacheAccess.Wrap(err)
 			}
 		case strings.HasSuffix(repo.URL, ".zst"):
 			repo.URL = strings.TrimSuffix(repo.URL, ".zst")
 			zstdReader, err := zstd.NewReader(bodyReader)
 			if err != nil {
-				return nil, ErrCacheAccess.Wrap(err)
+				return nil, errCacheAccess.Wrap(err)
 			}
 			defer zstdReader.Close()
 
 			bodyBytes, err = io.ReadAll(zstdReader.IOReadCloser())
 			if err != nil {
-				return nil, ErrCacheAccess.Wrap(err)
+				return nil, errCacheAccess.Wrap(err)
 			}
 		}
 
@@ -439,18 +439,18 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 		switch {
 		case strings.HasSuffix(repo.URL, ".cbor"):
 			if err := cbor.Unmarshal(bodyBytes, &repoIndex); err != nil {
-				return nil, ErrCacheAccess.Wrap(err)
+				return nil, errCacheAccess.Wrap(err)
 			}
 		case strings.HasSuffix(repo.URL, ".json"):
 			if err := json.Unmarshal(bodyBytes, &repoIndex); err != nil {
-				return nil, ErrCacheAccess.Wrap(err)
+				return nil, errCacheAccess.Wrap(err)
 			}
 		case strings.HasSuffix(repo.URL, ".yaml"):
 			if err := yaml.Unmarshal(bodyBytes, &repoIndex); err != nil {
-				return nil, ErrCacheAccess.Wrap(err)
+				return nil, errCacheAccess.Wrap(err)
 			}
 		default:
-			return nil, ErrCacheAccess.New("unsupported format for URL: %s", repo.URL)
+			return nil, errCacheAccess.New("unsupported format for URL: %s", repo.URL)
 		}
 
 		for repoName, entries := range repoIndex {
@@ -470,13 +470,13 @@ func decodeRepoIndex(config *Config) ([]binaryEntry, error) {
 func calculateChecksum(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", ErrFileAccess.Wrap(err)
+		return "", errFileAccess.Wrap(err)
 	}
 	defer file.Close()
 
 	hasher := blake3.New()
 	if _, err := io.Copy(hasher, file); err != nil {
-		return "", ErrFileAccess.Wrap(err)
+		return "", errFileAccess.Wrap(err)
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil

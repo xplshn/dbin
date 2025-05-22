@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ErrInstallFailed = errs.Class("installation failed")
+	errInstallFailed = errs.Class("installation failed")
 )
 
 func installCommand() *cli.Command {
@@ -31,12 +31,12 @@ func installCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			return installBinaries(context.Background(), config, arrStringToArrBinaryEntry(c.Args().Slice()), getVerbosityLevel(c), uRepoIndex)
+			return installBinaries(context.Background(), config, arrStringToArrBinaryEntry(c.Args().Slice()), uRepoIndex)
 		},
 	}
 }
 
-func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry, verbosityLevel Verbosity, uRepoIndex []binaryEntry) error {
+func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry, uRepoIndex []binaryEntry) error {
 	cursor.Hide()
 	defer cursor.Show()
 
@@ -46,7 +46,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 
 	binResults, err := findURL(config, bEntries, uRepoIndex)
 	if err != nil {
-		return ErrInstallFailed.Wrap(err)
+		return errInstallFailed.Wrap(err)
 	}
 
 	var bar progressbar.MultiPB
@@ -158,7 +158,7 @@ func installBinaries(ctx context.Context, config *Config, bEntries []binaryEntry
 				}
 
 				if verbosityLevel >= normalVerbosity {
-					fmt.Printf("Successfully installed [%s]\n", binInfo.Name+"#"+binInfo.PkgId)
+					fmt.Printf("Successfully installed [%s]\n", binInfo.Name+"#"+binInfo.PkgID)
 				}
 			}(bEntry, destination)
 		}
@@ -182,7 +182,7 @@ func runIntegrationHooks(config *Config, binaryPath string) error {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
 			if err := executeHookCommand(config, hookCommands.IntegrationCommand, binaryPath, ext, true); err != nil {
-				return ErrInstallFailed.Wrap(err)
+				return errInstallFailed.Wrap(err)
 			}
 		}
 	}

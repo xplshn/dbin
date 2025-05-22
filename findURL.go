@@ -15,7 +15,7 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) ([]binaryEnt
 
 	for _, bin := range uRepoIndex {
 		// Basic match criteria (name and optional package ID)
-		if bin.Name == bEntry.Name && (bEntry.PkgId == "" || bin.PkgId == bEntry.PkgId) {
+		if bin.Name == bEntry.Name && (bEntry.PkgID == "" || bin.PkgID == bEntry.PkgID) {
 			if bEntry.Version != "" {
 				// Handle snapshot request: check if this binary has the requested snapshot
 				for _, snap := range bin.Snapshots {
@@ -54,7 +54,7 @@ func selectHighestRankedBin(matchingBins []binaryEntry, highestRank uint16) bina
 
 	var nonGlibcBins []binaryEntry
 	for _, bin := range matchingBins {
-		if !strings.Contains(bin.PkgId, "glibc") {
+		if !strings.Contains(bin.PkgID, "glibc") {
 			nonGlibcBins = append(nonGlibcBins, bin)
 		}
 	}
@@ -122,7 +122,7 @@ func findURL(config *Config, bEntries []binaryEntry, uRepoIndex []binaryEntry) (
 		results = append(results, selectedBin)
 
 		if verbosityLevel >= extraVerbose {
-			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s\n", bEntry.Name, selectedBin.PkgId, selectedBin.Version)
+			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s\n", bEntry.Name, selectedBin.PkgID, selectedBin.Version)
 		}
 	}
 

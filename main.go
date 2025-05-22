@@ -64,17 +64,6 @@ func main() {
 	}
 }
 
-func getVerbosityLevel(c *cli.Command) Verbosity {
-	if c.Bool("extra-silent") {
-		return extraSilent
-	} else if c.Bool("silent") {
-		return silentVerbosityWithErrors
-	} else if c.Bool("verbose") {
-		return extraVerbose
-	}
-	return normalVerbosity
-}
-
 func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
 	uRepoIndex, err := decodeRepoIndex(config)
 	if err != nil {
@@ -82,4 +71,3 @@ func fetchRepoIndex(config *Config) ([]binaryEntry, error) {
 	}
 	return uRepoIndex, nil
 }
-
