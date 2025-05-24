@@ -1,3 +1,4 @@
+// TODO: NoConfig & ProgressbarFIFO should not be fields in the default config
 package main
 
 import (

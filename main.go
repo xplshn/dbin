@@ -12,20 +12,20 @@ import (
 
 	"github.com/urfave/cli/v3"
 )
-
-type verbosity int8
-var verbosityLevel verbosity
-
 const (
 	unsupportedArchMsg                  = "Unsupported architecture: "
 	version                             = 1.5
 	maxCacheSize                        = 15
 	binariesToDelete                    = 5
-	extraVerbose              verbosity = 2
-	normalVerbosity           verbosity = 1
-	silentVerbosityWithErrors verbosity = -1
-	extraSilent               verbosity = -2
+	// --------------------------------
+	extraVerbose              int8 = 2
+	normalVerbosity           int8 = 1
+	silentVerbosityWithErrors int8 = -1
+	extraSilent               int8 = -2
+	// -------------------------------
 )
+
+var	verbosityLevel = normalVerbosity
 
 func main() {
 	app := &cli.Command{
