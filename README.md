@@ -30,7 +30,7 @@ $ dbin --help
  For more details refer to https://github.com/xplshn/dbin
 
   Synopsis
-    dbin [-v|-h] [list|install|remove|update|run|info|search|] <-args->
+    dbin [-v|-h] [|list|install|remove|update|run|info|search|] <-args->
   Description:
     The easy to use, easy to get, software distribution system
   Options:
