@@ -11,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fxamacker/cbor/v2"
+	//"github.com/fxamacker/cbor/v2" // lighter than msgpack, both the files and the library, but much slower than the msgpack library
+	"github.com/shamaton/msgpack/v2"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
 	"golang.org/x/term"
@@ -435,10 +436,14 @@ func decodeRepoIndex(config *config) ([]binaryEntry, error) {
 
 		var repoIndex map[string][]binaryEntry
 		switch {
-		case strings.HasSuffix(repo.URL, ".cbor"):
-			if err := cbor.Unmarshal(bodyBytes, &repoIndex); err != nil {
+		case strings.HasSuffix(repo.URL, ".msgp"):
+			if err := msgpack.Unmarshal(bodyBytes, &repoIndex); err != nil {
 				return nil, errCacheAccess.Wrap(err)
 			}
+		//case strings.HasSuffix(repo.URL, ".cbor"):
+		//	if err := cbor.Unmarshal(bodyBytes, &repoIndex); err != nil {
+		//		return nil, errCacheAccess.Wrap(err)
+		//	}
 		case strings.HasSuffix(repo.URL, ".json"):
 			if err := json.Unmarshal(bodyBytes, &repoIndex); err != nil {
 				return nil, errCacheAccess.Wrap(err)

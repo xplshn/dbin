@@ -230,7 +230,7 @@ func loadConfig() (*config, error) {
 
 	arch := runtime.GOARCH + "_" + runtime.GOOS
 	for v := version - 0.1; v >= version-0.3; v -= 0.1 {
-		url := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
+		url := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.msgp.zst")
 		for _, repo := range cfg.Repositories {
 			if repo.URL == url {
 				fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, version)
@@ -320,7 +320,7 @@ func setDefaultValues(config *config) {
 
 	config.Repositories = []repository{
 		{
-			URL: fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", version, arch, ".lite.cbor.zst"),
+			URL: fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", version, arch, ".lite.msgp.zst"), // using msgp because our msgpack library is faster than the only good cbor library for Go
 			PubKeys: map[string]string{
 				"bincache": "https://meta.pkgforge.dev/bincache/minisign.pub",
 				"pkgcache": "https://meta.pkgforge.dev/pkgcache/minisign.pub",

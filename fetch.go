@@ -36,10 +36,9 @@ type ociXAttrMeta struct {
 	Digest string `json:"digest"`
 }
 
-func xattrOCIKey() string { return "user.dbin.ocichunk" }
 func xattrGetOCIMeta(path string) (ociXAttrMeta, error) {
 	var meta ociXAttrMeta
-	raw, err := xattr.Get(path, xattrOCIKey())
+	raw, err := xattr.Get(path, "user.dbin.ocichunk")
 	if err != nil {
 		return meta, errDownloadFailed.Wrap(err)
 	}
@@ -51,13 +50,10 @@ func xattrGetOCIMeta(path string) (ociXAttrMeta, error) {
 func xattrSetOCIMeta(path string, offset int64, digest string) error {
 	meta := ociXAttrMeta{Offset: offset, Digest: digest}
 	raw, _ := json.Marshal(meta)
-	return xattr.Set(path, xattrOCIKey(), raw)
-}
-func xattrRemoveOCIMeta(path string) error {
-	return xattr.Remove(path, xattrOCIKey())
+	return xattr.Set(path, "user.dbin.ocichunk", raw)
 }
 
-func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination string, bEntry *binaryEntry, isOCI bool) error {
+func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination string, bEntry *binaryEntry, isOCI bool, lastModified string, providedOffset int64) error {
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return errDownloadFailed.Wrap(err)
 	}
@@ -69,9 +65,8 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 			resumeOffset = meta.Offset
 		}
 	} else {
-		if fi, err := os.Stat(tempFile); err == nil {
-			resumeOffset = fi.Size()
-		}
+		// For plain HTTP, use the offset we calculated in the calling function
+		resumeOffset = providedOffset
 	}
 
 	var out *os.File
@@ -92,6 +87,11 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 		}
 	}
 	defer out.Close()
+
+	// Store Last-Modified time for future resume validation (plain HTTP only)
+	if !isOCI && lastModified != "" {
+		_ = xattr.Set(tempFile, "user.dbin.lastmod", []byte(lastModified))
+	}
 
 	hash := blake3.New()
 	if resumeOffset > 0 {
@@ -115,10 +115,18 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 		writer = io.MultiWriter(out, hash)
 	}
 
-	if bar != nil && resp.ContentLength > 0 {
-		bar.UpdateRange(resumeOffset, resp.ContentLength+resumeOffset)
-		if resumeOffset > 0 {
+	if bar != nil {
+		if resp.StatusCode == http.StatusPartialContent {
+			// We're resuming - ContentLength is remaining bytes
+			totalSize := resumeOffset + resp.ContentLength
+			bar.UpdateRange(resumeOffset, totalSize)
 			bar.SetInitialValue(resumeOffset)
+		} else if resp.ContentLength > 0 {
+			// Full download
+			bar.UpdateRange(0, resp.ContentLength)
+			if resumeOffset > 0 {
+				bar.SetInitialValue(resumeOffset)
+			}
 		}
 	}
 
@@ -164,8 +172,11 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 		}
 	}
 
+	// Clean up metadata
 	if isOCI {
-		_ = xattrRemoveOCIMeta(tempFile)
+		_ = xattr.Remove(tempFile, "user.dbin.ocichunk")
+	} else {
+		_ = xattr.Remove(tempFile, "user.dbin.lastmod")
 	}
 
 	if bEntry.Bsum != "" && bEntry.Bsum != "!no_check" {
@@ -260,32 +271,91 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *b
 		bEntry.DownloadURL = strings.TrimPrefix(bEntry.DownloadURL, "oci://")
 		return fetchOCIImage(ctx, bar, bEntry, destination, cfg)
 	}
+
 	var pubKeyURL string
 	if bEntry.Repository.PubKeys != nil {
 		pubKeyURL = bEntry.Repository.PubKeys[bEntry.Repository.Name]
 	}
+
 	tempFile := destination + ".tmp"
 	var resumeOffset int64
+	var lastModified string
+
+	// Check if we have a partial download
 	if fi, err := os.Stat(tempFile); err == nil {
 		resumeOffset = fi.Size()
+		// Get the modification time we stored when we started the download
+		if modTimeBytes, err := xattr.Get(tempFile, "user.dbin.lastmod"); err == nil {
+			lastModified = string(modTimeBytes)
+		}
 	}
-	req, err := http.NewRequestWithContext(ctx, "GET", bEntry.DownloadURL, nil)
+
+	// Create initial request to check if resume is valid
+	req, err := http.NewRequestWithContext(ctx, "HEAD", bEntry.DownloadURL, nil)
 	if err != nil {
 		return errDownloadFailed.Wrap(err)
 	}
-	if resumeOffset > 0 {
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", resumeOffset))
+
+	// If we have a partial file, check if server file changed
+	if resumeOffset > 0 && lastModified != "" {
+		req.Header.Set("If-Modified-Since", lastModified)
 	}
+
 	setRequestHeaders(req)
 	client := &http.Client{}
+	headResp, err := client.Do(req)
+	if err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
+	headResp.Body.Close()
+
+	// If file was modified (200) or we got other status, restart download
+	if resumeOffset > 0 && (headResp.StatusCode != http.StatusNotModified) {
+		// Remote file changed or server doesn't support conditional requests
+		// Remove old temp file and start fresh
+		os.Remove(tempFile)
+		resumeOffset = 0
+		lastModified = ""
+	}
+
+	// Now make the actual download request
+	req, err = http.NewRequestWithContext(ctx, "GET", bEntry.DownloadURL, nil)
+	if err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
+
+	if resumeOffset > 0 {
+		// Use If-Range for safer resume - server will ignore Range if file changed
+		if lastModified != "" {
+			req.Header.Set("If-Range", lastModified)
+		}
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", resumeOffset))
+	}
+
+	setRequestHeaders(req)
 	resp, err := client.Do(req)
 	if err != nil {
 		return errDownloadFailed.Wrap(err)
 	}
 	defer resp.Body.Close()
-	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, false); err != nil {
+
+	// If we requested a range but got 200 instead of 206, file changed
+	if resumeOffset > 0 && resp.StatusCode == http.StatusOK {
+		// Server is sending full file, remove temp and start fresh
+		os.Remove(tempFile)
+		resumeOffset = 0
+	}
+
+	// Store Last-Modified for future resume attempts
+	if lm := resp.Header.Get("Last-Modified"); lm != "" {
+		// We'll store this in the download function
+		lastModified = lm
+	}
+
+	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, false, lastModified, resumeOffset); err != nil {
 		return errDownloadFailed.Wrap(err)
 	}
+
 	if pubKeyURL != "" {
 		sigURL := bEntry.DownloadURL + ".sig"
 		sigResp, err := http.Get(sigURL)
@@ -339,7 +409,7 @@ func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry,
 	if sigResp != nil {
 		defer sigResp.Body.Close()
 	}
-	if err := downloadWithProgress(ctx, bar, binaryResp, destination, bEntry, true); err != nil {
+	if err := downloadWithProgress(ctx, bar, binaryResp, destination, bEntry, true, "", 0); err != nil {
 		return errDownloadFailed.Wrap(err)
 	}
 	var pubKeyURL string
@@ -463,4 +533,3 @@ func downloadOCILayer(ctx context.Context, registry, repository string, manifest
 	}
 	return binaryResp, sigResp, nil
 }
-
