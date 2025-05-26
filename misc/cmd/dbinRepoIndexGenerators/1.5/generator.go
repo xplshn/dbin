@@ -143,7 +143,7 @@ func loadAppStreamMetadata() error {
 		return nil
 	}
 
-	resp, err := http.Get("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.msgp")
+	resp, err := http.Get("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.cbor")
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func loadAppStreamMetadata() error {
 		return err
 	}
 
-	err = msgpack.Unmarshal(body, &appStreamMetadata)
+	err = cbor.Unmarshal(body, &appStreamMetadata)
 	if err != nil {
 		return err
 	}
