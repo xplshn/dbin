@@ -27,7 +27,7 @@ var (
 
 type repository struct {
 	Name         string            `yaml:"Name,omitempty"`
-	URL          string            `yaml:"URL" env:"DBIN_REPO_URLs" description:"URL of the repository."`
+	URL          string            `yaml:"URL" description:"URL of the repository."`
 	PubKeys      map[string]string `yaml:"pubKeys" description:"URLs to the public keys for signature verification."`
 	SyncInterval time.Duration     `yaml:"syncInterval" description:"Interval for syncing this repository."`
 }
