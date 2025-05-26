@@ -105,7 +105,7 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 		}
 		rf.Close()
 	}
-	buf := make([]byte, 32*1024)
+	buf := make([]byte, 64*1024)
 	written := resumeOffset
 
 	var writer io.Writer
@@ -118,8 +118,7 @@ func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Re
 	if bar != nil {
 		if resp.StatusCode == http.StatusPartialContent {
 			// We're resuming - ContentLength is remaining bytes
-			totalSize := resumeOffset + resp.ContentLength
-			bar.UpdateRange(resumeOffset, totalSize)
+			bar.UpdateRange(resumeOffset-written, resp.ContentLength+resumeOffset)
 			bar.SetInitialValue(resumeOffset)
 		} else if resp.ContentLength > 0 {
 			// Full download
@@ -296,11 +295,6 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *b
 		return errDownloadFailed.Wrap(err)
 	}
 
-	// If we have a partial file, check if server file changed
-	if resumeOffset > 0 && lastModified != "" {
-		req.Header.Set("If-Modified-Since", lastModified)
-	}
-
 	setRequestHeaders(req)
 	client := &http.Client{}
 	headResp, err := client.Do(req)
@@ -308,16 +302,6 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *b
 		return errDownloadFailed.Wrap(err)
 	}
 	headResp.Body.Close()
-
-	// If file was modified (200) or we got other status, restart download
-	if resumeOffset > 0 && (headResp.StatusCode != http.StatusNotModified) {
-		// Remote file changed or server doesn't support conditional requests
-		// Remove old temp file and start fresh
-		os.Remove(tempFile)
-		resumeOffset = 0
-		lastModified = ""
-	}
-
 	// Now make the actual download request
 	req, err = http.NewRequestWithContext(ctx, "GET", bEntry.DownloadURL, nil)
 	if err != nil {
@@ -325,7 +309,6 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *b
 	}
 
 	if resumeOffset > 0 {
-		// Use If-Range for safer resume - server will ignore Range if file changed
 		if lastModified != "" {
 			req.Header.Set("If-Range", lastModified)
 		}
@@ -348,7 +331,6 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *b
 
 	// Store Last-Modified for future resume attempts
 	if lm := resp.Header.Get("Last-Modified"); lm != "" {
-		// We'll store this in the download function
 		lastModified = lm
 	}
 
