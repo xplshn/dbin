@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/fxamacker/cbor/v2"
-	"github.com/shamaton/msgpack/v2"
 	"github.com/goccy/go-json"
+	"github.com/shamaton/msgpack/v2"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
 )

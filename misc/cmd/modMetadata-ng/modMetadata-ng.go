@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tiendc/go-deepcopy"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
+	"github.com/tiendc/go-deepcopy"
 )
 
 type repository struct {
@@ -79,7 +79,7 @@ type DbinItem struct {
 	Categories      string     `json:"categories,omitempty"`
 	Snapshots       []snapshot `json:"snapshots,omitempty"`
 	Provides        string     `json:"provides,omitempty"`
-	License         string   `json:"license,omitempty"`
+	License         string     `json:"license,omitempty"`
 	Notes           []string   `json:"notes,omitempty"`
 	Appstream       string     `json:"appstream,omitempty"`
 	Rank            uint       `json:"rank,omitempty"`
@@ -280,14 +280,14 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	// We basically do a search&replace, order alphabetically, and then do a search&replace again.
 	// I prioritize binaries with a smaller size, more hardware compat, and that are truly static.
 	reorderItems([]map[string]string{
-		{"musl":    "0AAAMusl"},      // | Higher priority for Musl
-		{"ppkg":    "0AABPpkg"},      // | Higher priority for ppkg
-		{"glibc":   "ZZZXXXGlibc"},   // | Push glibc to the end
-									  // | - Little Glenda says hi!
-									  // |   (\(\
+		{"musl": "0AAAMusl"},     // | Higher priority for Musl
+		{"ppkg": "0AABPpkg"},     // | Higher priority for ppkg
+		{"glibc": "ZZZXXXGlibc"}, // | Push glibc to the end
+		// -					      // | - Little Glenda says hi!
+		// -      				      // |   (\(\
 		{"musl-v3": "0AACMusl"},      // |   ¸". ..
 		{"glibc-v3": "ZZZXXXXGlibc"}, // |   (  . .)
-									  // |   |   ° ¡
+		// -    					  // |   |   ° ¡
 		{"musl-v4": "0AADMusl"},      // |   ¿     ;
 		{"glibc-v4": "ZZZXXXZGlibc"}, // |  c?".UJ"
 	}, metadata)
@@ -298,7 +298,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 
 	// "web" version
 	var webMetadata DbinMetadata
-    _ = deepcopy.Copy(&webMetadata, &metadata)
+	_ = deepcopy.Copy(&webMetadata, &metadata)
 	for _, items := range webMetadata {
 		for i := range items {
 			items[i].Provides = ""
@@ -306,7 +306,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Bsum = ""
 		}
 	}
-	saveAll(filename + ".web", webMetadata)
+	saveAll(filename+".web", webMetadata)
 	// "lite" version
 	for _, items := range metadata {
 		for i := range items {
@@ -315,7 +315,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Shasum = ""
 		}
 	}
-	return saveAll(filename + ".lite", metadata)
+	return saveAll(filename+".lite", metadata)
 }
 
 func saveCBOR(filename string, metadata DbinMetadata) error {
@@ -511,4 +511,4 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 		}
 	}
 }
- */
+*/
