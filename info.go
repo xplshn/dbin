@@ -146,15 +146,13 @@ func infoCommand() *cli.Command {
 }
 
 func findBinaryInfo(bEntry binaryEntry, uRepoIndex []binaryEntry) (binaryEntry, bool) {
-	matchingBins, highestRank := findMatchingBins(bEntry, uRepoIndex)
+	matchingBins := findMatchingBins(bEntry, uRepoIndex)
 
 	if len(matchingBins) == 0 {
 		return binaryEntry{}, false
 	}
 
-	selectedBin := selectHighestRankedBin(matchingBins, highestRank)
-
-	return selectedBin, true
+	return matchingBins[0], true
 }
 
 func getBinaryInfo(config *config, bEntry binaryEntry, uRepoIndex []binaryEntry) (*binaryEntry, error) {

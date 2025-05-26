@@ -11,8 +11,7 @@ import (
 	"strings"
 	"time"
 
-	//"github.com/fxamacker/cbor/v2" // lighter than msgpack, both the files and the library, but much slower than the msgpack library
-	"github.com/shamaton/msgpack/v2"
+	"github.com/fxamacker/cbor/v2" //"github.com/shamaton/msgpack/v2"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
 	"golang.org/x/term"
@@ -31,6 +30,18 @@ var (
 	errFileNotFound     = errs.Class("file not found")
 	errXAttr            = errs.Class("xattr error")
 	errCacheAccess      = errs.Class("cache access error")
+	delimiters = []rune{
+		'#', // .PkgID
+		':', // .Version
+		'@', // .Repository.Name
+	}
+)
+
+const (
+	blueColor    = "\x1b[0;34m"
+	cyanColor = "\x1b[0;36m"
+	highIntensityBlackColor = "\x1b[0;90m"
+	resetColor   = "\x1b[0m"
 )
 
 func fileExists(filePath string) bool {
@@ -51,25 +62,25 @@ func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 
 	if ansi && term.IsTerminal(int(os.Stdout.Fd())) {
 		if entry.PkgID != "" {
-			result += "\033[94m" + "#" + entry.PkgID + "\033[0m"
+			result += blueColor + string(delimiters[0]) + entry.PkgID + resetColor
 		}
-		//if entry.Version != "" {
-		//	result += "\033[92m" + ":" + entry.Version + "\033[0m"
-		//}
+		if entry.Version != "" {
+			result += cyanColor + string(delimiters[1]) + entry.Version + resetColor
+		}
 		if entry.Repository.Name != "" {
-			result += "\033[92m" + "@" + entry.Repository.Name + "\033[0m"
+			result += highIntensityBlackColor + string(delimiters[2]) + entry.Repository.Name + resetColor
 		}
 		return result
 	}
 
 	if entry.PkgID != "" {
-		result += "#" + entry.PkgID
+		result += string(delimiters[0]) + entry.PkgID
 	}
 	//if entry.Version != "" {
-	//	result += ":" + entry.Version
+	//	result += string(delimiters[1]) + entry.Version
 	//}
 	if entry.Repository.Name != "" {
-		result += "@" + entry.Repository.Name
+		result += string(delimiters[2]) + entry.Repository.Name
 	}
 	return result
 }
@@ -77,27 +88,29 @@ func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 func stringToBinaryEntry(input string) binaryEntry {
 	var bEntry binaryEntry
 
-	/* Accepted strings:
-	.name
-	.name#.id
-	.name#.id:.version
-	.name#.id@.repo
-	.name#id:.version@repo
-	*/
+	// Accepted formats:
+	// .name
+	// .name#.id
+	// .name#.id:.version
+	// .name#.id@.repo
+	// .name#id:.version@repo
 
-	// Split the input string into parts based on '@' and '#'
-	parts := strings.SplitN(input, "@", 2)
+	// Remove leading dot if present
+	input = strings.TrimPrefix(input, ".")
+
+	// Split by repository delimiter (@)
+	parts := strings.SplitN(input, string(delimiters[2]), 2)
 	bEntry.Name = parts[0]
-
 	if len(parts) > 1 {
 		bEntry.Repository.Name = parts[1]
 	}
 
-	nameParts := strings.SplitN(bEntry.Name, "#", 2)
+	// Split name part by ID delimiter (#)
+	nameParts := strings.SplitN(bEntry.Name, string(delimiters[0]), 2)
 	bEntry.Name = nameParts[0]
-
 	if len(nameParts) > 1 {
-		idVer := strings.SplitN(nameParts[1], ":", 2)
+		// Split ID part by version delimiter (:)
+		idVer := strings.SplitN(nameParts[1], string(delimiters[1]), 2)
 		bEntry.PkgID = idVer[0]
 		if len(idVer) > 1 {
 			bEntry.Version = idVer[1]
@@ -393,10 +406,9 @@ func decodeRepoIndex(config *config) ([]binaryEntry, error) {
 		var err error
 
 		if strings.HasPrefix(repo.URL, "file://") {
-			filePath := strings.TrimPrefix(repo.URL, "file://")
-			bodyBytes, err = os.ReadFile(filePath)
+			bodyBytes, err = os.ReadFile(strings.TrimPrefix(repo.URL, "file://"))
 			if err != nil {
-				return nil, errCacheAccess.Wrap(err)
+				return nil, errFileAccess.Wrap(err)
 			}
 		} else {
 			bodyBytes, err = accessCachedOrFetch(repo.URL, "", config)
@@ -412,48 +424,48 @@ func decodeRepoIndex(config *config) ([]binaryEntry, error) {
 			repo.URL = strings.TrimSuffix(repo.URL, ".gz")
 			gzipReader, err := gzip.NewReader(bodyReader)
 			if err != nil {
-				return nil, errCacheAccess.Wrap(err)
+				return nil, errFileTypeInvalid.Wrap(err)
 			}
 			defer gzipReader.Close()
 
 			bodyBytes, err = io.ReadAll(gzipReader)
 			if err != nil {
-				return nil, errCacheAccess.Wrap(err)
+				return nil, errFileAccess.Wrap(err)
 			}
 		case strings.HasSuffix(repo.URL, ".zst"):
 			repo.URL = strings.TrimSuffix(repo.URL, ".zst")
 			zstdReader, err := zstd.NewReader(bodyReader)
 			if err != nil {
-				return nil, errCacheAccess.Wrap(err)
+				return nil, errFileTypeInvalid.Wrap(err)
 			}
 			defer zstdReader.Close()
 
 			bodyBytes, err = io.ReadAll(zstdReader.IOReadCloser())
 			if err != nil {
-				return nil, errCacheAccess.Wrap(err)
+				return nil, errFileAccess.Wrap(err)
 			}
 		}
 
 		var repoIndex map[string][]binaryEntry
 		switch {
-		case strings.HasSuffix(repo.URL, ".msgp"):
-			if err := msgpack.Unmarshal(bodyBytes, &repoIndex); err != nil {
-				return nil, errCacheAccess.Wrap(err)
-			}
-		//case strings.HasSuffix(repo.URL, ".cbor"):
-		//	if err := cbor.Unmarshal(bodyBytes, &repoIndex); err != nil {
-		//		return nil, errCacheAccess.Wrap(err)
+		//case strings.HasSuffix(repo.URL, ".msgp"):
+		//	if err := msgpack.Unmarshal(bodyBytes, &repoIndex); err != nil {
+		//		return nil, errFileTypeInvalid.Wrap(err)
 		//	}
+		case strings.HasSuffix(repo.URL, ".cbor"):
+			if err := cbor.Unmarshal(bodyBytes, &repoIndex); err != nil {
+				return nil, errFileTypeInvalid.Wrap(err)
+			}
 		case strings.HasSuffix(repo.URL, ".json"):
 			if err := json.Unmarshal(bodyBytes, &repoIndex); err != nil {
-				return nil, errCacheAccess.Wrap(err)
+				return nil, errFileTypeInvalid.Wrap(err)
 			}
 		case strings.HasSuffix(repo.URL, ".yaml"):
 			if err := yaml.Unmarshal(bodyBytes, &repoIndex); err != nil {
-				return nil, errCacheAccess.Wrap(err)
+				return nil, errFileTypeInvalid.Wrap(err)
 			}
 		default:
-			return nil, errCacheAccess.New("unsupported format for URL: %s", repo.URL)
+			return nil, errFileTypeInvalid.New("unsupported format for URL: %s", repo.URL)
 		}
 
 		for repoName, entries := range repoIndex {

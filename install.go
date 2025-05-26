@@ -75,6 +75,7 @@ func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry
 			barTitle := fmt.Sprintf("Installing %s", bEntry.Name)
 			pbarOpts := []progressbar.Opt{
 				progressbar.WithBarStepper(config.ProgressbarStyle),
+				progressbar.WithBarResumeable(true),
 			}
 
 			if termWidth < 120 {

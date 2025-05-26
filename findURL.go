@@ -9,82 +9,57 @@ import (
 	"github.com/zeebo/errs"
 )
 
-func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, uint16) {
+func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) []binaryEntry {
 	var matchingBins []binaryEntry
-	var highestRank uint16
+	seenNames := make(map[string]bool) // Track seen names to pick only the first match
 
 	for _, bin := range uRepoIndex {
-		// Basic match criteria (name and optional package ID)
-		if bin.Name == bEntry.Name && (bEntry.PkgID == "" || bin.PkgID == bEntry.PkgID) {
-			if bEntry.Version != "" {
-				// Handle snapshot request: check if this binary has the requested snapshot
-				for _, snap := range bin.Snapshots {
-					// Match by commit or version
-					if bEntry.Version == snap.Version || bEntry.Version == snap.Commit {
-						// Modify the URL to use the snapshot's commit
-						if strings.HasPrefix(bin.DownloadURL, "oci://") {
-							// For OCI URLs, replace the tag part by locating the last colon.
-							idx := strings.LastIndex(bin.DownloadURL, ":")
-							if idx != -1 {
-								// Everything before the tag remains intact; the new tag is the snapshot commit.
-								bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
-								// Disable checksum verification
-								bin.Bsum = "!no_check"
-								bin.Version = snap.Version
-							}
-						}
-					}
-				}
-			}
+		// Skip if we've already seen this name
+		if seenNames[bin.Name] {
+			continue
+		}
+		// Match criteria: name, optional package ID, optional version, and optional repository
+		if bin.Name == bEntry.Name &&
+			(bEntry.PkgID == "" || bin.PkgID == bEntry.PkgID) &&
+			(bEntry.Version == "" || bin.Version == bEntry.Version || hasMatchingSnapshot(bin, bEntry.Version)) &&
+			(bEntry.Repository.Name == "" || bin.Repository.Name == bEntry.Repository.Name) {
 			matchingBins = append(matchingBins, bin)
-			if bin.Rank > highestRank {
-				highestRank = bin.Rank
-			}
-			break
+			seenNames[bin.Name] = true // Mark this name as seen
 		}
 	}
 
-	return matchingBins, highestRank
+	return matchingBins
 }
 
-func selectHighestRankedBin(matchingBins []binaryEntry, highestRank uint16) binaryEntry {
-	if len(matchingBins) == 1 {
-		return matchingBins[0]
-	}
-
-	var nonGlibcBins []binaryEntry
-	for _, bin := range matchingBins {
-		if !strings.Contains(bin.PkgID, "glibc") {
-			nonGlibcBins = append(nonGlibcBins, bin)
-		}
-	}
-
-	if len(nonGlibcBins) > 0 {
-		var selectedBin binaryEntry
-		var highestNonGlibcRank uint16
-		for _, bin := range nonGlibcBins {
-			if bin.Rank > highestNonGlibcRank {
-				highestNonGlibcRank = bin.Rank
-				selectedBin = bin
+// Helper function to check if a snapshot matches the requested version or commit
+func hasMatchingSnapshot(bin binaryEntry, version string) bool {
+	for _, snap := range bin.Snapshots {
+		if version == snap.Version || version == snap.Commit {
+			// Modify the URL to use the snapshot's commit for OCI URLs
+			if strings.HasPrefix(bin.DownloadURL, "oci://") {
+				idx := strings.LastIndex(bin.DownloadURL, ":")
+				if idx != -1 {
+					bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
+					bin.Bsum = "!no_check"
+					bin.Version = snap.Version
+				}
 			}
-		}
-		return selectedBin
-	}
-
-	for _, bin := range matchingBins {
-		if bin.Rank == highestRank {
-			return bin
+			return true
 		}
 	}
-
-	if highestRank == 0 {
-		return matchingBins[0]
-	}
-
-	return binaryEntry{}
+	return false
 }
 
 func findURL(config *config, bEntries []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
+	// Check for duplicate names in bEntries
+	nameCount := make(map[string]int)
+	for _, bEntry := range bEntries {
+		nameCount[bEntry.Name]++
+		if nameCount[bEntry.Name] > 1 {
+			return nil, errs.New("duplicate binary name '%s' provided in input", bEntry.Name)
+		}
+	}
+
 	var results []binaryEntry
 	var allErrors []error
 	allFailed := true
@@ -100,11 +75,20 @@ func findURL(config *config, bEntries []binaryEntry, uRepoIndex []binaryEntry) (
 			continue
 		}
 
+		// Check if the binary is installed and update bEntry with installed metadata if available
 		if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); instBEntry.Name != "" {
-			bEntry = instBEntry
+			if bEntry.PkgID == "" {
+				bEntry.PkgID = instBEntry.PkgID
+			}
+			if bEntry.Version == "" {
+				bEntry.Version = instBEntry.Version
+			}
+			if bEntry.Repository.Name == "" {
+				bEntry.Repository.Name = instBEntry.Repository.Name
+			}
 		}
 
-		matchingBins, highestRank := findMatchingBins(bEntry, uRepoIndex)
+		matchingBins := findMatchingBins(bEntry, uRepoIndex)
 
 		if len(matchingBins) == 0 {
 			results = append(results, binaryEntry{
@@ -117,12 +101,34 @@ func findURL(config *config, bEntries []binaryEntry, uRepoIndex []binaryEntry) (
 		}
 
 		allFailed = false
-		selectedBin := selectHighestRankedBin(matchingBins, highestRank)
 
-		results = append(results, selectedBin)
+		// If a repository is specified, select the binary from that repository
+		if bEntry.Repository.Name != "" {
+			for _, bin := range matchingBins {
+				if bin.Repository.Name == bEntry.Repository.Name {
+					results = append(results, bin)
+					if verbosityLevel >= extraVerbose {
+						fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s repo=%s\n", bEntry.Name, bin.PkgID, bin.Version, bin.Repository.Name)
+					}
+					break
+				}
+			}
+			// If no match with the specified repo, add an error
+			if len(results) == len(bEntries)-1 {
+				results = append(results, binaryEntry{
+					Name:        bEntry.Name,
+					DownloadURL: "!not_found",
+					Bsum:        "!no_check",
+				})
+				allErrors = append(allErrors, fmt.Errorf("no binary found for [%s] in repository %s", parseBinaryEntry(bEntry, false), bEntry.Repository.Name))
+			}
+			continue
+		}
 
+		// If no repository is specified, include the first matching binary
+		results = append(results, matchingBins[0])
 		if verbosityLevel >= extraVerbose {
-			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s\n", bEntry.Name, selectedBin.PkgID, selectedBin.Version)
+			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s repo=%s\n", bEntry.Name, matchingBins[0].PkgID, matchingBins[0].Version, matchingBins[0].Repository.Name)
 		}
 	}
 
