@@ -35,14 +35,14 @@ type PkgForgeItem struct {
 	Icon        string   `json:"icon,omitempty"`
 	Screenshots []string `json:"screenshots,omitempty"`
 	Description string   `json:"description,omitempty"`
-	Homepage    []string `json:"homepage,omitempty"`
+	WebURLs     []string `json:"homepage,omitempty"`
 	Version     string   `json:"version,omitempty"`
 	DownloadURL string   `json:"download_url,omitempty"`
 	Size        string   `json:"size,omitempty"`
 	Bsum        string   `json:"bsum,omitempty"`
 	Shasum      string   `json:"shasum,omitempty"`
 	BuildDate   string   `json:"build_date,omitempty"`
-	SrcURL      []string `json:"src_url,omitempty"`
+	SrcURLs     []string `json:"src_url,omitempty"`
 	BuildScript string   `json:"build_script,omitempty"`
 	BuildLog    string   `json:"build_log,omitempty"`
 	Category    []string `json:"categories,omitempty"`
@@ -277,6 +277,10 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 
 	item.Pkg = strings.TrimPrefix(item.Pkg, "/")
 
+	if areSlicesEqual(item.SrcURLs, item.WebURLs) {
+		item.WebURLs = []string{}
+	}
+
 	return DbinItem{
 		Pkg:         pkgName,
 		Name:        item.Name,
@@ -291,8 +295,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		Bsum:        item.Bsum,
 		Shasum:      item.Shasum,
 		BuildDate:   item.BuildDate,
-		SrcURLs:     item.SrcURL,
-		WebURLs:     item.Homepage,
+		SrcURLs:     item.SrcURLs,
+		WebURLs:     item.WebURLs,
 		BuildScript: item.BuildScript,
 		BuildLog:    item.BuildLog,
 		Categories:  categories,
@@ -567,6 +571,18 @@ func main() {
 
 		fmt.Printf("Successfully processed and saved combined metadata to %s\n", outputFile)
 	}
+}
+
+func areSlicesEqual(a, b []string) bool {
+    if len(a) != len(b) {
+        return false
+    }
+    for i, v := range a {
+        if v != b[i] {
+            return false
+        }
+    }
+    return true
 }
 
 func t[T any](cond bool, vtrue, vfalse T) T {
