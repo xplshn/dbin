@@ -11,6 +11,7 @@ import (
 
 	"github.com/tiendc/go-deepcopy"
 	"github.com/fxamacker/cbor/v2"
+	"github.com/shamaton/msgpack/v2"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
 	minify "github.com/tdewolff/minify/v2"
@@ -142,7 +143,7 @@ func loadAppStreamMetadata() error {
 		return nil
 	}
 
-	resp, err := http.Get("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.cbor")
+	resp, err := http.Get("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.msgp")
 	if err != nil {
 		return err
 	}
@@ -153,7 +154,7 @@ func loadAppStreamMetadata() error {
 		return err
 	}
 
-	err = cbor.Unmarshal(body, &appStreamMetadata)
+	err = msgpack.Unmarshal(body, &appStreamMetadata)
 	if err != nil {
 		return err
 	}
@@ -352,10 +353,13 @@ func reorderItems(str []map[string]string, metadata DbinMetadata) {
 }
 
 func saveAll(filename string, metadata DbinMetadata) error {
+	if err := saveCBOR(filename, metadata); err != nil {
+		return err
+	}
 	if err := saveJSON(filename, metadata); err != nil {
 		return err
 	}
-	if err := saveCBOR(filename, metadata); err != nil {
+	if err := saveMsgp(filename, metadata); err != nil {
 		return err
 	}
 	//genAMMeta(filename, dbinMetadata)
@@ -415,15 +419,6 @@ func saveCBOR(filename string, metadata DbinMetadata) error {
 	}
 	return os.WriteFile(filename+".cbor", cborData, 0644)
 }
-
-func saveYAML(filename string, metadata DbinMetadata) error {
-	yamlData, err := yaml.Marshal(metadata)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filename+".yaml", yamlData, 0644)
-}
-
 func saveJSON(filename string, metadata DbinMetadata) error {
 	jsonData, err := json.MarshalIndent(metadata, "", " ")
 	if err != nil {
@@ -441,6 +436,20 @@ func saveJSON(filename string, metadata DbinMetadata) error {
 		return err
 	}
 	return nil
+}
+func saveMsgp(filename string, metadata DbinMetadata) error {
+	msgpData, err := msgpack.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename+".msgp", msgpData, 0644)
+}
+func saveYAML(filename string, metadata DbinMetadata) error {
+	yamlData, err := yaml.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename+".yaml", yamlData, 0644)
 }
 
 func main() {

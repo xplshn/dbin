@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/fxamacker/cbor/v2"
+	"github.com/shamaton/msgpack/v2"
 	"github.com/goccy/go-json"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
@@ -113,7 +113,10 @@ func saveAll(filename string, metadata []AppStreamData) error {
 	if err := saveJSON(filename, metadata); err != nil {
 		return err
 	}
-	return saveCBOR(filename, metadata)
+	if err := saveCBOR(filename, metadata); err != nil {
+		return err
+	}
+	return saveMsgp(filename, metadata)
 }
 
 func saveCBOR(filename string, metadata []AppStreamData) error {
@@ -123,36 +126,30 @@ func saveCBOR(filename string, metadata []AppStreamData) error {
 	}
 	return os.WriteFile(filename+".cbor", cborData, 0644)
 }
-
 func saveJSON(filename string, metadata []AppStreamData) error {
-	var buf bytes.Buffer
-
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-
-	if err := enc.Encode(metadata); err != nil {
-		return err
-	}
-
-	jsonData := buf.Bytes()
-
-	var prettyBuf bytes.Buffer
-	if err := json.Indent(&prettyBuf, jsonData, "", " "); err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(filename+".json", prettyBuf.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	m := minify.New()
-	m.AddFunc("application/json", mjson.Minify)
-	minifiedJSON, err := m.Bytes("application/json", jsonData)
+	jsonData, err := json.MarshalIndent(metadata, "", " ")
 	if err != nil {
 		return err
 	}
-
-	return os.WriteFile(filename+".min.json", minifiedJSON, 0644)
+	if err := os.WriteFile(filename+".json", jsonData, 0644); err != nil {
+		return err
+	}
+	// Minify JSON
+	m := minify.New()
+	m.AddFunc("application/json", mjson.Minify)
+	if jsonData, err = m.Bytes("application/json", jsonData); err != nil {
+		return err
+	} else if err := os.WriteFile(filename+".min.json", jsonData, 0644); err != nil {
+		return err
+	}
+	return nil
+}
+func saveMsgp(filename string, metadata []AppStreamData) error {
+	msgpData, err := msgpack.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename+".msgp", msgpData, 0644)
 }
 
 func getCategoriesString(categories []Tag) string {
