@@ -256,6 +256,13 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		snapshots = append(snapshots, snapshot{Commit: commit, Version: version})
 	}
 
+	// Would love to do this: but Snapshots doesn't update as often as it should for this to be feasible
+	//if strings.HasPrefix(item.Version, "HEAD-") && len(snapshots) >= 1 {
+	//	if snapshots[0].Version != "" {
+	//		item.Version = snapshots[0].Version
+	//	}
+	//}
+
 	// - Determine the package name format
 	//   | - If all packages in a family have the same name (e.g., "bwrap" in the "bubblewrap" family),
 	//   |   the package name will be just the package name (e.g., "bwrap").
