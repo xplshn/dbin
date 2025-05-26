@@ -72,9 +72,8 @@ $ dbin --help
     dbin list --described
     dbin tldr gum
     dbin --verbose run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
-    dbin --silent run elinks -no-home "https://fatbuffalo.neocities.org/def"
     dbin --silent run --transparent micro ~/.profile
-    dbin run firefox "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE" # Donate?
+    dbin run chromium.dwfs.AppBundle "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE" # Donate?
 ```
 
 #### Features ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
