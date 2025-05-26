@@ -111,7 +111,7 @@ func infoCommand() *cli.Command {
 					case []string:
 						for n, str := range v {
 							prefixLength := len(field.label)
-							prefix := "\033[48;5;4m" + field.label + "\033[0m"
+							prefix := blueBgWhiteFg + field.label + resetColor
 							if n > 0 {
 								prefix = strings.Repeat(" ", prefixLength)
 							}
@@ -119,15 +119,15 @@ func infoCommand() *cli.Command {
 						}
 					case []snapshot:
 						for n, snap := range v {
-							prefix := "\033[48;5;4m" + field.label + "\033[0m"
+							prefix := blueBgWhiteFg + field.label + resetColor
 							if n > 0 {
 								prefix = "         "
 							}
-							fmt.Printf("%s: %s %s\n", prefix, snap.Commit, ternary(snap.Version != "", "["+snap.Version+"]", ""))
+							fmt.Printf("%s: %s %s\n", prefix, snap.Commit, ternary(snap.Version != "", "["+cyanColor+snap.Version+resetColor+"]", ""))
 						}
 					default:
 						if v != "" && v != 0 {
-							fmt.Printf("\033[48;5;4m%s\033[0m: %v\n", field.label, v)
+							fmt.Printf("%s\x1b[0m: %v\n", blueBgWhiteFg+field.label+resetColor, v)
 						}
 					}
 				}

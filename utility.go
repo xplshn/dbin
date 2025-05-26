@@ -40,7 +40,8 @@ var (
 const (
 	blueColor    = "\x1b[0;34m"
 	cyanColor = "\x1b[0;36m"
-	highIntensityBlackColor = "\x1b[0;90m"
+	intenseBlackColor = "\x1b[0;90m"
+	blueBgWhiteFg = "\x1b[48;5;4m"
 	resetColor   = "\x1b[0m"
 )
 
@@ -68,7 +69,7 @@ func parseBinaryEntry(entry binaryEntry, ansi bool) string {
 			result += cyanColor + string(delimiters[1]) + entry.Version + resetColor
 		}
 		if entry.Repository.Name != "" {
-			result += highIntensityBlackColor + string(delimiters[2]) + entry.Repository.Name + resetColor
+			result += intenseBlackColor + string(delimiters[2]) + entry.Repository.Name + resetColor
 		}
 		return result
 	}
@@ -89,14 +90,11 @@ func stringToBinaryEntry(input string) binaryEntry {
 	var bEntry binaryEntry
 
 	// Accepted formats:
-	// .name
-	// .name#.id
-	// .name#.id:.version
-	// .name#.id@.repo
-	// .name#id:.version@repo
-
-	// Remove leading dot if present
-	input = strings.TrimPrefix(input, ".")
+	// name
+	// name#id
+	// name#id:version
+	// name#id@repo
+	// name#id:version@repo
 
 	// Split by repository delimiter (@)
 	parts := strings.SplitN(input, string(delimiters[2]), 2)
