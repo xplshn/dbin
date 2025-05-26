@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tiendc/go-deepcopy"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
+	"github.com/tiendc/go-deepcopy"
 )
 
 type repository struct {
@@ -48,7 +48,7 @@ type PkgForgeItem struct {
 	Snapshots   []string `json:"snapshots,omitempty"`
 	Provides    []string `json:"provides,omitempty"`
 	Notes       []string `json:"note,omitempty"`
-	License     []string   `json:"license,omitempty"`
+	License     []string `json:"license,omitempty"`
 	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
 	Rank        string   `json:"rank,omitempty"`
@@ -102,29 +102,29 @@ func (PkgForgeHandler) FetchMetadata(url string) ([]DbinItem, error) {
 type DbinHandler struct{}
 
 func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
-    resp, err := http.Get(url)
-    if err != nil {
-        return nil, err
-    }
-    defer resp.Body.Close()
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return nil, err
-    }
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
-    var metadata DbinMetadata
-    err = json.Unmarshal(body, &metadata)
-    if err != nil {
-        return nil, err
-    }
+	var metadata DbinMetadata
+	err = json.Unmarshal(body, &metadata)
+	if err != nil {
+		return nil, err
+	}
 
-    // Since the metadata is already in Dbin format, we just need to extract the items
-    for _, items := range metadata {
-        return items, nil
-    }
+	// Since the metadata is already in Dbin format, we just need to extract the items
+	for _, items := range metadata {
+		return items, nil
+	}
 
-    return nil, nil
+	return nil, nil
 }
 
 type AppStreamMetadata struct {
@@ -134,6 +134,7 @@ type AppStreamMetadata struct {
 	Icons           []string `json:"icons"`
 	Screenshots     []string `json:"screenshots"`
 }
+
 var appStreamMetadata []AppStreamMetadata
 var appStreamMetadataLoaded bool
 
@@ -367,14 +368,14 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	// We basically do a search&replace, order alphabetically, and then do a search&replace again.
 	// I prioritize binaries with a smaller size, more hardware compat, and that are truly static.
 	reorderItems([]map[string]string{
-		{"musl":    "0AAAMusl"},      // | Higher priority for Musl
-		{"ppkg":    "0AABPpkg"},      // | Higher priority for ppkg
-		{"glibc":   "ZZZXXXGlibc"},   // | Push glibc to the end
-									  // | - Little Glenda says hi!
-									  // |   (\(\
+		{"musl": "0AAAMusl"},         // | Higher priority for Musl
+		{"ppkg": "0AABPpkg"},         // | Higher priority for ppkg
+		{"glibc": "ZZZXXXGlibc"},     // | Push glibc to the end
+		// -					      // | - Little Glenda says hi!
+		// -      				      // |   (\(\
 		{"musl-v3": "0AACMusl"},      // |   ¸". ..
 		{"glibc-v3": "ZZZXXXXGlibc"}, // |   (  . .)
-									  // |   |   ° ¡
+		// -    					  // |   |   ° ¡
 		{"musl-v4": "0AADMusl"},      // |   ¿     ;
 		{"glibc-v4": "ZZZXXXZGlibc"}, // |  c?".UJ"
 	}, metadata)
@@ -385,7 +386,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 
 	// "web" version
 	var webMetadata DbinMetadata
-    _ = deepcopy.Copy(&webMetadata, &metadata)
+	_ = deepcopy.Copy(&webMetadata, &metadata)
 	for _, items := range webMetadata {
 		for i := range items {
 			items[i].Provides = ""
@@ -393,7 +394,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Bsum = ""
 		}
 	}
-	saveAll(filename + ".web", webMetadata)
+	saveAll(filename+".web", webMetadata)
 	// "lite" version
 	for _, items := range metadata {
 		for i := range items {
@@ -405,7 +406,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Screenshots = []string{}
 		}
 	}
-	return saveAll(filename + ".lite", metadata)
+	return saveAll(filename+".lite", metadata)
 }
 
 func saveCBOR(filename string, metadata DbinMetadata) error {
@@ -476,16 +477,16 @@ func main() {
 		},
 		{
 			Repo: repository{
-				Name: "AM",
-				URL: "https://meta.pkgforge.dev/external/am/%s.json",
+				Name:       "AM",
+				URL:        "https://meta.pkgforge.dev/external/am/%s.json",
 				Standalone: true,
 			},
 			Handler: PkgForgeHandler{},
 		},
 		{
 			Repo: repository{
-				Name: "appimage-github-io",
-				URL: "https://meta.pkgforge.dev/external/appimage.github.io/%s.json.",
+				Name:       "appimage-github-io",
+				URL:        "https://meta.pkgforge.dev/external/appimage.github.io/%s.json.",
 				Standalone: true,
 			},
 			Handler: PkgForgeHandler{},
@@ -624,4 +625,4 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 		}
 	}
 }
- */
+*/
