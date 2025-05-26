@@ -40,6 +40,13 @@ func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry
 	cursor.Hide()
 	defer cursor.Show()
 
+	// Clean up old .tmp files before installation
+    if err := cleanInstallCache(config.InstallDir); err != nil {
+        if verbosityLevel >= silentVerbosityWithErrors {
+            fmt.Fprintf(os.Stderr, "Warning: Failed to clean up .tmp files in %s: %v\n", config.InstallDir, err)
+        }
+    }
+
 	var wg sync.WaitGroup
 	var errors []string
 	var errorsMu sync.Mutex

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/hedzr/progressbar"
@@ -514,4 +515,51 @@ func downloadOCILayer(ctx context.Context, registry, repository string, manifest
 		}
 	}
 	return binaryResp, sigResp, nil
+}
+
+// cleanTempFiles removes .tmp files in the InstallDir that haven't been accessed in over a day.
+func cleanInstallCache(installDir string) error {
+    const oneDay = 24 * time.Hour
+    now := time.Now()
+
+    entries, err := os.ReadDir(installDir)
+    if err != nil {
+        return errFileAccess.Wrap(err)
+    }
+
+    for _, entry := range entries {
+        if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tmp") {
+            continue
+        }
+
+        filePath := filepath.Join(installDir, entry.Name())
+        fileInfo, err := os.Stat(filePath)
+        if err != nil {
+            if verbosityLevel >= silentVerbosityWithErrors {
+                fmt.Fprintf(os.Stderr, "Error accessing file info for %s: %v\n", filePath, err)
+            }
+            continue
+        }
+        var atime time.Time
+        if sysInfo, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
+            atime = time.Unix(sysInfo.Atim.Sec, sysInfo.Atim.Nsec)
+        } else {
+            if verbosityLevel >= extraVerbose {
+                fmt.Fprintf(os.Stderr, "Warning: ATime not supported for %s, skipping cleanup\n", filePath)
+            }
+            continue
+        }
+
+        if now.Sub(atime) > oneDay {
+            if err := os.Remove(filePath); err != nil {
+                if verbosityLevel >= silentVerbosityWithErrors {
+                    fmt.Fprintf(os.Stderr, "Error removing old .tmp file %s: %v\n", filePath, err)
+                }
+            } else if verbosityLevel >= extraVerbose {
+                fmt.Printf("Removed old .tmp file: %s\n", filePath)
+            }
+        }
+    }
+
+    return nil
 }

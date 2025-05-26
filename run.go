@@ -64,7 +64,7 @@ func runFromCache(config *config, bEntry binaryEntry, args []string, transparent
 		if err := runBinary(cachedFile, args, env); err != nil {
 			return errRunFailed.Wrap(err)
 		}
-		return cleanCache(config.CacheDir)
+		return cleanRunCache(config.CacheDir)
 	}
 
 	if verbosityLevel >= normalVerbosity {
@@ -94,7 +94,7 @@ func runFromCache(config *config, bEntry binaryEntry, args []string, transparent
 	if err := runBinary(cachedFile, args, env); err != nil {
 		return errRunFailed.Wrap(err)
 	}
-	return cleanCache(config.CacheDir)
+	return cleanRunCache(config.CacheDir)
 }
 
 func isCached(config *config, bEntry binaryEntry) (string, error) {
@@ -129,7 +129,7 @@ func runBinary(binaryPath string, args []string, env []string) error {
 	return errRunFailed.Wrap(err)
 }
 
-func cleanCache(cacheDir string) error {
+func cleanRunCache(cacheDir string) error {
 	files, err := os.ReadDir(cacheDir)
 	if err != nil {
 		return errRunFailed.Wrap(err)

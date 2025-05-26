@@ -43,8 +43,8 @@ type config struct {
 	RetakeOwnership     bool         `yaml:"RetakeOwnership" env:"DBIN_REOWN" description:"Retake ownership of installed binaries."`
 	UseIntegrationHooks bool         `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS" description:"Use integration hooks for binaries."`
 	DisableProgressbar  bool         `yaml:"DisablePbar,omitempty" env:"DBIN_NOPBAR" description:"Disable the progress bar."`
-	NoConfig            bool         `env:"DBIN_NOCONFIG" description:"Disable configuration file usage."`
-	ProgressbarFIFO     bool         `env:"DBIN_PB_FIFO" description:"Use FIFO for progress bar."`
+	NoConfig            bool         `yaml:"-" env:"DBIN_NOCONFIG" description:"Disable configuration file usage."`
+	ProgressbarFIFO     bool         `yaml:"-" env:"DBIN_PB_FIFO" description:"Use FIFO for progress bar."`
 	Hooks               hooks        `yaml:"Hooks,omitempty"`
 }
 
@@ -356,6 +356,7 @@ func createDefaultConfigAt(configFilePath string) error {
 				IntegrationCommand:   "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",
 				DeintegrationCommand: "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",
 				UseRunFromCache:      true,
+				Silent:               true,
 				NoOp:                 false,
 			},
 		},
