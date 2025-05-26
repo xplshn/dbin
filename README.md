@@ -30,12 +30,15 @@ $ dbin --help
  For more details refer to https://github.com/xplshn/dbin
 
   Synopsis
-    dbin [-v|-h] [list|install|remove|update|run|info|search|tldr|eget2] <-args->
+    dbin [-v|-h] [list|install|remove|update|run|info|search|] <-args->
   Description:
     The easy to use, easy to get, software distribution system
   Options:
     -h, --help        Show this help message
     -v, --version     Show the version number
+    --verbose         Run in extra verbose mode
+    --silent          Run in silent mode, only errors will be shown
+    --extra-silent    Run in extra silent mode, suppressing all output
   Commands:
     list              List all available binaries
     install, add      Install a binary
@@ -45,12 +48,12 @@ $ dbin --help
     info              Show information about a specific binary OR display installed binaries
     search            Search for a binary by supplying one or more search terms
   Variables:
-    DBIN_CACHEDIR      If present, it must contain a valid directory path
     DBIN_INSTALL_DIR   If present, it must contain a valid directory path
+    DBIN_CACHE_DIR     If present, it must contain a valid directory path
     DBIN_NOTRUNCATION  If present, and set to ONE (1), string truncation will be disabled
     DBIN_REOWN         If present, and set to ONE (1), it makes dbin update programs that may not have been installed by dbin
     DBIN_NOCONFIG      If present, and set to ONE (1), it makes dbin use its builtin config, it won't create or read an existing one
-    DBIN_REPO_URLS     If present, it must contain one or more repository's index file urls separated by ;
+    DBIN_REPO_URLs     If present, it must contain one or more repository's index file urls separated by ;
 
 ```
 
