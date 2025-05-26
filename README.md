@@ -83,7 +83,6 @@ $ dbin --help
    The repo indexes can be compressed as .gz or .zst, this is specially useful for large catalogs of programs
 - Hooks. `dbin` can run a set of commands or a script, whenever a binary of file with a certain extension is being installed. The user can also specify uninstall hooks
 - `dbin` can work without a config, and it can also run from RAM
-- `dbin` can download random URLs and put them alongside the binaries in your `$DBIN_INSTALL_DIR` (~/.local/bin)
 - No breaking changes. Old releases of `dbin` do not break, until after at least 3 releases of newer versions.
 - `dbin` will survive even if the upstream repo disappears. `dbin` has a repository index that is held in its own repo. And given that the upstream binaries are held & built in GHCR, all build logs and binaries will continue to be usable/downloadable even if `pkgforge` disappears or experiences downtime
 - The binaries in `dbin` are specifically filtered for `portability` (meaning, they work on older kernel versions, they work on `Musl` and `Glibc` and even weird yet wonderful systems like [AliceLinux](https://github.com/xplshn/alicelinux), [OasisLinux](https://github.com/oasislinux/oasis) or FreeBSD (with linuxlator, so that you don't have to set up an Ubuntu chroot to install a Linux web browser and be able to watch DRM content, etc)
