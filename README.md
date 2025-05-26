@@ -41,12 +41,12 @@ $ dbin --help
     --extra-silent    Run in extra silent mode, suppressing all output
   Commands:
     list              List all available binaries
-    install, add      Install a binary
-    remove, del       Remove a binary
-    update            Update binaries, by checking their SHA against the repo's SHA
+    install, add      Install binaries
+    remove, del       Remove binaries
+    update            Update binaries binaries installed by dbin
     run               Run a specified binary from cache
-    info              Show information about a specific binary OR display installed binaries
-    search            Search for a binary by supplying one or more search terms
+    info              Show information about a specific binary OR display installed binaries if called without arguments
+    search            Search for a binaries by supplying one or more search terms
   Variables:
     DBIN_INSTALL_DIR   If present, it must contain a valid directory path
     DBIN_CACHE_DIR     If present, it must contain a valid directory path
