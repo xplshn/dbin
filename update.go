@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"context"
 
 	"github.com/urfave/cli/v3"
 	"github.com/zeebo/errs"
@@ -27,7 +27,7 @@ func updateCommand() *cli.Command {
 			}
 			uRepoIndex, err := fetchRepoIndex(config)
 			if err != nil {
-			    return errUpdateFailed.Wrap(err)
+				return errUpdateFailed.Wrap(err)
 			}
 			return update(config, arrStringToArrBinaryEntry(c.Args().Slice()), uRepoIndex)
 		},

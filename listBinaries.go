@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 
 	"github.com/urfave/cli/v3"
 	"github.com/zeebo/errs"
@@ -28,9 +28,9 @@ func listCommand() *cli.Command {
 				return errListBinariesFailed.Wrap(err)
 			}
 			uRepoIndex, err := fetchRepoIndex(config)
-            if err != nil {
-                return errListBinariesFailed.Wrap(err)
-            }
+			if err != nil {
+				return errListBinariesFailed.Wrap(err)
+			}
 			if c.Bool("described") {
 				return fSearch(config, []string{""}, uRepoIndex)
 			}

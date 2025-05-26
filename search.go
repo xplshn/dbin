@@ -36,7 +36,7 @@ func searchCommand() *cli.Command {
 
 			uRepoIndex, err := fetchRepoIndex(config)
 			if err != nil {
-			    return errSearchFailed.Wrap(err)
+				return errSearchFailed.Wrap(err)
 			}
 			return fSearch(config, c.Args().Slice(), uRepoIndex)
 		},
@@ -66,7 +66,7 @@ func fSearch(config *config, searchTerms []string, uRepoIndex []binaryEntry) err
 				Version:     version,
 				Description: description,
 				Rank:        rank,
-				Repository: repo,
+				Repository:  repo,
 			})
 		}
 	}

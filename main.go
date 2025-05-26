@@ -5,18 +5,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
-	"context"
 
 	"github.com/urfave/cli/v3"
 )
+
 const (
-	unsupportedArchMsg                  = "Unsupported architecture: "
-	version                             = 1.5
-	maxCacheSize                        = 15
-	binariesToDelete                    = 5
+	unsupportedArchMsg = "Unsupported architecture: "
+	version            = 1.5
+	maxCacheSize       = 15
+	binariesToDelete   = 5
 	// --------------------------------
 	extraVerbose              int8 = 2
 	normalVerbosity           int8 = 1
@@ -25,7 +26,7 @@ const (
 	// -------------------------------
 )
 
-var	verbosityLevel = normalVerbosity
+var verbosityLevel = normalVerbosity
 
 func main() {
 	app := &cli.Command{

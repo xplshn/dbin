@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/urfave/cli/v3"
 	"github.com/zeebo/errs"
@@ -20,8 +20,8 @@ var (
 
 func runCommand() *cli.Command {
 	return &cli.Command{
-		Name:            "run",
-		Usage:           "Run a specified binary from cache",
+		Name:  "run",
+		Usage: "Run a specified binary from cache",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "transparent",

@@ -25,12 +25,12 @@ import (
 )
 
 var (
-	errFileAccess       = errs.Class("file access error")
-	errFileTypeInvalid  = errs.Class("invalid file type")
-	errFileNotFound     = errs.Class("file not found")
-	errXAttr            = errs.Class("xattr error")
-	errCacheAccess      = errs.Class("cache access error")
-	delimiters = []rune{
+	errFileAccess      = errs.Class("file access error")
+	errFileTypeInvalid = errs.Class("invalid file type")
+	errFileNotFound    = errs.Class("file not found")
+	errXAttr           = errs.Class("xattr error")
+	errCacheAccess     = errs.Class("cache access error")
+	delimiters         = []rune{
 		'#', // .PkgID
 		':', // .Version
 		'@', // .Repository.Name
@@ -38,11 +38,11 @@ var (
 )
 
 const (
-	blueColor    = "\x1b[0;34m"
-	cyanColor = "\x1b[0;36m"
+	blueColor         = "\x1b[0;34m"
+	cyanColor         = "\x1b[0;36m"
 	intenseBlackColor = "\x1b[0;90m"
-	blueBgWhiteFg = "\x1b[48;5;4m"
-	resetColor   = "\x1b[0m"
+	blueBgWhiteFg     = "\x1b[48;5;4m"
+	resetColor        = "\x1b[0m"
 )
 
 func fileExists(filePath string) bool {
@@ -156,9 +156,9 @@ func validateProgramsFrom(config *config, programsToValidate []binaryEntry, uRep
 	if config.RetakeOwnership {
 		if uRepoIndex == nil {
 			uRepoIndex, err = fetchRepoIndex(config)
-            if err != nil {
-                return nil, err
-            }
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		programsEntries, err = listBinaries(uRepoIndex)
@@ -197,37 +197,37 @@ func validateProgramsFrom(config *config, programsToValidate []binaryEntry, uRep
 		baseName := filepath.Base(file)
 		trackedBEntry := bEntryOfinstalledBinary(file)
 
-        if config.RetakeOwnership {
-            if trackedBEntry.Name == "" {
-                trackedBEntry.Name = baseName
-                trackedBEntry.PkgID = "!retake"
-            }
+		if config.RetakeOwnership {
+			if trackedBEntry.Name == "" {
+				trackedBEntry.Name = baseName
+				trackedBEntry.PkgID = "!retake"
+			}
 
-            for j := range programsEntries {
-                if programsEntries[j].Name == trackedBEntry.Name {
-                    validPrograms = append(validPrograms, trackedBEntry)
-                    break
-                }
-            }
-            continue
-        }
+			for j := range programsEntries {
+				if programsEntries[j].Name == trackedBEntry.Name {
+					validPrograms = append(validPrograms, trackedBEntry)
+					break
+				}
+			}
+			continue
+		}
 
-        // Non-retake: must have metadata and match uRepoIndex
-        if trackedBEntry.Name == "" {
-            continue
-        }
-        if uRepoIndex == nil {
-            // If uRepoIndex is nil, append any entry with Name != ""
-            validPrograms = append(validPrograms, trackedBEntry)
-            continue
-        }
-        for j := range uRepoIndex {
-            if uRepoIndex[j].Name == trackedBEntry.Name && uRepoIndex[j].PkgID == trackedBEntry.PkgID {
-                validPrograms = append(validPrograms, trackedBEntry)
-                break
-            }
-        }
-    }
+		// Non-retake: must have metadata and match uRepoIndex
+		if trackedBEntry.Name == "" {
+			continue
+		}
+		if uRepoIndex == nil {
+			// If uRepoIndex is nil, append any entry with Name != ""
+			validPrograms = append(validPrograms, trackedBEntry)
+			continue
+		}
+		for j := range uRepoIndex {
+			if uRepoIndex[j].Name == trackedBEntry.Name && uRepoIndex[j].PkgID == trackedBEntry.PkgID {
+				validPrograms = append(validPrograms, trackedBEntry)
+				break
+			}
+		}
+	}
 
 	return validPrograms, nil
 }
@@ -335,7 +335,7 @@ func embedBEntry(binaryPath string, bEntry binaryEntry) error {
 
 func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	if !fileExists(binaryPath) {
-		return binaryEntry{}, errFileNotFound.New("Tried to get EmbeddedBEntry of non-existant file: %s", binaryPath)
+		return binaryEntry{}, errFileNotFound.New("Tried to get EmbeddedBEntry of non-existent file: %s", binaryPath)
 	}
 
 	fullName, err := xattr.Get(binaryPath, "user.FullName")
