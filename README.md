@@ -26,7 +26,7 @@ dbin is a simple and extensible software distribution system, it is like a packa
 ```
 $ dbin --help
 
- Copyright (c) 2025: xplshn and contributors
+ Copyright (c) 2024-2025: xplshn and contributors
  For more details refer to https://github.com/xplshn/dbin
 
   Synopsis
