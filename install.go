@@ -37,152 +37,165 @@ func installCommand() *cli.Command {
 }
 
 func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry, uRepoIndex []binaryEntry) error {
-	cursor.Hide()
-	defer cursor.Show()
+    cursor.Hide()
+    defer cursor.Show()
 
-	// Clean up old .tmp files before installation
-	if err := cleanInstallCache(config.InstallDir); err != nil {
-		if verbosityLevel >= silentVerbosityWithErrors {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to clean up .tmp files in %s: %v\n", config.InstallDir, err)
-		}
-	}
+    // Clean up old .tmp files before installation
+    if err := cleanInstallCache(config.InstallDir); err != nil {
+        if verbosityLevel >= silentVerbosityWithErrors {
+            fmt.Fprintf(os.Stderr, "Warning: Failed to clean up .tmp files in %s: %v\n", config.InstallDir, err)
+        }
+    }
 
-	var wg sync.WaitGroup
-	var errors []string
-	var errorsMu sync.Mutex
+    var wg sync.WaitGroup
+    var errors []string
+    var errorsMu sync.Mutex
 
-	binResults, err := findURL(config, bEntries, uRepoIndex)
-	if err != nil {
-		return errInstallFailed.Wrap(err)
-	}
+    // Find URLs for binaries
+    binResults, err := findURL(config, bEntries, uRepoIndex)
+    if err != nil {
+        return errInstallFailed.Wrap(err)
+    }
 
-	var bar progressbar.MultiPB
-	var tasks *progressbar.Tasks
-	if verbosityLevel >= normalVerbosity {
-		bar = progressbar.New()
-		tasks = progressbar.NewTasks(bar)
-		defer tasks.Close()
-	}
+    filteredResults := make([]binaryEntry, 0, len(binResults))
+    for _, result := range binResults {
+        if result.DownloadURL != "!not_found" {
+            filteredResults = append(filteredResults, result)
+        }
+    }
 
-	binaryNameMaxlen := 0
-	for _, result := range binResults {
-		if binaryNameMaxlen < len(result.Name) {
-			binaryNameMaxlen = len(result.Name)
-		}
-	}
+    if len(filteredResults) == 0 {
+        return errInstallFailed.New("no valid binaries found to install")
+    }
 
-	termWidth := getTerminalWidth()
+    var bar progressbar.MultiPB
+    var tasks *progressbar.Tasks
+    if verbosityLevel >= normalVerbosity {
+        bar = progressbar.New()
+        tasks = progressbar.NewTasks(bar)
+        defer tasks.Close()
+    }
 
-	for _, result := range binResults {
-		wg.Add(1)
-		bEntry := result
-		destination := filepath.Join(config.InstallDir, filepath.Base(bEntry.Name))
+    binaryNameMaxlen := 0
+    for _, result := range filteredResults {
+        if binaryNameMaxlen < len(result.Name) {
+            binaryNameMaxlen = len(result.Name)
+        }
+    }
 
-		if verbosityLevel >= normalVerbosity {
-			barTitle := fmt.Sprintf("Installing %s", bEntry.Name)
-			pbarOpts := []progressbar.Opt{
-				progressbar.WithBarStepper(config.ProgressbarStyle),
-				progressbar.WithBarResumeable(true),
-			}
+    termWidth := getTerminalWidth()
 
-			if termWidth < 120 {
-				barTitle = bEntry.Name
-				pbarOpts = append(
-					pbarOpts,
-					progressbar.WithBarTextSchema(`{{.Bar}} {{.Percent}} | <font color="green">{{.Title}}</font>`),
-					progressbar.WithBarWidth(termWidth-(binaryNameMaxlen+19)),
-				)
-			}
+    for _, result := range filteredResults {
+        wg.Add(1)
+        bEntry := result
+        destination := filepath.Join(config.InstallDir, filepath.Base(bEntry.Name))
 
-			tasks.Add(
-				progressbar.WithTaskAddBarTitle(barTitle),
-				progressbar.WithTaskAddBarOptions(pbarOpts...),
-				progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, _ <-chan struct{}) (stop bool) {
-					defer wg.Done()
-					err := fetchBinaryFromURLToDest(ctx, bar, &bEntry, destination, config)
-					if err != nil {
-						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("error fetching binary %s: %v\n", bEntry.Name, err))
-						errorsMu.Unlock()
-						return
-					}
+        if verbosityLevel >= normalVerbosity {
+            barTitle := fmt.Sprintf("Installing %s", bEntry.Name)
+            pbarOpts := []progressbar.Opt{
+                progressbar.WithBarStepper(config.ProgressbarStyle),
+                progressbar.WithBarResumeable(true),
+            }
 
-					if err := os.Chmod(destination, 0755); err != nil {
-						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("error making binary executable %s: %v\n", destination, err))
-						errorsMu.Unlock()
-						return
-					}
+            if termWidth < 120 {
+                barTitle = bEntry.Name
+                pbarOpts = append(
+                    pbarOpts,
+                    progressbar.WithBarTextSchema(`{{.Bar}} {{.Percent}} | <font color="green">{{.Title}}</font>`),
+                    progressbar.WithBarWidth(termWidth-(binaryNameMaxlen+19)),
+                )
+            }
 
-					if err := runIntegrationHooks(config, destination); err != nil {
-						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
-						errorsMu.Unlock()
-						return
-					}
+            tasks.Add(
+                progressbar.WithTaskAddBarTitle(barTitle),
+                progressbar.WithTaskAddBarOptions(pbarOpts...),
+                progressbar.WithTaskAddOnTaskProgressing(func(bar progressbar.PB, _ <-chan struct{}) (stop bool) {
+                    defer wg.Done()
+                    err := fetchBinaryFromURLToDest(ctx, bar, &bEntry, destination, config)
+                    if err != nil {
+                        errorsMu.Lock()
+                        errors = append(errors, fmt.Sprintf("error fetching binary %s: %v\n", bEntry.Name, err))
+                        errorsMu.Unlock()
+                        return
+                    }
 
-					binInfo := &bEntry
-					if err := embedBEntry(destination, *binInfo); err != nil {
-						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
-						errorsMu.Unlock()
-						return
-					}
+                    if err := os.Chmod(destination, 0755); err != nil {
+                        errorsMu.Lock()
+                        errors = append(errors, fmt.Sprintf("error making binary executable %s: %v\n", destination, err))
+                        errorsMu.Unlock()
+                        return
+                    }
 
-					return
-				}),
-			)
-		} else {
-			go func(bEntry binaryEntry, destination string) {
-				defer wg.Done()
-				err := fetchBinaryFromURLToDest(ctx, nil, &bEntry, destination, config)
-				if err != nil {
-					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("error fetching binary %s: %v", bEntry.Name, err))
-					errorsMu.Unlock()
-					return
-				}
+                    if err := runIntegrationHooks(config, destination); err != nil {
+                        errorsMu.Lock()
+                        errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
+                        errorsMu.Unlock()
+                        return
+                    }
 
-				if err := os.Chmod(destination, 0755); err != nil {
-					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("error making binary executable %s: %v", destination, err))
-					errorsMu.Unlock()
-					return
-				}
+                    binInfo := &bEntry
+                    if err := embedBEntry(destination, *binInfo); err != nil {
+                        errorsMu.Lock()
+                        errors = append(errors, fmt.Sprintf("failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
+                        errorsMu.Unlock()
+                        return
+                    }
 
-				if err := runIntegrationHooks(config, destination); err != nil {
-					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err))
-					errorsMu.Unlock()
-					return
-				}
+                    return
+                }),
+            )
+        } else {
+            go func(bEntry binaryEntry, destination string) {
+                defer wg.Done()
+                err := fetchBinaryFromURLToDest(ctx, nil, &bEntry, destination, config)
+                if err != nil {
+                    errorsMu.Lock()
+                    errors = append(errors, fmt.Sprintf("error fetching binary %s: %v", bEntry.Name, err))
+                    errorsMu.Unlock()
+                    return
+                }
 
-				binInfo := &bEntry
-				if err := embedBEntry(destination, *binInfo); err != nil {
-					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("failed to add fullName property to the binary's xattr %s: %v", destination, err))
-					errorsMu.Unlock()
-					return
-				}
+                if err := os.Chmod(destination, 0755); err != nil {
+                    errorsMu.Lock()
+                    errors = append(errors, fmt.Sprintf("error making binary executable %s: %v", destination, err))
+                    errorsMu.Unlock()
+                    return
+                }
 
-				if verbosityLevel >= normalVerbosity {
-					fmt.Printf("Successfully installed [%s]\n", binInfo.Name+"#"+binInfo.PkgID)
-				}
-			}(bEntry, destination)
-		}
-	}
+                if err := runIntegrationHooks(config, destination); err != nil {
+                    errorsMu.Lock()
+                    errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err))
+                    errorsMu.Unlock()
+                    return
+                }
 
-	wg.Wait()
+                binInfo := &bEntry
+                if err := embedBEntry(destination, *binInfo); err != nil {
+                    errorsMu.Lock()
+                    errors = append(errors, fmt.Sprintf("failed to add fullName property to the binary's xattr %s: %v", destination, err))
+                    errorsMu.Unlock()
+                    return
+                }
 
-	if len(errors) > 0 {
-		var errN = uint8(0)
-		for _, errMsg := range errors {
-			errN++
-			fmt.Printf("%d. %v\n", errN, errMsg)
-		}
-	}
+                if verbosityLevel >= normalVerbosity {
+                    fmt.Printf("Successfully installed [%s]\n", binInfo.Name+"#"+binInfo.PkgID)
+                }
+            }(bEntry, destination)
+        }
+    }
 
-	return nil
+    wg.Wait()
+
+    if len(errors) > 0 {
+        var errN = uint8(0)
+        for _, errMsg := range errors {
+            errN++
+            fmt.Printf("%d. %v\n", errN, errMsg)
+        }
+        return errInstallFailed.New("installation completed with errors")
+    }
+
+    return nil
 }
 
 func runIntegrationHooks(config *config, binaryPath string) error {
