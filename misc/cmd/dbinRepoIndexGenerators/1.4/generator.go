@@ -368,9 +368,9 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	// We basically do a search&replace, order alphabetically, and then do a search&replace again.
 	// I prioritize binaries with a smaller size, more hardware compat, and that are truly static.
 	reorderItems([]map[string]string{
-		{"musl": "0AAAMusl"},         // | Higher priority for Musl
-		{"ppkg": "0AABPpkg"},         // | Higher priority for ppkg
-		{"glibc": "ZZZXXXGlibc"},     // | Push glibc to the end
+		{"musl": "0AAAMusl"},     // | Higher priority for Musl
+		{"ppkg": "0AABPpkg"},     // | Higher priority for ppkg
+		{"glibc": "ZZZXXXGlibc"}, // | Push glibc to the end
 		// -					      // | - Little Glenda says hi!
 		// -      				      // |   (\(\
 		{"musl-v3": "0AACMusl"},      // |   ¸". ..
