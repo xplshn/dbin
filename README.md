@@ -1,6 +1,5 @@
 # dbin: The easy to use, easy to get, suckless software distribution system
-[![Go Report Card](https://github.com/user-attachments/assets/db0040f7-1965-4d29-96e6-5dfa7e94d32b
-)](https://goreportcard.com/report/github.com/xplshn/dbin) <!-- [![Go Report Card](https://goreportcard.com/badge/github.com/xplshn/dbin)](https://goreportcard.com/report/github.com/xplshn/dbin) -->
+[![Go Report Card](https://goreportcard.com/badge/github.com/xplshn/dbin)](https://goreportcard.com/report/github.com/xplshn/dbin)
 [![License](https://img.shields.io/badge/license-%20RABRMS-bright_green)](https://github.com/xplshn/dbin/blob/master/LICENSE)
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/xplshn/dbin?include_prereleases)](https://github.com/xplshn/dbin/releases/latest)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/xplshn/dbin)
