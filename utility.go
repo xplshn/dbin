@@ -346,7 +346,7 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	return stringToBinaryEntry(string(fullName)), nil
 }
 
-func accessCachedOrFetch(url, filename string, cfg *config) ([]byte, error) {
+func accessCachedOrFetch(url, filename string, cfg *config, syncInterval time.Duration) ([]byte, error) {
 	cacheFilePath := filepath.Join(cfg.CacheDir, ternary(filename != "", "."+filename, "."+filepath.Base(url)))
 
 	if err := os.MkdirAll(cfg.CacheDir, 0755); err != nil {
@@ -354,7 +354,7 @@ func accessCachedOrFetch(url, filename string, cfg *config) ([]byte, error) {
 	}
 
 	fileInfo, err := os.Stat(cacheFilePath)
-	if err == nil && time.Since(fileInfo.ModTime()).Hours() < 6 {
+	if err == nil && time.Since(fileInfo.ModTime()) < syncInterval {
 		bodyBytes, err := os.ReadFile(cacheFilePath)
 		if err != nil {
 			return nil, errCacheAccess.Wrap(err)
@@ -409,7 +409,7 @@ func decodeRepoIndex(config *config) ([]binaryEntry, error) {
 				return nil, errFileAccess.Wrap(err)
 			}
 		} else {
-			bodyBytes, err = accessCachedOrFetch(repo.URL, "", config)
+			bodyBytes, err = accessCachedOrFetch(repo.URL, "", config, repo.SyncInterval)
 			if err != nil {
 				return nil, err
 			}

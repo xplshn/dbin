@@ -238,7 +238,7 @@ func verifySignature(binaryPath string, sigData []byte, bEntry *binaryEntry, cfg
 	}
 	defer file.Close()
 	if pubKeyURL := bEntry.Repository.PubKeys[bEntry.Repository.Name]; pubKeyURL != "" {
-		pubKeyData, err := accessCachedOrFetch(pubKeyURL, bEntry.Repository.Name+".minisign", cfg)
+		pubKeyData, err := accessCachedOrFetch(pubKeyURL, bEntry.Repository.Name+".minisign", cfg, bEntry.Repository.SyncInterval)
 		if err != nil {
 			return errSignatureVerify.Wrap(err)
 		}
