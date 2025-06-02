@@ -90,11 +90,12 @@ func stringToBinaryEntry(input string) binaryEntry {
 	var bEntry binaryEntry
 
 	// Accepted formats:
-	// name
-	// name#id
-	// name#id:version
-	// name#id@repo
 	// name#id:version@repo
+	// name#id@repo
+	// name#id:version
+	// name#id
+	// name@repo
+	// name
 
 	// Split by repository delimiter (@)
 	parts := strings.SplitN(input, string(delimiters[2]), 2)

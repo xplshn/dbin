@@ -11,20 +11,44 @@ import (
 
 func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) []binaryEntry {
 	var matchingBins []binaryEntry
-	seenNames := make(map[string]bool) // Track seen names to pick only the first match
 
 	for _, bin := range uRepoIndex {
-		// Skip if we've already seen this name
-		if seenNames[bin.Name] {
-			continue
+		// Match based on the format hierarchy: name#id:version@repo, name#id@repo, name#id:version, name#id, name@repo, name
+		matches := false
+		if bin.Name == bEntry.Name {
+			// name#id:version@repo
+			if bEntry.PkgID != "" && bEntry.Version != "" && bEntry.Repository.Name != "" {
+				if bin.PkgID == bEntry.PkgID && (bin.Version == bEntry.Version || hasMatchingSnapshot(bin, bEntry.Version)) && bin.Repository.Name == bEntry.Repository.Name {
+					matches = true
+				}
+				// name#id@repo
+			} else if bEntry.PkgID != "" && bEntry.Repository.Name != "" && bEntry.Version == "" {
+				if bin.PkgID == bEntry.PkgID && bin.Repository.Name == bEntry.Repository.Name {
+					matches = true
+				}
+				// name#id:version
+			} else if bEntry.PkgID != "" && bEntry.Version != "" && bEntry.Repository.Name == "" {
+				if bin.PkgID == bEntry.PkgID && (bin.Version == bEntry.Version || hasMatchingSnapshot(bin, bEntry.Version)) {
+					matches = true
+				}
+				// name#id
+			} else if bEntry.PkgID != "" && bEntry.Version == "" && bEntry.Repository.Name == "" {
+				if bin.PkgID == bEntry.PkgID {
+					matches = true
+				}
+				// name@repo
+			} else if bEntry.PkgID == "" && bEntry.Repository.Name != "" && bEntry.Version == "" {
+				if bin.Repository.Name == bEntry.Repository.Name {
+					matches = true
+				}
+				// name
+			} else if bEntry.PkgID == "" && bEntry.Version == "" && bEntry.Repository.Name == "" {
+				matches = true
+			}
 		}
-		// Match criteria: name, optional package ID, optional version, and optional repository
-		if bin.Name == bEntry.Name &&
-			(bEntry.PkgID == "" || bin.PkgID == bEntry.PkgID) &&
-			(bEntry.Version == "" || bin.Version == bEntry.Version || hasMatchingSnapshot(bin, bEntry.Version)) &&
-			(bEntry.Repository.Name == "" || bin.Repository.Name == bEntry.Repository.Name) {
+
+		if matches {
 			matchingBins = append(matchingBins, bin)
-			seenNames[bin.Name] = true // Mark this name as seen
 		}
 	}
 
@@ -33,8 +57,24 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) []binaryEntr
 
 // Helper function to check if a snapshot matches the requested version or commit
 func hasMatchingSnapshot(bin binaryEntry, version string) bool {
+	// First, check all snapshot commits
 	for _, snap := range bin.Snapshots {
-		if version == snap.Version || version == snap.Commit {
+		if version == snap.Commit {
+			// Modify the URL to use the snapshot's commit for OCI URLs
+			if strings.HasPrefix(bin.DownloadURL, "oci://") {
+				idx := strings.LastIndex(bin.DownloadURL, ":")
+				if idx != -1 {
+					bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
+					bin.Bsum = "!no_check"
+					bin.Version = snap.Version
+				}
+			}
+			return true
+		}
+	}
+	// Then, check all snapshot versions
+	for _, snap := range bin.Snapshots {
+		if version == snap.Version {
 			// Modify the URL to use the snapshot's commit for OCI URLs
 			if strings.HasPrefix(bin.DownloadURL, "oci://") {
 				idx := strings.LastIndex(bin.DownloadURL, ":")
@@ -50,7 +90,7 @@ func hasMatchingSnapshot(bin binaryEntry, version string) bool {
 	return false
 }
 
-func findURL(config *config, bEntries []binaryEntry, uRepoIndex []binaryEntry) ([]binaryEntry, error) {
+func findURL(bEntries []binaryEntry, uRepoIndex []binaryEntry, config *config) ([]binaryEntry, error) {
 	// Check for duplicate names in bEntries
 	nameCount := make(map[string]int)
 	for _, bEntry := range bEntries {

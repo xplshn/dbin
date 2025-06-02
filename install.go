@@ -52,7 +52,7 @@ func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry
 	var errorsMu sync.Mutex
 
 	// Find URLs for binaries
-	binResults, err := findURL(config, bEntries, uRepoIndex)
+	binResults, err := findURL(bEntries, uRepoIndex, config)
 	if err != nil {
 		return errInstallFailed.Wrap(err)
 	}

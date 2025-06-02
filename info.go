@@ -79,58 +79,8 @@ func infoCommand() *cli.Command {
 					return nil
 				}
 
-				fields := []struct {
-					label string
-					value any
-				}{
-					{"Name", binaryInfo.Name + "#" + binaryInfo.PkgID},
-					{"Pkg ID", binaryInfo.PkgID},
-					{"Pretty Name", binaryInfo.PrettyName},
-					{"Description", binaryInfo.Description},
-					{"Version", binaryInfo.Version},
-					{"Size", binaryInfo.Size},
-					{"Categories", binaryInfo.Categories},
-					{"WebURLs", binaryInfo.WebURLs},
-					{"SrcURLs", binaryInfo.SrcURLs},
-					{"Download URL", binaryInfo.DownloadURL},
-					{"Icon URL", binaryInfo.Icon},
-					{"B3SUM", binaryInfo.Bsum},
-					{"SHA256", binaryInfo.Shasum},
-					{"Build Date", binaryInfo.BuildDate},
-					{"Build Script", binaryInfo.BuildScript},
-					{"Build Log", binaryInfo.BuildLog},
-					{"Screenshots", binaryInfo.Screenshots},
-					{"Extra Bins", binaryInfo.ExtraBins},
-					{"Snapshots", binaryInfo.Snapshots},
-					{"Notes", binaryInfo.Notes},
-					{"License", binaryInfo.License},
-					{"Rank", binaryInfo.Rank},
-				}
-				for _, field := range fields {
-					switch v := field.value.(type) {
-					case []string:
-						for n, str := range v {
-							prefixLength := len(field.label)
-							prefix := blueBgWhiteFg + field.label + resetColor
-							if n > 0 {
-								prefix = strings.Repeat(" ", prefixLength)
-							}
-							fmt.Printf("%s: %s\n", prefix, str)
-						}
-					case []snapshot:
-						for n, snap := range v {
-							prefix := blueBgWhiteFg + field.label + resetColor
-							if n > 0 {
-								prefix = "         "
-							}
-							fmt.Printf("%s: %s %s\n", prefix, snap.Commit, ternary(snap.Version != "", "["+cyanColor+snap.Version+resetColor+"]", ""))
-						}
-					default:
-						if v != "" && v != 0 {
-							fmt.Printf("%s\x1b[0m: %v\n", blueBgWhiteFg+field.label+resetColor, v)
-						}
-					}
-				}
+				printBEntry(binaryInfo)
+
 			} else {
 				binaryEntries, err := validateProgramsFrom(config, nil, nil)
 				if err != nil {
@@ -166,4 +116,63 @@ func getBinaryInfo(config *config, bEntry binaryEntry, uRepoIndex []binaryEntry)
 	}
 
 	return nil, errBinaryInfoNotFound.New("info for the requested binary ('%s') not found in any of the repository index files", parseBinaryEntry(bEntry, false))
+}
+
+func printBEntry(bEntry *binaryEntry) {
+	fields := []struct {
+		label string
+		value any
+	}{
+		{"Name", bEntry.Name + "#" + bEntry.PkgID},
+		{"Pkg ID", bEntry.PkgID},
+		{"Pretty Name", bEntry.PrettyName},
+		{"Description", bEntry.Description},
+		{"Version", bEntry.Version},
+		{"Size", bEntry.Size},
+		{"Categories", bEntry.Categories},
+		{"WebURLs", bEntry.WebURLs},
+		{"SrcURLs", bEntry.SrcURLs},
+		{"Download URL", bEntry.DownloadURL},
+		{"Icon URL", bEntry.Icon},
+		{"B3SUM", bEntry.Bsum},
+		{"SHA256", bEntry.Shasum},
+		{"Build Date", bEntry.BuildDate},
+		{"Build Script", bEntry.BuildScript},
+		{"Build Log", bEntry.BuildLog},
+		{"Screenshots", bEntry.Screenshots},
+		{"Extra Bins", bEntry.ExtraBins},
+		{"Snapshots", bEntry.Snapshots},
+		{"Notes", bEntry.Notes},
+		{"License", bEntry.License},
+		{"Rank", bEntry.Rank},
+	}
+	for _, field := range fields {
+		switch v := field.value.(type) {
+		case []string:
+			for n, str := range v {
+				prefixLength := len(field.label)
+				prefix := blueBgWhiteFg + field.label + resetColor
+				if n > 0 {
+					prefix = strings.Repeat(" ", prefixLength)
+				}
+				fmt.Printf("%s: %s\n", prefix, str)
+			}
+		case []snapshot:
+			for n, snap := range v {
+				prefix := blueBgWhiteFg + field.label + resetColor
+				if n > 0 {
+					prefix = "         "
+				}
+				if snap.Commit != "" {
+					fmt.Printf("%s: %s %s\n", prefix, snap.Commit, ternary(snap.Version != "", "["+cyanColor+snap.Version+resetColor+"]", ""))
+				} else {
+					fmt.Printf("%s: %s\n", prefix, "["+cyanColor+snap.Version+resetColor+"]")
+				}
+			}
+		default:
+			if v != "" && v != 0 {
+				fmt.Printf("%s\x1b[0m: %v\n", blueBgWhiteFg+field.label+resetColor, v)
+			}
+		}
+	}
 }
