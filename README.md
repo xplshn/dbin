@@ -193,6 +193,10 @@ NOTE: Not all fields are essential :)
 
 A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenerators/*/generator.go](https://github.com/xplshn/dbin/tree/master/misc/cmd/dbinRepoIndexGenerators)
 
+## Repositories you can optionally enable/add to your config ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
+- `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
+  - The binaries in this repository come from the AM package manager, they aren't guaranteed to work everywhere, unlike the binaries in the official repos. But a lot of these are useful and do work. I recommend you check it out
+
 ### Libraries
 I am using these libraries for `dbin`:
 1. https://github.com/urfave/cli (v3)
