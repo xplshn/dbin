@@ -383,16 +383,16 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	// We basically do a search&replace, order alphabetically, and then do a search&replace again.
 	// I prioritize binaries with a smaller size, more hardware compat, and that are truly static.
 	reorderItems([]map[string]string{
-		{"musl": "0AAAMusl"},     // | Higher priority for Musl
-		{"ppkg": "0AABPpkg"},     // | Higher priority for ppkg
-		{"glibc": "ZZZXXXGlibc"}, // | Push glibc to the end
-		// -					      // | - Little Glenda says hi!
-		// -      				      // |   (\(\
-		{"musl-v3": "0AACMusl"},      // |   ¸". ..
-		{"glibc-v3": "ZZZXXXYGlibc"}, // |   (  . .)
-		// -    					  // |   |   ° ¡
-		{"musl-v4": "0AABMusl"},      // |   ¿     ;
-		{"glibc-v4": "ZZZXXXZGlibc"}, // |  c?".UJ"
+		{"musl": "0000Musl"},   // | Higher priority for Musl
+		{"ppkg": "0020Ppkg"},   // | Higher priority for ppkg
+		{"glibc": "0040Glibc"}, // | Push glibc to the end
+		// -					   // | - Little Glenda says hi!
+		// -      				   // |   (\(\
+		{"musl-v3": "0080Musl"},   // |   ¸". ..
+		{"glibc-v3": "0100Glibc"}, // |   (  . .)
+		// -    				   // |   |   ° ¡
+		{"musl-v4": "0200Musl"},   // |   ¿     ;
+		{"glibc-v4": "0400Glibc"}, // |  c?".UJ"
 	}, metadata)
 
 	if err := saveAll(filename, metadata); err != nil {
