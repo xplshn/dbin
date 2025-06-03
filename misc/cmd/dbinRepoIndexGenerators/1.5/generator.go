@@ -389,9 +389,9 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 		// -					      // | - Little Glenda says hi!
 		// -      				      // |   (\(\
 		{"musl-v3": "0AACMusl"},      // |   ¸". ..
-		{"glibc-v3": "ZZZXXXXGlibc"}, // |   (  . .)
+		{"glibc-v3": "ZZZXXXYGlibc"}, // |   (  . .)
 		// -    					  // |   |   ° ¡
-		{"musl-v4": "0AADMusl"},      // |   ¿     ;
+		{"musl-v4": "0AABMusl"},      // |   ¿     ;
 		{"glibc-v4": "ZZZXXXZGlibc"}, // |  c?".UJ"
 	}, metadata)
 
