@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/breml/rootcerts" // built-in ca certs
+
 	"github.com/fxamacker/cbor/v2" //"github.com/shamaton/msgpack/v2"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
