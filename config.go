@@ -338,11 +338,15 @@ func setDefaultValues(config *config) {
 }
 
 func createDefaultConfig() error {
-	userConfigDir, err := os.UserConfigDir()
-	if err != nil {
-		return errConfigFileAccess.Wrap(err)
+	configFilePath := os.Getenv("DBIN_CONFIG_FILE")
+	if configFilePath == "" {
+		userConfigDir, err := os.UserConfigDir()
+		if err != nil {
+			return errConfigFileAccess.Wrap(err)
+		}
+		configFilePath = filepath.Join(userConfigDir, "dbin.yaml")
 	}
-	return createDefaultConfigAt(filepath.Join(userConfigDir, "dbin.yaml"))
+	return createDefaultConfigAt(configFilePath)
 }
 
 func createDefaultConfigAt(configFilePath string) error {
