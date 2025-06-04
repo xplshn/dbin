@@ -352,6 +352,7 @@ func createDefaultConfig() error {
 func createDefaultConfigAt(configFilePath string) error {
 	cfg := config{}
 	setDefaultValues(&cfg)
+	overrideWithEnv(&cfg)
 
 	cfg.Hooks = hooks{
 		Commands: map[string]hookCommands{
