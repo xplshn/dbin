@@ -369,6 +369,7 @@ func main() {
 	realArchs := map[string]string{
 		"x86_64-Linux":  "amd64_linux",
 		"aarch64-Linux": "arm64_linux",
+		"riscv64-Linux": "riscv64_linux",
 	}
 
 	repositories := []struct {
