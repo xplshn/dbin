@@ -11,7 +11,9 @@
 [![ARM64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_aarch64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
 -->
 
-dbin is a simple and extensible software distribution system, it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked or otherwise self-contained, dbin itself doesn't even require a database to track installs, all operations are atomic and stateless. Dbin is particularly well-suited for embedded systems, we support both amd64 & aarch64. (freeBSD + linuxlator is supported and works quite wonderfully, especially if you want an embedded-ready freeBSD install, you can pair it with `dbin` instead of `pkg`)
+dbin is a simple and extensible software distribution system, it is like a package manager, but without the hassle of dependencies nor the bloat, every binary provided is statically linked or otherwise self-contained, dbin itself doesn't even require a database to track installs, all operations are atomic and stateless. Dbin is particularly well-suited for embedded systems, we support both amd64, aarch64 and riscv64.
+
+dbin can also work on systems other than Linux, but given that we don't have repositories offering binaries for other systems, we just don't release `dbin` for other systems. But, creating a repo and compiling `dbin` are trivial matters, feel free to start your own `dbin` repository :)
 
 > Why?
 
