@@ -93,8 +93,8 @@ func stringToBinaryEntry(input string) binaryEntry {
 
 	// Accepted formats:
 	// name#id:version@repo
-	// name#id@repo
 	// name#id:version
+	// name#id@repo
 	// name#id
 	// name@repo
 	// name

@@ -12,7 +12,7 @@ require (
 	github.com/hedzr/progressbar v1.2.8
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7
 	github.com/klauspost/compress v1.18.0
-	github.com/pkg/xattr v0.4.10
+	github.com/pkg/xattr v0.4.11
 	github.com/shamaton/msgpack/v2 v2.2.3
 	github.com/tdewolff/minify/v2 v2.23.8
 	github.com/tiendc/go-deepcopy v1.6.0
@@ -26,7 +26,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/crypto v0.39.0 // indirect
+	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 )

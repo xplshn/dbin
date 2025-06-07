@@ -18,17 +18,17 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) []binaryEntr
 		if bin.Name == bEntry.Name {
 			// name#id:version@repo
 			if bEntry.PkgID != "" && bEntry.Version != "" && bEntry.Repository.Name != "" {
-				if bin.PkgID == bEntry.PkgID && (bin.Version == bEntry.Version || hasMatchingSnapshot(bin, bEntry.Version)) && bin.Repository.Name == bEntry.Repository.Name {
+				if bin.PkgID == bEntry.PkgID && (bin.Version == bEntry.Version || hasMatchingSnapshot(&bin, bEntry.Version)) && bin.Repository.Name == bEntry.Repository.Name {
+					matches = true
+				}
+				// name#id:version
+			} else if bEntry.PkgID != "" && bEntry.Version != "" && bEntry.Repository.Name == "" {
+				if bin.PkgID == bEntry.PkgID && (bin.Version == bEntry.Version || hasMatchingSnapshot(&bin, bEntry.Version)) {
 					matches = true
 				}
 				// name#id@repo
 			} else if bEntry.PkgID != "" && bEntry.Repository.Name != "" && bEntry.Version == "" {
 				if bin.PkgID == bEntry.PkgID && bin.Repository.Name == bEntry.Repository.Name {
-					matches = true
-				}
-				// name#id:version
-			} else if bEntry.PkgID != "" && bEntry.Version != "" && bEntry.Repository.Name == "" {
-				if bin.PkgID == bEntry.PkgID && (bin.Version == bEntry.Version || hasMatchingSnapshot(bin, bEntry.Version)) {
 					matches = true
 				}
 				// name#id
@@ -43,6 +43,7 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) []binaryEntr
 				}
 				// name
 			} else if bEntry.PkgID == "" && bEntry.Version == "" && bEntry.Repository.Name == "" {
+				fmt.Println("name", parseBinaryEntry(bEntry, true))
 				matches = true
 			}
 		}
@@ -55,34 +56,35 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) []binaryEntr
 	return matchingBins
 }
 
-// Helper function to check if a snapshot matches the requested version or commit
-func hasMatchingSnapshot(bin binaryEntry, version string) bool {
+// Helper function to check if a snapshot matches the requested version or commit, and if so, modify the DownloadURL
+func hasMatchingSnapshot(bin *binaryEntry, version string) bool {
+	if !strings.HasPrefix(bin.DownloadURL, "oci://") {
+		return false
+	}
+
 	// First, check all snapshot commits
 	for _, snap := range bin.Snapshots {
 		if version == snap.Commit {
 			// Modify the URL to use the snapshot's commit for OCI URLs
-			if strings.HasPrefix(bin.DownloadURL, "oci://") {
-				idx := strings.LastIndex(bin.DownloadURL, ":")
-				if idx != -1 {
-					bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
-					bin.Bsum = "!no_check"
-					bin.Version = snap.Version
-				}
+			idx := strings.LastIndex(bin.DownloadURL, ":")
+			if idx != -1 {
+				bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
+				bin.Bsum = "!no_check"
+				bin.Version = snap.Version
 			}
 			return true
 		}
 	}
+
 	// Then, check all snapshot versions
 	for _, snap := range bin.Snapshots {
 		if version == snap.Version {
 			// Modify the URL to use the snapshot's commit for OCI URLs
-			if strings.HasPrefix(bin.DownloadURL, "oci://") {
-				idx := strings.LastIndex(bin.DownloadURL, ":")
-				if idx != -1 {
-					bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
-					bin.Bsum = "!no_check"
-					bin.Version = snap.Version
-				}
+			idx := strings.LastIndex(bin.DownloadURL, ":")
+			if idx != -1 {
+				bin.DownloadURL = bin.DownloadURL[:idx+1] + snap.Commit
+				bin.Bsum = "!no_check"
+				bin.Version = snap.Version
 			}
 			return true
 		}
