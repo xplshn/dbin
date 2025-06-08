@@ -648,7 +648,7 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 		} else if len(entry.WebURLs) > 0 {
 			siteURL = entry.WebURLs[0]
 		} else {
-			siteURL = "https://github.com/xplshn/AppBundleHUB"
+			siteURL = "https://github.com/xplshn/dbin"
 		}
 
 		version := entry.Version
