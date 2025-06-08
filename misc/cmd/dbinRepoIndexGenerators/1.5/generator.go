@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"path/filepath"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
@@ -615,13 +616,6 @@ func replacePipeFields(pkg *DbinItem) {
 	}
 }
 func genAMMeta(filename string, metadata DbinMetadata) {
-	replaceEmptyWithNil := func(value string) string {
-		if value == "" {
-			return "nil"
-		}
-		return value
-	}
-
 	file, err := os.Create(filename + ".txt")
 	if err != nil {
 		fmt.Println("Error creating output file:", err)
@@ -629,35 +623,49 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 	}
 	defer file.Close()
 
-	for _, items := range metadata {
-		for _, pkg := range items {
-			pkg.Name = replaceEmptyWithNil(pkg.Name)
-			pkg.Description = replaceEmptyWithNil(pkg.Description)
-			pkg.DownloadURL = replaceEmptyWithNil(pkg.DownloadURL)
+	file.WriteString("| appname | description | site | download | version |\n")
+	file.WriteString("|---------|-------------|------|----------|---------|\n")
 
-			webURL := "nil"
-			if len(pkg.WebURLs) > 0 {
-				webURL = pkg.WebURLs[0]
-			}
-			if webURL == "nil" && len(pkg.SrcURLs) > 0 {
-				webURL = pkg.SrcURLs[0]
-			}
+	var allEntries []DbinItem
+	for _, entries := range metadata {
+		allEntries = append(allEntries, entries...)
+	}
 
-			replacePipeFields(&pkg)
+	sort.Slice(allEntries, func(i, j int) bool {
+		return strings.ToLower(allEntries[i].Name) < strings.ToLower(allEntries[j].Pkg)
+	})
 
-			pkgName := pkg.Name
-			strings.ToLower(pkgName)
-			strings.ReplaceAll(pkgName, " ", "-")
+	for _, entry := range allEntries {
+		pkg := strings.TrimSuffix(entry.Pkg, filepath.Ext(entry.Pkg))
 
-			bsum := pkg.Bsum
-			if len(bsum) > 12 {
-				bsum = bsum[:12]
-			} else {
-				bsum = "nil"
-			}
-
-			file.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
-				pkgName, pkg.Description, webURL, pkg.DownloadURL, bsum))
+		if pkg != "" {
+			entry.Pkg = pkg
 		}
+
+		siteURL := ""
+		if len(entry.SrcURLs) > 0 {
+			siteURL = entry.SrcURLs[0]
+		} else if len(entry.WebURLs) > 0 {
+			siteURL = entry.WebURLs[0]
+		} else {
+			siteURL = "https://github.com/xplshn/AppBundleHUB"
+		}
+
+		version := entry.Version
+		if version == "" && entry.BuildDate != "" {
+			version = entry.BuildDate
+		}
+		if version == "" {
+			version = "not_available"
+		}
+
+		file.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
+			pkg,
+			t(entry.Description != "", entry.Description, "not_available"),
+			t(siteURL != "", siteURL, "not_available"),
+			entry.DownloadURL,
+			t(version != "", version, "not_available"),
+		))
 	}
 }
+
