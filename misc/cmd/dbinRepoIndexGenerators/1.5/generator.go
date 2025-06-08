@@ -374,7 +374,7 @@ func saveAll(filename string, metadata DbinMetadata) error {
 	if err := saveMsgp(filename, metadata); err != nil {
 		return err
 	}
-	//genAMMeta(filename, dbinMetadata)
+	genAMMeta(filename, metadata)
 	return saveYAML(filename, metadata)
 }
 
@@ -601,9 +601,10 @@ func t[T any](cond bool, vtrue, vfalse T) T {
 	return vfalse
 }
 
-/* The following is a _favor_ I'm doing to ivan-hc and everyone that contributes
- *  And actively endorses or uses AM
- *  They are a tremendous help to the Portable Linux Apps community!
+/* AM is one of the most relevant projects of the portable Linux apps community
+ * And the AM repo is a thirdparty optional repo in `dbin`, so its only fair that
+ * we help them distribute more programs too!                                   -
+ */
 const pipeRepl = "ǀ" // Replacement for `|` to avoid breaking the MD table
 func replacePipeFields(pkg *DbinItem) {
 	pkg.Name = strings.ReplaceAll(pkg.Name, "|", pipeRepl)
@@ -613,7 +614,6 @@ func replacePipeFields(pkg *DbinItem) {
 		pkg.WebURLs[i] = strings.ReplaceAll(pkg.WebURLs[i], "|", pipeRepl)
 	}
 }
-
 func genAMMeta(filename string, metadata DbinMetadata) {
 	replaceEmptyWithNil := func(value string) string {
 		if value == "" {
@@ -658,4 +658,3 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 		}
 	}
 }
-*/
