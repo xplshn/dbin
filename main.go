@@ -48,7 +48,7 @@ func main() {
 				Usage: "Run in extra silent mode, suppressing almost all output",
 			},
 		},
-		Action: func(_ context.Context, c *cli.Command) error {
+		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
             switch {
         	case c.Bool("extra-silent"):
         	    verbosityLevel = extraSilent
@@ -57,7 +57,7 @@ func main() {
         	case c.Bool("verbose"):
         	    verbosityLevel = extraVerbose
         	}
-        	return nil
+        	return nil, nil
         },
 		Commands: []*cli.Command{
 			installCommand(),
