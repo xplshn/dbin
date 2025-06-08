@@ -19,10 +19,10 @@ const (
 	maxCacheSize       = 15
 	binariesToDelete   = 5
 	// --------------------------------
-	extraVerbose              int8 = 2
-	normalVerbosity           int8 = 1
-	silentVerbosityWithErrors int8 = -1
-	extraSilent               int8 = -2
+	extraVerbose              uint8 = 4
+	normalVerbosity           uint8 = 3
+	silentVerbosityWithErrors uint8 = 2
+	extraSilent               uint8 = 1
 	// -------------------------------
 )
 
@@ -48,6 +48,17 @@ func main() {
 				Usage: "Run in extra silent mode, suppressing almost all output",
 			},
 		},
+		Action: func(_ context.Context, c *cli.Command) error {
+            switch {
+        	case c.Bool("extra-silent"):
+        	    verbosityLevel = extraSilent
+        	case c.Bool("silent"):
+        	    verbosityLevel = silentVerbosityWithErrors
+        	case c.Bool("verbose"):
+        	    verbosityLevel = extraVerbose
+        	}
+        	return nil
+        },
 		Commands: []*cli.Command{
 			installCommand(),
 			removeCommand(),
