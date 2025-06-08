@@ -635,9 +635,12 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 			pkg.Description = replaceEmptyWithNil(pkg.Description)
 			pkg.DownloadURL = replaceEmptyWithNil(pkg.DownloadURL)
 
-			webURL := pkg.DownloadURL
-			if webURL == "nil" && len(pkg.WebURLs) > 0 {
+			webURL := "nil"
+			if len(pkg.WebURLs) > 0 {
 				webURL = pkg.WebURLs[0]
+			}
+			if webURL == "nil" && len(pkg.SrcURLs) > 0 {
+				webURL = pkg.SrcURLs[0]
 			}
 
 			replacePipeFields(&pkg)
