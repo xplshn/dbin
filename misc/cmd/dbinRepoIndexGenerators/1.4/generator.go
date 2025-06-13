@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,13 +13,14 @@ import (
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
+	"github.com/shamaton/msgpack/v2"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
 	"github.com/tiendc/go-deepcopy"
 )
 
 type repository struct {
-	URL        string
+	URLs       []string
 	Name       string
 	Standalone bool
 	Single     bool
@@ -34,14 +36,14 @@ type PkgForgeItem struct {
 	Icon        string   `json:"icon,omitempty"`
 	Screenshots []string `json:"screenshots,omitempty"`
 	Description string   `json:"description,omitempty"`
-	Homepage    []string `json:"homepage,omitempty"`
+	WebURLs     []string `json:"homepage,omitempty"`
 	Version     string   `json:"version,omitempty"`
 	DownloadURL string   `json:"download_url,omitempty"`
 	Size        string   `json:"size,omitempty"`
 	Bsum        string   `json:"bsum,omitempty"`
 	Shasum      string   `json:"shasum,omitempty"`
 	BuildDate   string   `json:"build_date,omitempty"`
-	SrcURL      []string `json:"src_url,omitempty"`
+	SrcURLs     []string `json:"src_url,omitempty"`
 	BuildScript string   `json:"build_script,omitempty"`
 	BuildLog    string   `json:"build_log,omitempty"`
 	Category    []string `json:"categories,omitempty"`
@@ -90,41 +92,57 @@ type DbinItem struct {
 type DbinMetadata map[string][]DbinItem
 
 type RepositoryHandler interface {
-	FetchMetadata(url string) ([]DbinItem, error)
+	FetchMetadata(urls []string, arch string) ([]DbinItem, error)
 }
 
 type PkgForgeHandler struct{}
 
-func (PkgForgeHandler) FetchMetadata(url string) ([]DbinItem, error) {
-	return fetchAndConvertMetadata(url, downloadJSON, convertPkgForgeToDbinItem)
+func (PkgForgeHandler) FetchMetadata(urls []string, arch string) ([]DbinItem, error) {
+	return fetchAndConvertMetadata(urls, arch, downloadJSON, convertPkgForgeToDbinItem)
 }
 
 type DbinHandler struct{}
 
-func (DbinHandler) FetchMetadata(url string) ([]DbinItem, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+func (DbinHandler) FetchMetadata(urls []string, arch string) ([]DbinItem, error) {
+	var lastErr error
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	for i, urlTemplate := range urls {
+		url := urlTemplate
+		if strings.Contains(url, "%s") {
+			url = fmt.Sprintf(url, arch)
+		}
+
+		if i > 0 {
+			fmt.Printf("Using fallback URL: %s\n", url)
+		}
+
+		resp, err := http.Get(url)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		var metadata DbinMetadata
+		err = json.Unmarshal(body, &metadata)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		// Since the metadata is already in Dbin format, we just need to extract the items
+		for _, items := range metadata {
+			return items, nil
+		}
 	}
 
-	var metadata DbinMetadata
-	err = json.Unmarshal(body, &metadata)
-	if err != nil {
-		return nil, err
-	}
-
-	// Since the metadata is already in Dbin format, we just need to extract the items
-	for _, items := range metadata {
-		return items, nil
-	}
-
-	return nil, nil
+	return nil, lastErr
 }
 
 type AppStreamMetadata struct {
@@ -143,7 +161,8 @@ func loadAppStreamMetadata() error {
 		return nil
 	}
 
-	resp, err := http.Get("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.cbor")
+	//resp, err := http.Get("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.cbor")
+	resp, err := http.Get("https://d.xplshn.com.ar/misc/cmd/flatpakAppStreamScrapper/appstream_metadata.cbor")
 	if err != nil {
 		return err
 	}
@@ -187,8 +206,8 @@ func updateItemWithAppStreamMetadata(item *DbinItem) {
 	}
 }
 
-func fetchAndConvertMetadata(url string, downloadFunc func(string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem, map[string]bool) (DbinItem, bool)) ([]DbinItem, error) {
-	items, err := downloadFunc(url)
+func fetchAndConvertMetadata(urls []string, arch string, downloadFunc func([]string, string) ([]PkgForgeItem, error), convertFunc func(PkgForgeItem, map[string]bool) (DbinItem, bool)) ([]DbinItem, error) {
+	items, err := downloadFunc(urls, arch)
 	if err != nil {
 		return nil, err
 	}
@@ -256,6 +275,13 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		snapshots = append(snapshots, snapshot{Commit: commit, Version: version})
 	}
 
+	// Would love to do this: but Snapshots doesn't update as often as it should for this to be feasible
+	//if strings.HasPrefix(item.Version, "HEAD-") && len(snapshots) >= 1 {
+	//	if snapshots[0].Version != "" {
+	//		item.Version = snapshots[0].Version
+	//	}
+	//}
+
 	// - Determine the package name format
 	//   | - If all packages in a family have the same name (e.g., "bwrap" in the "bubblewrap" family),
 	//   |   the package name will be just the package name (e.g., "bwrap").
@@ -277,6 +303,10 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 
 	item.Pkg = strings.TrimPrefix(item.Pkg, "/")
 
+	if areSlicesEqual(item.SrcURLs, item.WebURLs) {
+		item.WebURLs = []string{}
+	}
+
 	return DbinItem{
 		Pkg:         pkgName,
 		Name:        item.Name,
@@ -291,8 +321,8 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		Bsum:        item.Bsum,
 		Shasum:      item.Shasum,
 		BuildDate:   item.BuildDate,
-		SrcURLs:     item.SrcURL,
-		WebURLs:     item.Homepage,
+		SrcURLs:     item.SrcURLs,
+		WebURLs:     item.WebURLs,
 		BuildScript: item.BuildScript,
 		BuildLog:    item.BuildLog,
 		Categories:  categories,
@@ -304,25 +334,43 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 	}, true
 }
 
-func downloadJSON(url string) ([]PkgForgeItem, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+func downloadJSON(urls []string, arch string) ([]PkgForgeItem, error) {
+	var lastErr error
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	for i, urlTemplate := range urls {
+		url := urlTemplate
+		if strings.Contains(url, "%s") {
+			url = fmt.Sprintf(url, arch)
+		}
+
+		if i > 0 {
+			fmt.Printf("Using fallback URL: %s\n", url)
+		}
+
+		resp, err := http.Get(url)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		var items []PkgForgeItem
+		err = json.Unmarshal(body, &items)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		return items, nil
 	}
 
-	var items []PkgForgeItem
-	err = json.Unmarshal(body, &items)
-	if err != nil {
-		return nil, err
-	}
-
-	return items, nil
+	return nil, lastErr
 }
 
 func reorderItems(str []map[string]string, metadata DbinMetadata) {
@@ -353,13 +401,16 @@ func reorderItems(str []map[string]string, metadata DbinMetadata) {
 }
 
 func saveAll(filename string, metadata DbinMetadata) error {
-	if err := saveJSON(filename, metadata); err != nil {
-		return err
-	}
 	if err := saveCBOR(filename, metadata); err != nil {
 		return err
 	}
-	//genAMMeta(filename, dbinMetadata)
+	if err := saveJSON(filename, metadata); err != nil {
+		return err
+	}
+	if err := saveMsgp(filename, metadata); err != nil {
+		return err
+	}
+	genAMMeta(filename, metadata)
 	return saveYAML(filename, metadata)
 }
 
@@ -368,16 +419,16 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 	// We basically do a search&replace, order alphabetically, and then do a search&replace again.
 	// I prioritize binaries with a smaller size, more hardware compat, and that are truly static.
 	reorderItems([]map[string]string{
-		{"musl": "0AAAMusl"},     // | Higher priority for Musl
-		{"ppkg": "0AABPpkg"},     // | Higher priority for ppkg
-		{"glibc": "ZZZXXXGlibc"}, // | Push glibc to the end
-		// -					      // | - Little Glenda says hi!
-		// -      				      // |   (\(\
-		{"musl-v3": "0AACMusl"},      // |   ¸". ..
-		{"glibc-v3": "ZZZXXXXGlibc"}, // |   (  . .)
-		// -    					  // |   |   ° ¡
-		{"musl-v4": "0AADMusl"},      // |   ¿     ;
-		{"glibc-v4": "ZZZXXXZGlibc"}, // |  c?".UJ"
+		{"musl": "0000_"},    // | Higher priority for Musl
+		{"ppkg": "0020__"},   // | Higher priority for ppkg
+		{"glibc": "0040___"}, // | Push glibc to the end
+		// -					 // | - Little Glenda says hi!
+		// -      				 // |   (\(\
+		{"musl-v3": "0080_"},    // |   ¸". ..
+		{"glibc-v3": "0100___"}, // |   (  . .)
+		// -    				 // |   |   ° ¡
+		{"musl-v4": "0200_"},    // |   ¿     ;
+		{"glibc-v4": "0400___"}, // |  c?".UJ"
 	}, metadata)
 
 	if err := saveAll(filename, metadata); err != nil {
@@ -416,15 +467,6 @@ func saveCBOR(filename string, metadata DbinMetadata) error {
 	}
 	return os.WriteFile(filename+".cbor", cborData, 0644)
 }
-
-func saveYAML(filename string, metadata DbinMetadata) error {
-	yamlData, err := yaml.Marshal(metadata)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filename+".yaml", yamlData, 0644)
-}
-
 func saveJSON(filename string, metadata DbinMetadata) error {
 	jsonData, err := json.MarshalIndent(metadata, "", " ")
 	if err != nil {
@@ -442,6 +484,20 @@ func saveJSON(filename string, metadata DbinMetadata) error {
 		return err
 	}
 	return nil
+}
+func saveMsgp(filename string, metadata DbinMetadata) error {
+	msgpData, err := msgpack.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename+".msgp", msgpData, 0644)
+}
+func saveYAML(filename string, metadata DbinMetadata) error {
+	yamlData, err := yaml.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename+".yaml", yamlData, 0644)
 }
 
 func main() {
@@ -462,58 +518,77 @@ func main() {
 	}{
 		{
 			Repo: repository{
-				Name:   "bincache",
-				URL:    "https://meta.pkgforge.dev/bincache/%s.json",
+				Name: "bincache",
+				URLs: []string{
+					"https://github.com/pkgforge/metadata/raw/refs/heads/main/bincache/data/%s.json",
+					"https://meta.pkgforge.dev/bincache/%s.json",
+				},
 				Single: true,
 			},
 			Handler: PkgForgeHandler{},
 		},
 		{
 			Repo: repository{
-				Name:   "pkgcache",
-				URL:    "https://meta.pkgforge.dev/pkgcache/%s.json",
+				Name: "pkgcache",
+				URLs: []string{
+					"https://github.com/pkgforge/metadata/raw/refs/heads/main/pkgcache/data/%s.json",
+					"https://meta.pkgforge.dev/pkgcache/%s.json",
+				},
 				Single: true,
 			},
 			Handler: PkgForgeHandler{},
 		},
 		{
 			Repo: repository{
-				Name:       "AM",
-				URL:        "https://meta.pkgforge.dev/external/am/%s.json",
+				Name: "AM",
+				URLs: []string{
+					"https://github.com/pkgforge/metadata/raw/refs/heads/main/external/am/data/%s.json",
+					"https://meta.pkgforge.dev/external/am/%s.json",
+				},
 				Standalone: true,
 			},
 			Handler: PkgForgeHandler{},
 		},
 		{
 			Repo: repository{
-				Name:       "appimage-github-io",
-				URL:        "https://meta.pkgforge.dev/external/appimage.github.io/%s.json.",
+				Name: "appimage-github-io",
+				URLs: []string{
+					"https://github.com/pkgforge/metadata/raw/refs/heads/main/external/appimage.github.io/data/%s.json",
+					"https://meta.pkgforge.dev/external/appimage.github.io/%s.json",
+				},
 				Standalone: true,
 			},
 			Handler: PkgForgeHandler{},
 		},
 		{
 			Repo: repository{
-				Name:   "AppBundleHUB",
-				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_%s.json",
+				Name: "AppBundleHUB",
+				URLs: []string{
+					"https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_%s.json",
+				},
 				Single: true,
 			},
 			Handler: DbinHandler{},
 		},
+		//{
+		//	Repo: repository{
+		//		Name: "dbin",
+		//		URLs: []string{
+		//			"http://192.168.1.59/d/%s",
+		//		},
+		//		Single: true,
+		//	},
+		//	Handler: DbinHandler{},
+		//},
 	}
 
 	for arch, outputArch := range realArchs {
 		dbinMetadata := make(DbinMetadata)
 
 		for _, repo := range repositories {
-			url := repo.Repo.URL
-			if strings.Contains(url, "%s") {
-				url = fmt.Sprintf(url, arch)
-			}
-
-			items, err := repo.Handler.FetchMetadata(url)
+			items, err := repo.Handler.FetchMetadata(repo.Repo.URLs, arch)
 			if err != nil {
-				fmt.Printf("Error downloading %s metadata from %s: %v\n", repo.Repo.Name, url, err)
+				fmt.Printf("Error downloading %s metadata: %v\n", repo.Repo.Name, err)
 				continue
 			}
 
@@ -562,6 +637,18 @@ func main() {
 	}
 }
 
+func areSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func t[T any](cond bool, vtrue, vfalse T) T {
 	if cond {
 		return vtrue
@@ -569,9 +656,10 @@ func t[T any](cond bool, vtrue, vfalse T) T {
 	return vfalse
 }
 
-/* The following is a _favor_ I'm doing to ivan-hc and everyone that contributes
- *  And actively endorses or uses AM
- *  They are a tremendous help to the Portable Linux Apps community!
+/* AM is one of the most relevant projects of the portable Linux apps community
+ * And the AM repo is a thirdparty optional repo in `dbin`, so its only fair that
+ * we help them distribute more programs too!                                   -
+ */
 const pipeRepl = "ǀ" // Replacement for `|` to avoid breaking the MD table
 func replacePipeFields(pkg *DbinItem) {
 	pkg.Name = strings.ReplaceAll(pkg.Name, "|", pipeRepl)
@@ -581,15 +669,7 @@ func replacePipeFields(pkg *DbinItem) {
 		pkg.WebURLs[i] = strings.ReplaceAll(pkg.WebURLs[i], "|", pipeRepl)
 	}
 }
-
 func genAMMeta(filename string, metadata DbinMetadata) {
-	replaceEmptyWithNil := func(value string) string {
-		if value == "" {
-			return "nil"
-		}
-		return value
-	}
-
 	file, err := os.Create(filename + ".txt")
 	if err != nil {
 		fmt.Println("Error creating output file:", err)
@@ -597,33 +677,48 @@ func genAMMeta(filename string, metadata DbinMetadata) {
 	}
 	defer file.Close()
 
-	for _, items := range metadata {
-		for _, pkg := range items {
-			pkg.Name = replaceEmptyWithNil(pkg.Name)
-			pkg.Description = replaceEmptyWithNil(pkg.Description)
-			pkg.DownloadURL = replaceEmptyWithNil(pkg.DownloadURL)
+	file.WriteString("| appname | description | site | download | version |\n")
+	file.WriteString("|---------|-------------|------|----------|---------|\n")
 
-			webURL := pkg.DownloadURL
-			if webURL == "nil" && len(pkg.WebURLs) > 0 {
-				webURL = pkg.WebURLs[0]
-			}
+	var allEntries []DbinItem
+	for _, entries := range metadata {
+		allEntries = append(allEntries, entries...)
+	}
 
-			replacePipeFields(&pkg)
+	sort.Slice(allEntries, func(i, j int) bool {
+		return strings.ToLower(allEntries[i].Name) < strings.ToLower(allEntries[j].Pkg)
+	})
 
-			pkgName := pkg.Name
-			strings.ToLower(pkgName)
-			strings.ReplaceAll(pkgName, " ", "-")
+	for _, entry := range allEntries {
+		pkg := strings.TrimSuffix(entry.Pkg, filepath.Ext(entry.Pkg))
 
-			bsum := pkg.Bsum
-			if len(bsum) > 12 {
-				bsum = bsum[:12]
-			} else {
-				bsum = "nil"
-			}
-
-			file.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
-				pkgName, pkg.Description, webURL, pkg.DownloadURL, bsum))
+		if pkg != "" {
+			entry.Pkg = pkg
 		}
+
+		siteURL := ""
+		if len(entry.SrcURLs) > 0 {
+			siteURL = entry.SrcURLs[0]
+		} else if len(entry.WebURLs) > 0 {
+			siteURL = entry.WebURLs[0]
+		} else {
+			siteURL = "https://github.com/xplshn/dbin"
+		}
+
+		version := entry.Version
+		if version == "" && entry.BuildDate != "" {
+			version = entry.BuildDate
+		}
+		if version == "" {
+			version = "not_available"
+		}
+
+		file.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
+			pkg,
+			t(entry.Description != "", entry.Description, "not_available"),
+			t(siteURL != "", siteURL, "not_available"),
+			entry.DownloadURL,
+			t(version != "", version, "not_available"),
+		))
 	}
 }
-*/
