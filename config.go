@@ -319,7 +319,7 @@ func setDefaultValues(config *config) {
 
 	config.Repositories = []repository{
 		{
-			URL: fmt.Sprintf("https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/%.1f/%s%s", version, arch, ".lite.cbor.zst"),
+			URL: fmt.Sprintf("https://d.xplshn.com.ar/misc/cmd/%.1f/%s%s", version, arch, ".lite.cbor.zst"),
 			PubKeys: map[string]string{
 				"bincache": "https://meta.pkgforge.dev/bincache/minisign.pub",
 				"pkgcache": "https://meta.pkgforge.dev/pkgcache/minisign.pub",
