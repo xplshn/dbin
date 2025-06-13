@@ -43,7 +43,6 @@ func findMatchingBins(bEntry binaryEntry, uRepoIndex []binaryEntry) []binaryEntr
 				}
 				// name
 			} else if bEntry.PkgID == "" && bEntry.Version == "" && bEntry.Repository.Name == "" {
-				fmt.Println("name", parseBinaryEntry(bEntry, true))
 				matches = true
 			}
 		}
