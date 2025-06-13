@@ -18,7 +18,6 @@ import (
 	"github.com/hedzr/progressbar"
 	"github.com/jedisct1/go-minisign"
 	"github.com/pkg/xattr"
-	"github.com/xplshn/dbin/internal/util"
 	"github.com/zeebo/blake3"
 	"github.com/zeebo/errs"
 )
@@ -543,7 +542,7 @@ func cleanInstallCache(installDir string) error {
 		}
 		var atime time.Time
 		if sysInfo, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
-			atime = util.ATime(sysInfo)
+			atime = ATime(sysInfo)
 		} else {
 			if verbosityLevel >= extraVerbose {
 				fmt.Fprintf(os.Stderr, "Warning: ATime not supported for %s, skipping cleanup\n", filePath)

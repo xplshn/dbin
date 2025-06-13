@@ -49,16 +49,16 @@ func main() {
 			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
-            switch {
-        	case c.Bool("extra-silent"):
-        	    verbosityLevel = extraSilent
-        	case c.Bool("silent"):
-        	    verbosityLevel = silentVerbosityWithErrors
-        	case c.Bool("verbose"):
-        	    verbosityLevel = extraVerbose
-        	}
-        	return nil, nil
-        },
+			switch {
+			case c.Bool("extra-silent"):
+				verbosityLevel = extraSilent
+			case c.Bool("silent"):
+				verbosityLevel = silentVerbosityWithErrors
+			case c.Bool("verbose"):
+				verbosityLevel = extraVerbose
+			}
+			return nil, nil
+		},
 		Commands: []*cli.Command{
 			installCommand(),
 			removeCommand(),
@@ -72,8 +72,7 @@ func main() {
 		EnableShellCompletion: true,
 	}
 
-	err := app.Run(context.Background(), os.Args)
-	if err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
