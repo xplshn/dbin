@@ -17,7 +17,7 @@ dbin can also work on systems other than Linux, but given that we don't have rep
 
 > Why?
 
- "I tend to think the drawbacks of dynamic linking outweigh the advantages for many (most?) applications." – John Carmack. If you are looking for more in-depth arguments, see: [cat-v.ORG - Dynamic Linking](https://harmful.cat-v.org/software/dynamic-linking)
+ "I tend to think the drawbacks of dynamic linking outweigh the advantages for many (most?) applications." – John Carmack. If you are looking for more in-depth arguments, see: [dynlib - drewdevault.com](https://drewdevault.com/dynlib.html), [cat-v.ORG - Dynamic Linking](https://harmful.cat-v.org/software/dynamic-linking)
 
 > I've seen lots of package manager projects without "packages". What is different about this one?
 
