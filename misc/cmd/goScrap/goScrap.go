@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sort"
+	"strings"
 	"time"
 
-	pkggodev "github.com/guseggert/pkggodev-client"
+	"github.com/xplshn/pkggodev"
 	"github.com/urfave/cli/v3"
 )
 
@@ -24,7 +24,7 @@ type DirectoryInfo struct {
 }
 
 type DetectionResult struct {
-	RootDir     string          `json:"root_dir"`
+	RootDir     string           `json:"root_dir"`
 	Directories []*DirectoryInfo `json:"directories"`
 }
 
@@ -141,7 +141,7 @@ func main() {
 	}
 
 	if err := app.Run(context.Background(), os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }
@@ -236,7 +236,7 @@ func metagenAction(ctx context.Context, c *cli.Command) error {
 			Pkg:         filepath.Base(path),
 			Name:        filepath.Base(path),
 			PkgId:       buildInfo.Path,
-			Description: "",
+			Description: pkgInfo.Synopsis,
 			Version:     buildInfo.Main.Version,
 			Size:        size,
 			BuildDate:   buildDate,
