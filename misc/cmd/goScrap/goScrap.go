@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"debug/buildinfo"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sort"
+	"time"
 
+	pkggodev "github.com/guseggert/pkggodev-client"
 	"github.com/urfave/cli/v3"
 )
 
@@ -24,6 +27,43 @@ type DetectionResult struct {
 	RootDir     string          `json:"root_dir"`
 	Directories []*DirectoryInfo `json:"directories"`
 }
+
+type DbinItem struct {
+	Pkg             string     `json:"pkg,omitempty"`
+	Name            string     `json:"pkg_name,omitempty"`
+	PkgId           string     `json:"pkg_id,omitempty"`
+	AppstreamId     string     `json:"app_id,omitempty"`
+	Icon            string     `json:"icon,omitempty"`
+	Description     string     `json:"description,omitempty"`
+	LongDescription string     `json:"description_long,omitempty"`
+	Screenshots     []string   `json:"screenshots,omitempty"`
+	Version         string     `json:"version,omitempty"`
+	DownloadURL     string     `json:"download_url,omitempty"`
+	Size            string     `json:"size,omitempty"`
+	Bsum            string     `json:"bsum,omitempty"`
+	Shasum          string     `json:"shasum,omitempty"`
+	BuildDate       string     `json:"build_date,omitempty"`
+	SrcURLs         []string   `json:"src_urls,omitempty"`
+	WebURLs         []string   `json:"web_urls,omitempty"`
+	BuildScript     string     `json:"build_script,omitempty"`
+	BuildLog        string     `json:"build_log,omitempty"`
+	Categories      string     `json:"categories,omitempty"`
+	Snapshots       []snapshot `json:"snapshots,omitempty"`
+	Provides        string     `json:"provides,omitempty"`
+	License         []string   `json:"license,omitempty"`
+	Maintainers     string     `json:"maintainers,omitempty"`
+	Notes           []string   `json:"notes,omitempty"`
+	Appstream       string     `json:"appstream,omitempty"`
+	Rank            uint       `json:"rank,omitempty"`
+	WebManifest     string     `json:"web_manifest,omitempty"`
+}
+
+type snapshot struct {
+	Commit  string `json:"commit,omitempty"`
+	Version string `json:"version,omitempty"`
+}
+
+type DbinMetadata map[string][]DbinItem
 
 func main() {
 	app := &cli.Command{
@@ -79,6 +119,24 @@ func main() {
 				},
 				Action: installAction,
 			},
+			{
+				Name:  "metagen",
+				Usage: "Generate metadata.json for Go binaries in the input directory",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Usage:   "Specify output file for metadata (default: metadata.json in input dir)",
+						Value:   "",
+					},
+					&cli.BoolFlag{
+						Name:  "verbose",
+						Usage: "Enable verbose output to stderr",
+						Value: false,
+					},
+				},
+				Action: metagenAction,
+			},
 		},
 	}
 
@@ -86,6 +144,138 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func metagenAction(ctx context.Context, c *cli.Command) error {
+	verbose := c.Bool("verbose")
+	output := c.String("output")
+	inputDir := c.Args().First()
+	if inputDir == "" {
+		var err error
+		inputDir, err = os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+	}
+
+	absInputDir, err := filepath.Abs(inputDir)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	info, err := os.Stat(absInputDir)
+	if err != nil {
+		return fmt.Errorf("invalid input directory: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", absInputDir)
+	}
+
+	if output == "" {
+		output = "metadata.json"
+	}
+
+	client := pkggodev.New()
+	metadata := make(DbinMetadata)
+	binaries := make([]DbinItem, 0)
+
+	err = filepath.Walk(absInputDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) != "" {
+			return nil
+		}
+
+		buildInfo, err := buildinfo.ReadFile(path)
+		if err != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: could not read build info for %s: %v\n", path, err)
+			}
+			return nil
+		}
+
+		if buildInfo.Path == "" || buildInfo.Main.Version == "" {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: incomplete build info for %s\n", path)
+			}
+			return nil
+		}
+
+		pkgInfo, err := client.DescribePackage(pkggodev.DescribePackageRequest{Package: buildInfo.Path})
+		if err != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: could not fetch package info for %s: %v\n", buildInfo.Path, err)
+			}
+			return nil
+		}
+
+		size := fmt.Sprintf("%d", info.Size())
+
+		buildDate := ""
+		for _, setting := range buildInfo.Settings {
+			if setting.Key == "vcs.time" {
+				buildDate = setting.Value
+				if parsedTime, err := time.Parse(time.RFC3339, buildDate); err == nil {
+					buildDate = parsedTime.Format("2006-01-02")
+				}
+				break
+			}
+		}
+		if buildDate == "" {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: no build date found for %s, using file mod time\n", path)
+			}
+			buildDate = info.ModTime().Format("2006-01-02")
+		}
+
+		item := DbinItem{
+			Pkg:         filepath.Base(path),
+			Name:        filepath.Base(path),
+			PkgId:       buildInfo.Path,
+			Description: "",
+			Version:     buildInfo.Main.Version,
+			Size:        size,
+			BuildDate:   buildDate,
+			SrcURLs:     []string{pkgInfo.Repository},
+			License:     []string{pkgInfo.License},
+		}
+
+		binaries = append(binaries, item)
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("error walking directory: %w", err)
+	}
+
+	if len(binaries) == 0 {
+		return fmt.Errorf("no valid Go binaries found in %s", absInputDir)
+	}
+
+	sort.Slice(binaries, func(i, j int) bool {
+		return binaries[i].PkgId < binaries[j].PkgId
+	})
+
+	metadata["go"] = binaries
+
+	jsonData, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	if err := os.WriteFile(output, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write metadata to %s: %w", output, err)
+	}
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Successfully generated metadata.json with %d binaries\n", len(binaries))
+	}
+
+	return nil
 }
 
 func detectAction(ctx context.Context, c *cli.Command) error {
