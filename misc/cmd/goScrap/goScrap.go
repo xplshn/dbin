@@ -2,18 +2,33 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sort"
 
 	"github.com/urfave/cli/v3"
 )
 
+type DirectoryInfo struct {
+	Suffix     string `json:"suffix"`
+	Path       string `json:"path"`
+	FullPath   string `json:"full_path"`
+	IsCommand  bool   `json:"is_command"`
+	IsInternal bool   `json:"is_internal"`
+}
+
+type DetectionResult struct {
+	RootDir     string          `json:"root_dir"`
+	Directories []*DirectoryInfo `json:"directories"`
+}
+
 func main() {
 	app := &cli.Command{
 		Name:  "goScrap",
-		Usage: "Detects Go CLI programs and generates appropriate go build commands",
+		Usage: "Detects Go CLI programs and generates appropriate go build or install commands",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "verbose",
@@ -32,12 +47,37 @@ func main() {
 						Value:   "",
 					},
 					&cli.BoolFlag{
+						Name:    "json",
+						Aliases: []string{"j"},
+						Usage:   "Output results in JSON format",
+						Value:   false,
+					},
+					&cli.BoolFlag{
 						Name:  "relative",
 						Usage: "Use relative paths in build commands (default: absolute paths)",
 						Value: false,
 					},
 				},
 				Action: detectAction,
+			},
+			{
+				Name:  "install",
+				Usage: "Generate go install commands for detected CLI programs",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "target",
+						Aliases: []string{"t"},
+						Usage:   "Specify target version or branch (latest, main, master)",
+						Value:   "latest",
+					},
+					&cli.BoolFlag{
+						Name:    "json",
+						Aliases: []string{"j"},
+						Usage:   "Output results in JSON format",
+						Value:   false,
+					},
+				},
+				Action: installAction,
 			},
 		},
 	}
@@ -52,6 +92,7 @@ func detectAction(ctx context.Context, c *cli.Command) error {
 	verbose := c.Bool("verbose")
 	output := c.String("output")
 	useRelative := c.Bool("relative")
+	useJSON := c.Bool("json")
 	rootDir := c.Args().First()
 	if rootDir == "" {
 		var err error
@@ -79,9 +120,92 @@ func detectAction(ctx context.Context, c *cli.Command) error {
 		return fmt.Errorf("%s is not a directory", absRootDir)
 	}
 
-	var buildCommands []string
+	result, err := detectGoCLIs(absRootDir, currentDir, output, useRelative, verbose)
+	if err != nil {
+		return err
+	}
+
+	if len(result.Directories) == 0 {
+		return fmt.Errorf("no valid Go CLI programs found in %s", absRootDir)
+	}
+
+	if useJSON {
+		outputJSON, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+		fmt.Println(string(outputJSON))
+		return nil
+	}
+
+	for _, dir := range result.Directories {
+		outputPath := generateOutputPath(dir.FullPath, output, filepath.Base(dir.FullPath), absRootDir, useRelative)
+		fmt.Println(generateBuildCommand(dir.FullPath, outputPath, useRelative))
+	}
+	return nil
+}
+
+func installAction(ctx context.Context, c *cli.Command) error {
+	verbose := c.Bool("verbose")
+	target := c.String("target")
+	useJSON := c.Bool("json")
+	rootDir := c.Args().First()
+	if rootDir == "" {
+		var err error
+		rootDir, err = os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+	}
+
+	absRootDir, err := filepath.Abs(rootDir)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	info, err := os.Stat(absRootDir)
+	if err != nil {
+		return fmt.Errorf("invalid root directory: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", absRootDir)
+	}
+
+	result, err := detectGoCLIs(absRootDir, absRootDir, "", false, verbose)
+	if err != nil {
+		return err
+	}
+
+	if len(result.Directories) == 0 {
+		return fmt.Errorf("no valid Go CLI programs found in %s", absRootDir)
+	}
+
+	goModPath, err := findGoModPath(absRootDir)
+	if err != nil {
+		return fmt.Errorf("failed to find go.mod: %w", err)
+	}
+
+	if useJSON {
+		outputJSON, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+		fmt.Println(string(outputJSON))
+		return nil
+	}
+
+	for _, dir := range result.Directories {
+		fmt.Println(generateInstallCommand(goModPath, dir.FullPath, target))
+	}
+	return nil
+}
+
+func detectGoCLIs(rootDir, currentDir, output string, useRelative, verbose bool) (*DetectionResult, error) {
+	var result DetectionResult
+	result.RootDir = rootDir
 	hasGoFiles := false
-	err = filepath.Walk(absRootDir, func(path string, info os.FileInfo, err error) error {
+
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -92,39 +216,47 @@ func detectAction(ctx context.Context, c *cli.Command) error {
 			}
 			if isValidGoCLIDir(path, verbose) {
 				hasGoFiles = true
-				// use relative path or not?
-				var cmdPath string
-				if useRelative {
-					cmdPath, err = filepath.Rel(currentDir, path)
-					if err != nil {
-						return fmt.Errorf("failed to get relative path from %s to %s: %w", currentDir, path, err)
-					}
-					if cmdPath == "." {
-						cmdPath = ""
-					}
-				} else {
-					cmdPath = path
+				dirInfo := &DirectoryInfo{
+					FullPath:  path,
+					IsCommand: true,
 				}
-				outputPath := generateOutputPath(path, output, info.Name(), absRootDir, useRelative)
-				cmd := generateBuildCommand(cmdPath, outputPath, useRelative)
-				buildCommands = append(buildCommands, cmd)
+				if strings.Contains(path, "/internal/") || strings.HasPrefix(filepath.Base(path), "internal") {
+					dirInfo.IsInternal = true
+				}
+				relPath, err := filepath.Rel(rootDir, path)
+				if err != nil {
+					return fmt.Errorf("failed to get relative path from %s to %s: %w", rootDir, path, err)
+				}
+				dirInfo.Path = relPath
+				dirInfo.Suffix = strings.TrimPrefix(relPath, string(os.PathSeparator))
+				if dirInfo.Path == "." {
+					dirInfo.Path = filepath.Base(path)
+					dirInfo.Suffix = filepath.Base(path)
+				}
+				result.Directories = append(result.Directories, dirInfo)
 			}
 		}
 		return nil
 	})
 
 	if err != nil {
-		return fmt.Errorf("error walking directory: %w", err)
+		return nil, fmt.Errorf("error walking directory: %w", err)
 	}
 
 	if !hasGoFiles {
-		return fmt.Errorf("no valid Go CLI programs found in %s", absRootDir)
+		return &result, nil
 	}
 
-	for _, cmd := range buildCommands {
-		fmt.Println(cmd)
+	for i, dir := range result.Directories {
+		if dir.Suffix == "." {
+			result.Directories[i].Suffix = filepath.Base(dir.Path)
+		}
 	}
-	return nil
+	sort.Slice(result.Directories, func(i, j int) bool {
+		return result.Directories[i].Suffix < result.Directories[j].Suffix
+	})
+
+	return &result, nil
 }
 
 func isExcludedDir(name string) bool {
@@ -146,7 +278,6 @@ func isValidGoCLIDir(dir string, verbose bool) bool {
 		if err != nil {
 			return err
 		}
-		// dont check subdirs
 		if info.IsDir() && path != dir {
 			return filepath.SkipDir
 		}
@@ -165,7 +296,6 @@ func isValidGoCLIDir(dir string, verbose bool) bool {
 				if strings.HasPrefix(trimmed, "package main") {
 					hasMain = true
 				}
-				// overkill? Maybe...
 				if strings.Contains(trimmed, "func main()") {
 					hasFuncMain = true
 				}
@@ -181,6 +311,38 @@ func isValidGoCLIDir(dir string, verbose bool) bool {
 		fmt.Fprintf(os.Stderr, "Warning: error scanning directory %s: %v\n", dir, err)
 	}
 	return hasMain && hasFuncMain && hasValidGoFiles
+}
+
+func findGoModPath(rootDir string) (string, error) {
+	var goModPath string
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && info.Name() == "go.mod" {
+			goModPath = path
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("error searching for go.mod: %w", err)
+	}
+	if goModPath == "" {
+		return "", fmt.Errorf("no go.mod file found in %s or its subdirectories", rootDir)
+	}
+
+	content, err := os.ReadFile(goModPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read go.mod: %w", err)
+	}
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "module ") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "module ")), nil
+		}
+	}
+	return "", fmt.Errorf("no module path found in go.mod")
 }
 
 func generateOutputPath(dir, output, dirName, rootDir string, useRelative bool) string {
@@ -213,4 +375,14 @@ func generateBuildCommand(cmdPath, outputPath string, useRelative bool) string {
 		return fmt.Sprintf("go build -o %s", outputPath)
 	}
 	return fmt.Sprintf("go build -C %s -o %s", cmdPath, outputPath)
+}
+
+func generateInstallCommand(modulePath, cmdPath, target string) string {
+	suffix := strings.TrimPrefix(cmdPath, filepath.Dir(modulePath))
+	if suffix == "" || suffix == "." {
+		suffix = "/cmd/" + filepath.Base(cmdPath)
+	} else {
+		suffix = "/cmd/" + strings.TrimPrefix(suffix, string(os.PathSeparator))
+	}
+	return fmt.Sprintf("go install %s%s@%s", modulePath, suffix, target)
 }
