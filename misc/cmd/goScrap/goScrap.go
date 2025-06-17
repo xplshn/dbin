@@ -71,8 +71,9 @@ func main() {
 		Usage: "Detects Go CLI programs and generates appropriate go build or install commands",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:  "verbose",
-				Usage: "Enable verbose output to stderr",
+				Name:    "verbose",
+				Usage:   "Enable verbose output to stderr",
+				Aliases: []string{"v"},
 			},
 		},
 		Commands: []*cli.Command{
@@ -128,11 +129,6 @@ func main() {
 						Aliases: []string{"o"},
 						Usage:   "Specify output file for metadata (default: metadata.json in input dir)",
 						Value:   "",
-					},
-					&cli.BoolFlag{
-						Name:  "verbose",
-						Usage: "Enable verbose output to stderr",
-						Value: false,
 					},
 				},
 				Action: metagenAction,
@@ -211,6 +207,13 @@ func metagenAction(ctx context.Context, c *cli.Command) error {
 				fmt.Fprintf(os.Stderr, "Warning: could not fetch package info for %s: %v\n", buildInfo.Path, err)
 			}
 			return nil
+		}
+
+		err = client.Sprinkle(pkgInfo)
+		if err != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: could not sprinkle bare package info with git repo info: %s: %v\n", buildInfo.Path, err)
+			}
 		}
 
 		size := fmt.Sprintf("%d", info.Size())
@@ -316,7 +319,7 @@ func detectAction(ctx context.Context, c *cli.Command) error {
 	}
 
 	if len(result.Directories) == 0 {
-		return fmt.Errorf("no valid Go CLI programs found in %s", absRootDir)
+		return fmt.Errorf("no valid Go programs found in %s", absRootDir)
 	}
 
 	if useJSON {
@@ -367,7 +370,7 @@ func installAction(ctx context.Context, c *cli.Command) error {
 	}
 
 	if len(result.Directories) == 0 {
-		return fmt.Errorf("no valid Go CLI programs found in %s", absRootDir)
+		return fmt.Errorf("no valid Go programs found in %s", absRootDir)
 	}
 
 	goModPath, err := findGoModPath(absRootDir)
