@@ -34,8 +34,9 @@ type PkgForgeItem struct {
 	AppId       string   `json:"app_id,omitempty"`
 	PkgType     string   `json:"pkg_type,omitempty"`
 	Icon        string   `json:"icon,omitempty"`
-	Screenshots []string `json:"screenshots,omitempty"`
 	Description string   `json:"description,omitempty"`
+	Maintainers []string `json:"Maintainer,omitempty"`
+	Screenshots []string `json:"screenshots,omitempty"`
 	WebURLs     []string `json:"homepage,omitempty"`
 	Version     string   `json:"version,omitempty"`
 	DownloadURL string   `json:"download_url,omitempty"`
@@ -54,6 +55,7 @@ type PkgForgeItem struct {
 	GhcrPkg     string   `json:"ghcr_pkg,omitempty"`
 	HfPkg       string   `json:"hf_pkg,omitempty"`
 	Rank        string   `json:"rank,omitempty"`
+	WebManifest string   `json:"pkg_webpage,omitempty"`
 }
 
 type snapshot struct {
@@ -84,9 +86,11 @@ type DbinItem struct {
 	Snapshots       []snapshot `json:"snapshots,omitempty"`
 	Provides        string     `json:"provides,omitempty"`
 	License         []string   `json:"license,omitempty"`
+	Maintainers     string     `json:"maintainers,omitempty"`
 	Notes           []string   `json:"notes,omitempty"`
 	Appstream       string     `json:"appstream,omitempty"`
 	Rank            uint       `json:"rank,omitempty"`
+	WebManifest     string     `json:"web_manifest,omitempty"`
 }
 
 type DbinMetadata map[string][]DbinItem
@@ -243,7 +247,7 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		return DbinItem{}, false
 	}
 
-	var categories, provides, downloadURL string
+	var categories, provides, maintainers, downloadURL string
 
 	if len(item.Category) > 0 {
 		categories = strings.Join(item.Category, ",")
@@ -251,6 +255,10 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 
 	if len(item.Provides) > 0 {
 		provides = strings.Join(item.Provides, ",")
+	}
+
+	if len(item.Maintainers) > 0 {
+		maintainers = strings.Join(item.Maintainers, ",")
 	}
 
 	if item.GhcrPkg != "" {
@@ -329,8 +337,10 @@ func convertPkgForgeToDbinItem(item PkgForgeItem, useFamilyFormat map[string]boo
 		Snapshots:   snapshots,
 		Provides:    provides,
 		License:     item.License,
+		Maintainers: maintainers,
 		Notes:       item.Notes,
 		Rank:        uint(rank),
+		WebManifest: item.WebManifest,
 	}, true
 }
 
@@ -443,6 +453,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Provides = ""
 			items[i].Shasum = ""
 			items[i].Bsum = ""
+			items[i].WebManifest = ""
 		}
 	}
 	saveAll(filename+".web", webMetadata)
@@ -454,6 +465,7 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 			items[i].Shasum = ""
 			items[i].AppstreamId = ""
 			items[i].LongDescription = ""
+			items[i].WebManifest = ""
 			items[i].Screenshots = []string{}
 		}
 	}
@@ -535,6 +547,29 @@ func main() {
 					"https://meta.pkgforge.dev/pkgcache/%s.json",
 				},
 				Single: true,
+			},
+			Handler: PkgForgeHandler{},
+		},
+		{
+			Repo: repository{
+				Name: "pkgforge-go",
+				URLs: []string{
+					"https://github.com/pkgforge-go/builder/raw/refs/heads/main/data/%s.json",
+					"https://meta.pkgforge.dev/external/pkgforge-go/%s.json",
+				},
+				Standalone: true,
+			},
+			Handler: PkgForgeHandler{},
+		},
+		{
+			Repo: repository{
+				Name: "pkgforge-cargo",
+				URLs: []string{
+					"https://raw.githubusercontent.com/pkgforge-cargo/builder/refs/heads/main/data/x86_64-Linux.json",
+					"https://meta.pkgforge.dev/external/pkgforge-cargo/%s.json",
+					"https://github.com/pkgforge-cargo/builder/raw/refs/heads/main/data/%s.json",
+				},
+				Standalone: true,
 			},
 			Handler: PkgForgeHandler{},
 		},
