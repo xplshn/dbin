@@ -19,11 +19,18 @@ import (
 	"github.com/tiendc/go-deepcopy"
 )
 
+const (
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorReset  = "\033[0m"
+)
+
 type repository struct {
 	URLs       []string
 	Name       string
 	Standalone bool
 	Single     bool
+	Filter     func(*[]DbinItem)
 }
 
 type PkgForgeItem struct {
@@ -515,14 +522,19 @@ func saveYAML(filename string, metadata DbinMetadata) error {
 func main() {
 	// Load AppStream metadata once at startup
 	if err := loadAppStreamMetadata(); err != nil {
-		fmt.Printf("Error loading AppStream metadata: %v\n", err)
+		fmt.Printf("%serror:%s Error loading AppStream metadata: %v\n", colorRed, colorReset, err)
 	}
 
 	realArchs := map[string]string{
-		"x86_64-Linux":  "amd64_linux",
-		"aarch64-Linux": "arm64_linux",
-		"riscv64-Linux": "riscv64_linux",
+		"x86_64-Linux":      "amd64_linux",
+		"aarch64-Linux":     "arm64_linux",
+		"riscv64-Linux":     "riscv64_linux",
+		"loongarch64-Linux": "loongarch64_linux",
 	}
+
+	// At least the amd64 repo should have succeeded in order for the fetch failure
+	// of a repo for a specifc arch to be considered a warning instead of an error.
+	amd64Success := false
 
 	repositories := []struct {
 		Repo    repository
@@ -547,6 +559,22 @@ func main() {
 					"https://meta.pkgforge.dev/pkgcache/%s.json",
 				},
 				Single: true,
+				Filter: func(items *[]DbinItem) {
+					var filteredItems []DbinItem
+					for _, item := range *items {
+						hasPortableNote := false
+						for _, note := range item.Notes {
+							if strings.Contains(note, "[PORTABLE]") {
+								hasPortableNote = true
+								break
+							}
+						}
+						if hasPortableNote {
+							filteredItems = append(filteredItems, item)
+						}
+					}
+					*items = filteredItems
+				},
 			},
 			Handler: PkgForgeHandler{},
 		},
@@ -557,7 +585,18 @@ func main() {
 					"https://github.com/pkgforge-go/builder/raw/refs/heads/main/data/%s.json",
 					"https://meta.pkgforge.dev/external/pkgforge-go/%s.json",
 				},
-				Standalone: true,
+				Single: true,
+				//Filter: func(items *[]DbinItem) {
+				//	var filteredItems []DbinItem
+				//	for _, item := range *items {
+				//		if !strings.Contains(item.Description, "bindings") && !strings.Contains(item.Description, "key") {
+				//			filteredItems = append(filteredItems, item)
+				//		} /* else {
+				//			fmt.Printf("[pkgforge-go]: repo filter: %s#%s contains bad word (%s)", item.Name, item.PkgId, "bindings")
+				//		} */
+				//	}
+				//	*items = filteredItems
+				//},
 			},
 			Handler: PkgForgeHandler{},
 		},
@@ -605,44 +644,27 @@ func main() {
 			},
 			Handler: DbinHandler{},
 		},
-		//{
-		//	Repo: repository{
-		//		Name: "dbin",
-		//		URLs: []string{
-		//			"http://192.168.1.59/d/%s",
-		//		},
-		//		Single: true,
-		//	},
-		//	Handler: DbinHandler{},
-		//},
 	}
 
 	for arch, outputArch := range realArchs {
 		dbinMetadata := make(DbinMetadata)
+		archSuccess := false // Track success for the current architecture
 
 		for _, repo := range repositories {
 			items, err := repo.Handler.FetchMetadata(repo.Repo.URLs, arch)
 			if err != nil {
-				fmt.Printf("Error downloading %s metadata: %v\n", repo.Repo.Name, err)
-				continue
+				// If amd64 succeeded, treat non-amd64 failures as warnings
+				if arch != "x86_64-Linux" && amd64Success {
+					fmt.Printf("%swarning:%s Failed to download %s metadata for %s: %v\n", colorYellow, colorReset, repo.Repo.Name, arch, err)
+					continue
+				} else {
+					fmt.Printf("%serror:%s Error downloading %s metadata for %s: %v\n", colorRed, colorReset, repo.Repo.Name, arch, err)
+					continue
+				}
 			}
 
-			// Filter items from "pkgcache" repository that do not contain "[PORTABLE]" in their Notes
-			if repo.Repo.Name == "pkgcache" {
-				var filteredItems []DbinItem
-				for _, item := range items {
-					hasPortableNote := false
-					for _, note := range item.Notes {
-						if strings.Contains(note, "[PORTABLE]") {
-							hasPortableNote = true
-							break
-						}
-					}
-					if hasPortableNote {
-						filteredItems = append(filteredItems, item)
-					}
-				}
-				items = filteredItems
+			if repo.Repo.Filter != nil {
+				repo.Repo.Filter(&items)
 			}
 
 			if !repo.Repo.Standalone {
@@ -655,20 +677,33 @@ func main() {
 				singleOutputFile := fmt.Sprintf("%s_%s", repo.Repo.Name, outputArch)
 
 				if err := saveMetadata(singleOutputFile, singleMetadata); err != nil {
-					fmt.Printf("Error saving single metadata to %s: %v\n", singleOutputFile, err)
+					fmt.Printf("%serror:%s Error saving single metadata to %s: %v\n", colorRed, colorReset, singleOutputFile, err)
 					continue
 				}
 				fmt.Printf("Successfully saved single metadata to %s\n", singleOutputFile)
 			}
+
+			archSuccess = true // Mark this architecture as successful if at least one repo processed
 		}
 
-		outputFile := fmt.Sprintf("%s", outputArch)
-		if err := saveMetadata(outputFile, dbinMetadata); err != nil {
-			fmt.Printf("Error saving metadata to %s: %v\n", outputFile, err)
-			continue
+		// Update amd64Success if this is the amd64 architecture
+		if arch == "x86_64-Linux" && archSuccess {
+			amd64Success = true
 		}
 
-		fmt.Printf("Successfully processed and saved combined metadata to %s\n", outputFile)
+		// Save combined metadata only if the architecture had at least one successful repo
+		if archSuccess {
+			outputFile := fmt.Sprintf("%s", outputArch)
+			if err := saveMetadata(outputFile, dbinMetadata); err != nil {
+				fmt.Printf("%serror:%s Error saving metadata to %s: %v\n", colorRed, colorReset, outputFile, err)
+				continue
+			}
+			fmt.Printf("Successfully processed and saved combined metadata to %s\n", outputFile)
+		} else if arch != "x86_64-Linux" && amd64Success {
+			fmt.Printf("%swarning:%s No metadata saved for %s: all repositories failed\n", colorYellow, colorReset, outputArch)
+		} else {
+			fmt.Printf("%serror:%s No metadata saved for %s: all repositories failed\n", colorRed, colorReset, outputArch)
+		}
 	}
 }
 
