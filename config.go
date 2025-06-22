@@ -178,9 +178,9 @@ func executeHookCommand(config *config, hookCommands *hookCommands, ext, bEntryP
 	env = append(env, fmt.Sprintf("DBIN_HOOK_BINARY=%s", bEntryPath))
 	env = append(env, fmt.Sprintf("DBIN_HOOK_BINARY_EXT=%s", ext))
 	if isIntegration {
-		env = append(env, "DBIN_HOOK_TYPE=integration")
+		env = append(env, "DBIN_HOOK_TYPE=install")
 	} else {
-		env = append(env, "DBIN_HOOK_TYPE=deintegration")
+		env = append(env, "DBIN_HOOK_TYPE=remove")
 	}
 
 	if hookCommands.Silent {
