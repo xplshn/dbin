@@ -4,7 +4,7 @@
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/xplshn/dbin?include_prereleases)](https://github.com/xplshn/dbin/releases/latest)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/xplshn/dbin)
 
-<p align="center"><img src="https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg" alt="dbin logo, made with love, by @peacefulwilliam <github.com/contrarybaton60>" width="150" /></p>
+<p align="center"><img src="https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/logo_by_peacefulwilliam.svg" alt="dbin logo, made with love, by @peacefulwilliam <github.com/contrarybaton60>" width="150" /></p>
 
 <!--[Makes my repo look bad because these usually show "Failing"]-------------------------------------------------------------------------------------------
 [![AMD64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_x86_64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
@@ -198,7 +198,6 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
 
 ### Default repos ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 - [PkgForge's repos](https://docs.pkgforge.dev/repositories): Portable programs that are truly static, or otherwise self-contained using a wrapper format
-   ![pkgforge_repo](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pkgforge.svg)
    - <!-- PKGFORGE_COUNT -->
    - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs.
 - [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Portable programs in .AppBundle format
@@ -237,4 +236,4 @@ Contributions are welcome! Whether you've found a bug, have a feature request, o
 ## License
 dbin is licensed under the ISC (equivalent to MIT but without unnecessary legal wording) or RABRMS Licenses, choose whichever fits your needs best.
 
-## Its pretty safe to state that we are ![cooltext466498248029130](https://github.com/user-attachments/assets/4397b1d3-44f2-4ae9-99c6-7379860bfa73)
+## Its pretty safe to state that we are ![cooltext](https://github.com/user-attachments/assets/4397b1d3-44f2-4ae9-99c6-7379860bfa73)
