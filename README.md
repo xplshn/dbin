@@ -4,7 +4,7 @@
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/xplshn/dbin?include_prereleases)](https://github.com/xplshn/dbin/releases/latest)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/xplshn/dbin)
 
-<p align="center"><img src="https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg" alt="dbin logo, made with love, by @peacefulwilliam <github.com/contrarybaton60>" width="150" /></p>
+<p align="center"><img src="https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/logo_by_peacefulwilliam.svg" alt="dbin logo, made with love, by @peacefulwilliam <github.com/contrarybaton60>" width="150" /></p>
 
 <!--[Makes my repo look bad because these usually show "Failing"]-------------------------------------------------------------------------------------------
 [![AMD64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_x86_64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
