@@ -23,6 +23,7 @@ var (
 	errConfigFileAccess = errs.Class("config file access error")
 	errCommandExecution = errs.Class("command execution error")
 	errSplitArgs        = errs.Class("split args error")
+	arch                = runtime.GOARCH + "_" + runtime.GOOS
 )
 
 type repository struct {
@@ -36,6 +37,8 @@ type config struct {
 	Repositories        []repository `yaml:"Repositories" env:"DBIN_REPO_URLS" description:"List of repositories to fetch binaries from."`
 	InstallDir          string       `yaml:"InstallDir" env:"DBIN_INSTALL_DIR XDG_BIN_HOME" description:"Directory where binaries will be installed."`
 	CacheDir            string       `yaml:"CacheDir" env:"DBIN_CACHE_DIR" description:"Directory where cached binaries will be stored."`
+	LicenseDir          string       `yaml:"LicenseDir" env:"DBIN_LICENSE_DIR" description:"Directory where license files will be stored."`
+	CreateLicenses      bool         `yaml:"CreateLicenses" env:"DBIN_CREATE_LICENSES" description:"Enable saving of license files from OCI downloads."`
 	Limit               uint         `yaml:"SearchResultsLimit" description:"Limit the number of search results displayed."`
 	ProgressbarStyle    int          `yaml:"PbarStyle,omitempty" description:"Style of the progress bar."`
 	DisableTruncation   bool         `yaml:"Truncation" env:"DBIN_NOTRUNCATION" description:"Disable truncation of output."`
@@ -75,13 +78,20 @@ func configCommand() *cli.Command {
 		},
 		Action: func(_ context.Context, c *cli.Command) error {
 			if c.Bool("new") {
-				return createDefaultConfig()
+				configFilePath := os.Getenv("DBIN_CONFIG_FILE")
+				if configFilePath == "" {
+					userConfigDir, err := os.UserConfigDir()
+					if err != nil {
+						return errConfigFileAccess.Wrap(err)
+					}
+					configFilePath = filepath.Join(userConfigDir, "dbin", "dbin.yaml")
+				}
+				return createDefaultConfigAt(configFilePath)
 			} else if c.Bool("show") {
 				config, err := loadConfig()
 				if err != nil {
 					return errConfigLoad.Wrap(err)
 				}
-
 				printConfig(config)
 				return nil
 			}
@@ -95,7 +105,7 @@ func printConfig(config *config) {
 	v := reflect.ValueOf(config).Elem()
 	t := v.Type()
 
-	for i := range v.NumField() {
+	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fieldType := t.Field(i)
 		description := fieldType.Tag.Get("description")
@@ -145,18 +155,12 @@ func splitArgs(cmd string) ([]string, error) {
 	return args, nil
 }
 
-func executeHookCommand(config *config, cmdTemplate, bEntryPath, extension string, isIntegration bool) error {
-	hookCommands, exists := config.Hooks.Commands[extension]
-	if !exists {
-		return errCommandExecution.New("no commands found for extension: %s", extension)
-	}
-
+func executeHookCommand(config *config, hookCommands *hookCommands, ext, bEntryPath string, isIntegration bool) error {
 	if hookCommands.NoOp {
 		return nil
 	}
 
-	cmd := strings.ReplaceAll(cmdTemplate, "{{binary}}", bEntryPath)
-	commandParts, err := splitArgs(cmd)
+	commandParts, err := splitArgs(hookCommands.IntegrationCommand)
 	if err != nil {
 		return errCommandExecution.Wrap(err)
 	}
@@ -172,6 +176,7 @@ func executeHookCommand(config *config, cmdTemplate, bEntryPath, extension strin
 	env = append(env, fmt.Sprintf("DBIN_CACHE_DIR=%s", config.CacheDir))
 	env = append(env, fmt.Sprintf("DBIN=%s", os.Args[0]))
 	env = append(env, fmt.Sprintf("DBIN_HOOK_BINARY=%s", bEntryPath))
+	env = append(env, fmt.Sprintf("DBIN_HOOK_BINARY_EXT=%s", ext))
 	if isIntegration {
 		env = append(env, "DBIN_HOOK_TYPE=integration")
 	} else {
@@ -212,7 +217,7 @@ func loadConfig() (*config, error) {
 		if err != nil {
 			return nil, errConfigFileAccess.Wrap(err)
 		}
-		configFilePath = filepath.Join(userConfigDir, "dbin.yaml")
+		configFilePath = filepath.Join(userConfigDir, "dbin", "dbin.yaml")
 	}
 
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
@@ -225,7 +230,6 @@ func loadConfig() (*config, error) {
 		return nil, errConfigLoad.Wrap(err)
 	}
 
-	arch := runtime.GOARCH + "_" + runtime.GOOS
 	for v := version - 0.1; v >= version-0.3; v -= 0.1 {
 		url := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
 		for _, repo := range cfg.Repositories {
@@ -260,7 +264,6 @@ func overrideWithEnv(cfg *config) {
 				case reflect.String:
 					field.SetString(value)
 				case reflect.Slice:
-					// Special handling for []Repository
 					if field.Type() == reflect.TypeOf([]repository{}) {
 						urls := strings.Split(value, ",")
 						var repos []repository
@@ -292,7 +295,7 @@ func overrideWithEnv(cfg *config) {
 		return false
 	}
 
-	for i := range v.NumField() {
+	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		envTags := strings.Fields(t.Field(i).Tag.Get("env"))
 
@@ -315,7 +318,14 @@ func setDefaultValues(config *config) {
 		return
 	}
 	config.CacheDir = filepath.Join(tempDir, "dbin_cache")
-	arch := runtime.GOARCH + "_" + runtime.GOOS
+
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		fmt.Printf("failed to get user's Config directory: %v\n", err)
+		return
+	}
+	config.LicenseDir = filepath.Join(userConfigDir, "dbin", "licenses")
+	config.CreateLicenses = true
 
 	config.Repositories = []repository{
 		{
@@ -329,24 +339,12 @@ func setDefaultValues(config *config) {
 	}
 
 	config.DisableTruncation = false
-	config.Limit = 90
+	config.Limit = 9999
 	config.UseIntegrationHooks = true
 	config.RetakeOwnership = false
 	config.ProgressbarStyle = 1
 	config.DisableProgressbar = false
 	config.NoConfig = false
-}
-
-func createDefaultConfig() error {
-	configFilePath := os.Getenv("DBIN_CONFIG_FILE")
-	if configFilePath == "" {
-		userConfigDir, err := os.UserConfigDir()
-		if err != nil {
-			return errConfigFileAccess.Wrap(err)
-		}
-		configFilePath = filepath.Join(userConfigDir, "dbin.yaml")
-	}
-	return createDefaultConfigAt(configFilePath)
 }
 
 func createDefaultConfigAt(configFilePath string) error {
@@ -356,7 +354,7 @@ func createDefaultConfigAt(configFilePath string) error {
 
 	cfg.Hooks = hooks{
 		Commands: map[string]hookCommands{
-			"": {
+			"*": {
 				IntegrationCommand:   "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",
 				DeintegrationCommand: "sh -c \"$DBIN info > ${DBIN_CACHE_DIR}/.info\"",
 				UseRunFromCache:      true,

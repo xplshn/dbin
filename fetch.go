@@ -37,162 +37,182 @@ type ociXAttrMeta struct {
 	Digest string `json:"digest"`
 }
 
-func xattrGetOCIMeta(path string) (ociXAttrMeta, error) {
+func getOCIMeta(path string) (ociXAttrMeta, error) {
 	var meta ociXAttrMeta
 	raw, err := xattr.Get(path, "user.dbin.ocichunk")
 	if err != nil {
-		return meta, errDownloadFailed.Wrap(err)
+		return meta, err
 	}
-	if err := json.Unmarshal(raw, &meta); err != nil {
-		return meta, errDownloadFailed.Wrap(err)
-	}
-	return meta, nil
+	return meta, json.Unmarshal(raw, &meta)
 }
-func xattrSetOCIMeta(path string, offset int64, digest string) error {
+
+func setOCIMeta(path string, offset int64, digest string) error {
 	meta := ociXAttrMeta{Offset: offset, Digest: digest}
-	raw, _ := json.Marshal(meta)
-	return xattr.Set(path, "user.dbin.ocichunk", raw)
+	raw, err := json.Marshal(meta)
+	if err != nil {
+		return err
+	}
+	xattr.Set(path, "user.dbin.ocichunk", raw)
+	return nil
 }
 
 func downloadWithProgress(ctx context.Context, bar progressbar.PB, resp *http.Response, destination string, bEntry *binaryEntry, isOCI bool, lastModified string, providedOffset int64) error {
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return errDownloadFailed.Wrap(err)
 	}
-	tempFile := destination + ".tmp"
 
-	var resumeOffset int64
+	tempFile := destination + ".tmp"
+	resumeOffset := providedOffset
 	if isOCI {
-		if meta, err := xattrGetOCIMeta(tempFile); err == nil {
+		if meta, err := getOCIMeta(tempFile); err == nil {
 			resumeOffset = meta.Offset
 		}
-	} else {
-		// For plain HTTP, use the offset we calculated in the calling function
-		resumeOffset = providedOffset
 	}
 
-	var out *os.File
-	var err error
-	if resumeOffset > 0 {
-		out, err = os.OpenFile(tempFile, os.O_RDWR, 0644)
-		if err != nil {
-			return errDownloadFailed.Wrap(err)
-		}
-		if _, err := out.Seek(resumeOffset, io.SeekStart); err != nil {
-			out.Close()
-			return errDownloadFailed.Wrap(err)
-		}
-	} else {
-		out, err = os.Create(tempFile)
-		if err != nil {
-			return errDownloadFailed.Wrap(err)
-		}
+	out, err := openOrCreateFile(tempFile, resumeOffset)
+	if err != nil {
+		return errDownloadFailed.Wrap(err)
 	}
 	defer out.Close()
 
-	// Store Last-Modified time for future resume validation (plain HTTP only)
 	if !isOCI && lastModified != "" {
-		_ = xattr.Set(tempFile, "user.dbin.lastmod", []byte(lastModified))
+		xattr.Set(tempFile, "user.dbin.lastmod", []byte(lastModified))
 	}
 
+	hash, err := initializeHash(tempFile, resumeOffset)
+	if err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
+
+	writer := setupWriter(out, hash, bar, resp, resumeOffset)
+
+	_, err = copyWithInterruption(ctx, writer, resp.Body, hash, tempFile, isOCI, resumeOffset)
+	if err != nil {
+		return err
+	}
+
+	if err := cleanupMetadata(tempFile, isOCI); err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
+
+	if err := verifyChecksum(hash, bEntry); err != nil {
+		return err
+	}
+
+	if err := validateFileType(tempFile); err != nil {
+		return err
+	}
+
+	if err := os.Rename(tempFile, destination); err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
+
+	return os.Chmod(destination, 0755)
+}
+
+func openOrCreateFile(path string, offset int64) (*os.File, error) {
+	if offset > 0 {
+		out, err := os.OpenFile(path, os.O_RDWR, 0644)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := out.Seek(offset, io.SeekStart); err != nil {
+			out.Close()
+			return nil, err
+		}
+		return out, nil
+	}
+	return os.Create(path)
+}
+
+func initializeHash(tempFile string, resumeOffset int64) (*blake3.Hasher, error) {
 	hash := blake3.New()
 	if resumeOffset > 0 {
 		rf, err := os.Open(tempFile)
 		if err != nil {
-			return errDownloadFailed.Wrap(err)
+			return nil, err
 		}
-		if _, err := io.CopyN(hash, rf, resumeOffset); err != nil {
-			rf.Close()
-			return errDownloadFailed.Wrap(err)
+		defer rf.Close()
+		_, err = io.CopyN(hash, rf, resumeOffset)
+		if err != nil {
+			return nil, err
 		}
-		rf.Close()
 	}
-	buf := make([]byte, 64*1024)
-	written := resumeOffset
+	return hash, nil
+}
 
-	var writer io.Writer
+func setupWriter(out *os.File, hash *blake3.Hasher, bar progressbar.PB, resp *http.Response, resumeOffset int64) io.Writer {
 	if bar != nil {
-		writer = io.MultiWriter(out, hash, bar)
-	} else {
-		writer = io.MultiWriter(out, hash)
+		writer := io.MultiWriter(out, hash, bar)
+		bar.UpdateRange(0, resp.ContentLength+resumeOffset)
+		bar.SetInitialValue(resumeOffset)
+		return writer
 	}
+	return io.MultiWriter(out, hash)
+}
 
-	if bar != nil {
-		if resp.StatusCode == http.StatusPartialContent {
-			// We're resuming - ContentLength is remaining bytes
-			bar.UpdateRange(resumeOffset-written, resp.ContentLength+resumeOffset)
-			bar.SetInitialValue(resumeOffset)
-		} else if resp.ContentLength > 0 {
-			// Full download
-			bar.UpdateRange(0, resp.ContentLength)
-			if resumeOffset > 0 {
-				bar.SetInitialValue(resumeOffset)
-			}
-		}
-	}
-
+func copyWithInterruption(ctx context.Context, writer io.Writer, reader io.Reader, hash *blake3.Hasher, tempFile string, isOCI bool, startOffset int64) (int64, error) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
 
-	exit := make(chan struct{})
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-sigCh:
-			if isOCI {
-				_ = xattrSetOCIMeta(tempFile, written, hex.EncodeToString(hash.Sum(nil)))
-			}
-			_ = out.Sync()
-			close(exit)
-			os.Exit(130)
-		case <-exit:
-		}
-	}()
-	defer close(exit)
+	written := startOffset
+	buf := make([]byte, 64*1024)
 
 	for {
-		n, err := resp.Body.Read(buf)
+		select {
+		case <-ctx.Done():
+			return written, ctx.Err()
+		case <-sigCh:
+			if isOCI {
+				setOCIMeta(tempFile, written, hex.EncodeToString(hash.Sum(nil)))
+			}
+			os.Exit(130)
+		default:
+		}
+
+		n, err := reader.Read(buf)
 		if n > 0 {
 			if _, errw := writer.Write(buf[:n]); errw != nil {
-				return errDownloadFailed.Wrap(errw)
+				return written, errDownloadFailed.Wrap(errw)
 			}
 			written += int64(n)
 			if isOCI && written%524288 == 0 {
-				_ = xattrSetOCIMeta(tempFile, written, hex.EncodeToString(hash.Sum(nil)))
+				if err := setOCIMeta(tempFile, written, hex.EncodeToString(hash.Sum(nil))); err != nil {
+					return written, errDownloadFailed.Wrap(err)
+				}
 			}
 		}
+
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			if isOCI {
-				_ = xattrSetOCIMeta(tempFile, written, hex.EncodeToString(hash.Sum(nil)))
+				setOCIMeta(tempFile, written, hex.EncodeToString(hash.Sum(nil)))
 			}
-			return errDownloadFailed.Wrap(err)
+			return written, errDownloadFailed.Wrap(err)
 		}
 	}
 
-	// Clean up metadata
-	if isOCI {
-		_ = xattr.Remove(tempFile, "user.dbin.ocichunk")
-	} else {
-		_ = xattr.Remove(tempFile, "user.dbin.lastmod")
-	}
+	return written, nil
+}
 
+func cleanupMetadata(tempFile string, isOCI bool) error {
+	if isOCI {
+		xattr.Remove(tempFile, "user.dbin.ocichunk")
+		return nil
+	}
+	xattr.Remove(tempFile, "user.dbin.lastmod")
+	return nil
+}
+
+func verifyChecksum(hash *blake3.Hasher, bEntry *binaryEntry) error {
 	if bEntry.Bsum != "" && bEntry.Bsum != "!no_check" {
 		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
 		if calculatedChecksum != bEntry.Bsum {
 			return errChecksumMismatch.New("expected %s, got %s", bEntry.Bsum, calculatedChecksum)
 		}
-	}
-	if err := validateFileType(tempFile); err != nil {
-		return errFileTypeInvalid.Wrap(err)
-	}
-	if err := os.Rename(tempFile, destination); err != nil {
-		return errDownloadFailed.Wrap(err)
-	}
-	if err := os.Chmod(destination, 0755); err != nil {
-		return errDownloadFailed.Wrap(err)
 	}
 	return nil
 }
@@ -203,27 +223,23 @@ func validateFileType(filePath string) error {
 		return errFileTypeInvalid.Wrap(err)
 	}
 	defer file.Close()
-	buf := make([]byte, 4)
-	if _, err := file.Read(buf); err != nil {
-		return errFileTypeInvalid.Wrap(err)
-	}
-	if string(buf) == "\x7fELF" {
-		return nil
-	}
-	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return errFileTypeInvalid.Wrap(err)
-	}
-	shebangBuf := make([]byte, 128)
 
-	n, err := file.Read(shebangBuf)
+	buf := make([]byte, 128)
+	n, err := file.Read(buf)
 	if err != nil && err != io.EOF {
 		return errFileTypeInvalid.Wrap(err)
 	}
 
-	shebang := string(shebangBuf[:n])
-	if strings.HasPrefix(shebang, "#!") {
-		if regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`).MatchString(shebang) {
-			return errFileTypeInvalid.New("file contains invalid shebang (nix object/garbage): %s", shebang)
+	// Check for ELF
+	if n >= 4 && string(buf[:4]) == "\x7fELF" {
+		return nil
+	}
+
+	// Check for shebang
+	content := string(buf[:n])
+	if strings.HasPrefix(content, "#!") {
+		if regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`).MatchString(content) {
+			return errFileTypeInvalid.New("file contains invalid shebang (nix object/garbage): %s", content)
 		}
 		return nil
 	}
@@ -232,38 +248,51 @@ func validateFileType(filePath string) error {
 }
 
 func verifySignature(binaryPath string, sigData []byte, bEntry *binaryEntry, cfg *config) error {
-	file, err := os.Open(binaryPath)
+	pubKeyURL := bEntry.Repository.PubKeys[bEntry.Repository.Name]
+	if pubKeyURL == "" {
+		return nil
+	}
+
+	pubKeyData, err := accessCachedOrFetch(pubKeyURL, bEntry.Repository.Name+".minisign", cfg, bEntry.Repository.SyncInterval)
 	if err != nil {
 		return errSignatureVerify.Wrap(err)
 	}
-	defer file.Close()
-	if pubKeyURL := bEntry.Repository.PubKeys[bEntry.Repository.Name]; pubKeyURL != "" {
-		pubKeyData, err := accessCachedOrFetch(pubKeyURL, bEntry.Repository.Name+".minisign", cfg, bEntry.Repository.SyncInterval)
-		if err != nil {
-			return errSignatureVerify.Wrap(err)
-		}
-		pubKey, err := minisign.NewPublicKey(string(pubKeyData))
-		if err != nil {
-			return errSignatureVerify.Wrap(err)
-		}
-		sig, err := minisign.DecodeSignature(string(sigData))
-		if err != nil {
-			return errSignatureVerify.Wrap(err)
-		}
-		binaryData, err := io.ReadAll(file)
-		if err != nil {
-			return errSignatureVerify.Wrap(err)
-		}
-		verified, err := pubKey.Verify(binaryData, sig)
-		if err != nil {
-			return errSignatureVerify.Wrap(err)
-		}
-		if !verified {
-			return errSignatureVerify.New("signature is invalid")
-		}
-		return nil
+
+	pubKey, err := minisign.NewPublicKey(string(pubKeyData))
+	if err != nil {
+		return errSignatureVerify.Wrap(err)
+	}
+
+	sig, err := minisign.DecodeSignature(string(sigData))
+	if err != nil {
+		return errSignatureVerify.Wrap(err)
+	}
+
+	binaryData, err := os.ReadFile(binaryPath)
+	if err != nil {
+		return errSignatureVerify.Wrap(err)
+	}
+
+	verified, err := pubKey.Verify(binaryData, sig)
+	if err != nil {
+		return errSignatureVerify.Wrap(err)
+	}
+	if !verified {
+		return errSignatureVerify.New("signature is invalid")
 	}
 	return nil
+}
+
+func createHTTPRequest(ctx context.Context, method, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Expires", "0")
+	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", version))
+	return req, nil
 }
 
 func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *config) error {
@@ -272,41 +301,112 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *b
 		return fetchOCIImage(ctx, bar, bEntry, destination, cfg)
 	}
 
-	var pubKeyURL string
-	if bEntry.Repository.PubKeys != nil {
-		pubKeyURL = bEntry.Repository.PubKeys[bEntry.Repository.Name]
+	client := &http.Client{}
+
+	// Check for signature and license file existence
+	hasSignature, hasLicense, err := httpCheckSignatureAndLicense(ctx, client, bEntry.DownloadURL)
+	if err != nil {
+		return errDownloadFailed.Wrap(err)
 	}
 
-	tempFile := destination + ".tmp"
-	var resumeOffset int64
-	var lastModified string
+	resumeOffset, lastModified, err := checkPartialDownload(destination + ".tmp")
+	if err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
 
-	// Check if we have a partial download
-	if fi, err := os.Stat(tempFile); err == nil {
-		resumeOffset = fi.Size()
-		// Get the modification time we stored when we started the download
-		if modTimeBytes, err := xattr.Get(tempFile, "user.dbin.lastmod"); err == nil {
-			lastModified = string(modTimeBytes)
+	// Validate resume capability
+	if err := validateResume(ctx, client, bEntry.DownloadURL); err != nil {
+		return err
+	}
+
+	resp, actualOffset, err := createDownloadRequest(ctx, client, bEntry.DownloadURL, resumeOffset, lastModified)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, false, resp.Header.Get("Last-Modified"), actualOffset); err != nil {
+		return err
+	}
+
+	// Handle signature verification if signature exists
+	if hasSignature {
+		if err := handleSignatureVerification(bEntry, destination, cfg); err != nil {
+			return err
 		}
 	}
 
-	// Create initial request to check if resume is valid
-	req, err := http.NewRequestWithContext(ctx, "HEAD", bEntry.DownloadURL, nil)
+	// Handle license file download if license exists and CreateLicenses is enabled
+	if hasLicense && cfg.CreateLicenses {
+		licenseDest := filepath.Join(cfg.LicenseDir, filepath.Base(destination)+".LICENSE")
+		licenseResp, err := http.Get(bEntry.DownloadURL + ".LICENSE")
+		if err != nil {
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to fetch license file for %s: %v\n", destination, err)
+			}
+			return nil
+		}
+		defer licenseResp.Body.Close()
+
+		if licenseResp.StatusCode != http.StatusOK {
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "Warning: License file request returned status %d\n", licenseResp.StatusCode)
+			}
+			return nil
+		}
+
+		if err := saveLicenseFile(ctx, licenseResp, licenseDest); err != nil {
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to save license file for %s: %v\n", destination, err)
+			}
+			return nil
+		}
+
+		xattr.Set(licenseDest, "user.dbin.binary", []byte(destination))
+		xattr.Set(destination, "user.dbin.license", []byte(licenseDest))
+
+		if verbosityLevel >= extraVerbose {
+			fmt.Printf("Saved license file for %s to %s\n", destination, licenseDest)
+		}
+	}
+
+	return nil
+}
+
+func checkPartialDownload(tempFile string) (int64, string, error) {
+	fi, err := os.Stat(tempFile)
+	if err != nil {
+		return 0, "", nil // No partial download
+	}
+
+	resumeOffset := fi.Size()
+	var lastModified string
+	if modTimeBytes, err := xattr.Get(tempFile, "user.dbin.lastmod"); err == nil {
+		lastModified = string(modTimeBytes)
+	}
+
+	return resumeOffset, lastModified, nil
+}
+
+func validateResume(ctx context.Context, client *http.Client, url string) error {
+	req, err := createHTTPRequest(ctx, "HEAD", url)
 	if err != nil {
 		return errDownloadFailed.Wrap(err)
 	}
 
-	setRequestHeaders(req)
-	client := &http.Client{}
-	headResp, err := client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return errDownloadFailed.Wrap(err)
 	}
-	headResp.Body.Close()
-	// Now make the actual download request
-	req, err = http.NewRequestWithContext(ctx, "GET", bEntry.DownloadURL, nil)
+	resp.Body.Close()
+
+	return nil
+}
+
+func createDownloadRequest(ctx context.Context, client *http.Client, url string, resumeOffset int64, lastModified string) (*http.Response, int64, error) {
+	req, err := createHTTPRequest(ctx, "GET", url)
 	if err != nil {
-		return errDownloadFailed.Wrap(err)
+		return nil, 0, errDownloadFailed.Wrap(err)
 	}
 
 	if resumeOffset > 0 {
@@ -316,56 +416,48 @@ func fetchBinaryFromURLToDest(ctx context.Context, bar progressbar.PB, bEntry *b
 		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", resumeOffset))
 	}
 
-	setRequestHeaders(req)
 	resp, err := client.Do(req)
 	if err != nil {
-		return errDownloadFailed.Wrap(err)
+		return nil, 0, errDownloadFailed.Wrap(err)
 	}
-	defer resp.Body.Close()
 
-	// If we requested a range but got 200 instead of 206, file changed
+	actualOffset := resumeOffset
+	// Reset if server sends full file instead of range
 	if resumeOffset > 0 && resp.StatusCode == http.StatusOK {
-		// Server is sending full file, remove temp and start fresh
-		os.Remove(tempFile)
-		resumeOffset = 0
+		os.Remove(req.URL.Path + ".tmp")
+		actualOffset = 0
 	}
 
-	// Store Last-Modified for future resume attempts
-	if lm := resp.Header.Get("Last-Modified"); lm != "" {
-		lastModified = lm
-	}
-
-	if err := downloadWithProgress(ctx, bar, resp, destination, bEntry, false, lastModified, resumeOffset); err != nil {
-		return errDownloadFailed.Wrap(err)
-	}
-
-	if pubKeyURL != "" {
-		sigURL := bEntry.DownloadURL + ".sig"
-		sigResp, err := http.Get(sigURL)
-		if err != nil {
-			return errSignatureVerify.Wrap(err)
-		}
-		defer sigResp.Body.Close()
-		if sigResp.StatusCode != http.StatusOK {
-			return errSignatureVerify.New("status code %d", sigResp.StatusCode)
-		}
-		sigData, err := io.ReadAll(sigResp.Body)
-		if err != nil {
-			return errSignatureVerify.Wrap(err)
-		}
-		if err := verifySignature(destination, sigData, bEntry, cfg); err != nil {
-			os.Remove(destination)
-			return errSignatureVerify.Wrap(err)
-		}
-	}
-	return nil
+	return resp, actualOffset, nil
 }
 
-func setRequestHeaders(req *http.Request) {
-	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("Expires", "0")
-	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", version))
+func handleSignatureVerification(bEntry *binaryEntry, destination string, cfg *config) error {
+	pubKeyURL := bEntry.Repository.PubKeys[bEntry.Repository.Name]
+	if pubKeyURL == "" {
+		return nil
+	}
+
+	sigResp, err := http.Get(bEntry.DownloadURL + ".sig")
+	if err != nil {
+		return errSignatureVerify.Wrap(err)
+	}
+	defer sigResp.Body.Close()
+
+	if sigResp.StatusCode != http.StatusOK {
+		return errSignatureVerify.New("status code %d", sigResp.StatusCode)
+	}
+
+	sigData, err := io.ReadAll(sigResp.Body)
+	if err != nil {
+		return errSignatureVerify.Wrap(err)
+	}
+
+	if err := verifySignature(destination, sigData, bEntry, cfg); err != nil {
+		os.Remove(destination)
+		return err
+	}
+
+	return nil
 }
 
 func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry, destination string, cfg *config) error {
@@ -373,42 +465,83 @@ func fetchOCIImage(ctx context.Context, bar progressbar.PB, bEntry *binaryEntry,
 	if len(parts) != 2 {
 		return errOCIReference.New("invalid OCI reference format")
 	}
+
 	image, tag := parts[0], parts[1]
 	registry, repository := parseImage(image)
+
 	token, err := getAuthToken(registry, repository)
 	if err != nil {
-		return errAuthToken.Wrap(err)
+		return err
 	}
+
 	manifest, err := downloadManifest(ctx, registry, repository, tag, token)
 	if err != nil {
-		return errManifestDownload.Wrap(err)
+		return err
 	}
+
 	title := filepath.Base(destination)
-	binaryResp, sigResp, err := downloadOCILayer(ctx, registry, repository, manifest, token, title, destination+".tmp")
+	binaryResp, sigResp, licenseResp, err := downloadOCILayer(ctx, registry, repository, manifest, token, title, destination+".tmp", cfg)
 	if err != nil {
-		return errOCILayerDownload.Wrap(err)
+		return err
 	}
-	defer binaryResp.Body.Close()
-	if sigResp != nil {
-		defer sigResp.Body.Close()
-	}
+	defer closeResponses(binaryResp, sigResp, licenseResp)
+
 	if err := downloadWithProgress(ctx, bar, binaryResp, destination, bEntry, true, "", 0); err != nil {
-		return errDownloadFailed.Wrap(err)
+		return err
 	}
-	var pubKeyURL string
-	if bEntry.Repository.PubKeys != nil {
-		pubKeyURL = bEntry.Repository.PubKeys[bEntry.Repository.Name]
+
+	if err := handleOCISignature(bEntry, destination, cfg, sigResp); err != nil {
+		return err
 	}
-	if pubKeyURL != "" && sigResp != nil {
-		sigData, err := io.ReadAll(sigResp.Body)
-		if err != nil {
-			return errSignatureVerify.Wrap(err)
+
+	return handleOCILicense(cfg, licenseResp, title, destination)
+}
+
+func closeResponses(responses ...*http.Response) {
+	for _, resp := range responses {
+		if resp != nil {
+			resp.Body.Close()
 		}
-		if err := verifySignature(destination, sigData, bEntry, cfg); err != nil {
-			os.Remove(destination)
-			return errSignatureVerify.Wrap(err)
-		}
 	}
+}
+
+func handleOCISignature(bEntry *binaryEntry, destination string, cfg *config, sigResp *http.Response) error {
+	if bEntry.Repository.PubKeys[bEntry.Repository.Name] == "" || sigResp == nil {
+		return nil
+	}
+
+	sigData, err := io.ReadAll(sigResp.Body)
+	if err != nil {
+		return errSignatureVerify.Wrap(err)
+	}
+
+	if err := verifySignature(destination, sigData, bEntry, cfg); err != nil {
+		os.Remove(destination)
+		return err
+	}
+
+	return nil
+}
+
+func handleOCILicense(cfg *config, licenseResp *http.Response, title, destination string) error {
+	if !cfg.CreateLicenses || licenseResp == nil {
+		return nil
+	}
+
+	licenseDest := filepath.Join(cfg.LicenseDir, title+".LICENSE")
+	if err := saveLicenseFile(context.Background(), licenseResp, licenseDest); err != nil {
+		if verbosityLevel >= silentVerbosityWithErrors {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to save license file for %s: %v\n", title, err)
+		}
+		return nil
+	}
+
+	if verbosityLevel >= extraVerbose {
+		fmt.Printf("Saved license file for %s to %s\n", title, licenseDest)
+		xattr.Set(licenseDest, "user.dbin.binary", []byte(destination))
+		xattr.Set(destination, "user.dbin.license", []byte(licenseDest))
+	}
+
 	return nil
 }
 
@@ -427,6 +560,7 @@ func getAuthToken(registry, repository string) (string, error) {
 		return "", errAuthToken.Wrap(err)
 	}
 	defer resp.Body.Close()
+
 	var tokenResponse struct {
 		Token string `json:"token"`
 	}
@@ -444,11 +578,13 @@ func downloadManifest(ctx context.Context, registry, repository, version, token 
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.oci.image.manifest.v1+json")
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, errManifestDownload.Wrap(err)
 	}
 	defer resp.Body.Close()
+
 	var manifest map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
 		return nil, errManifestDownload.Wrap(err)
@@ -456,19 +592,78 @@ func downloadManifest(ctx context.Context, registry, repository, version, token 
 	return manifest, nil
 }
 
-func downloadOCILayer(ctx context.Context, registry, repository string, manifest map[string]any, token, title, tmpPath string) (*http.Response, *http.Response, error) {
-	titleNoExt := strings.TrimSuffix(title, filepath.Ext(title))
-	layers, ok := manifest["layers"].([]any)
-	if !ok {
-		return nil, nil, errOCILayerDownload.New("invalid manifest structure")
+func saveLicenseFile(ctx context.Context, resp *http.Response, destination string) error {
+	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
+		return errDownloadFailed.Wrap(err)
 	}
-	var binaryDigest, sigDigest string
-	for _, layer := range layers {
-		layerMap, ok := layer.(map[string]any)
-		if !ok {
-			return nil, nil, errOCILayerDownload.New("invalid layer structure")
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
+
+	tempFile := destination + ".tmp"
+	if err := os.WriteFile(tempFile, data, 0644); err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
+
+	if err := os.Rename(tempFile, destination); err != nil {
+		return errDownloadFailed.Wrap(err)
+	}
+
+	return os.Chmod(destination, 0644)
+}
+
+func downloadOCILayer(ctx context.Context, registry, repository string, manifest map[string]interface{}, token, title, tmpPath string, cfg *config) (*http.Response, *http.Response, *http.Response, error) {
+	titleNoExt := strings.TrimSuffix(title, filepath.Ext(title))
+	layers, ok := manifest["layers"].([]interface{})
+	if !ok {
+		return nil, nil, nil, errOCILayerDownload.New("invalid manifest structure")
+	}
+
+	digests := findLayerDigests(layers, title, titleNoExt)
+	if digests.binary == "" {
+		return nil, nil, nil, errOCILayerDownload.New("file with title '%s' not found in manifest", title)
+	}
+
+	binaryResp, err := downloadOCIBlob(ctx, registry, repository, digests.binary, token, tmpPath)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var sigResp, licenseResp *http.Response
+	if digests.signature != "" {
+		sigResp, err = downloadOCIBlob(ctx, registry, repository, digests.signature, token, "")
+		if err != nil {
+			binaryResp.Body.Close()
+			return nil, nil, nil, err
 		}
-		annotations, ok := layerMap["annotations"].(map[string]any)
+	}
+
+	if cfg.CreateLicenses && digests.license != "" {
+		licenseResp, err = downloadOCIBlob(ctx, registry, repository, digests.license, token, "")
+		if err != nil {
+			closeResponses(binaryResp, sigResp)
+			return nil, nil, nil, err
+		}
+	}
+
+	return binaryResp, sigResp, licenseResp, nil
+}
+
+type layerDigests struct {
+	binary, signature, license string
+}
+
+func findLayerDigests(layers []interface{}, title, titleNoExt string) layerDigests {
+	var digests layerDigests
+
+	for _, layer := range layers {
+		layerMap, ok := layer.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		annotations, ok := layerMap["annotations"].(map[string]interface{})
 		if !ok {
 			continue
 		}
@@ -476,55 +671,72 @@ func downloadOCILayer(ctx context.Context, registry, repository string, manifest
 		if !ok {
 			continue
 		}
-		if layerTitle == title || layerTitle == titleNoExt {
-			binaryDigest = layerMap["digest"].(string)
-		}
-		if layerTitle == title+".sig" || layerTitle == titleNoExt+".sig" {
-			sigDigest = layerMap["digest"].(string)
-		}
-	}
-	if binaryDigest == "" {
-		return nil, nil, errOCILayerDownload.New("file with title '%s' not found in manifest", title)
-	}
-	binaryURL := fmt.Sprintf("https://%s/v2/%s/blobs/%s", registry, repository, binaryDigest)
-	req, err := http.NewRequestWithContext(ctx, "GET", binaryURL, nil)
-	if err != nil {
-		return nil, nil, errOCILayerDownload.Wrap(err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	var resumeOffset int64
-	if meta, err := xattrGetOCIMeta(tmpPath); err == nil && meta.Offset > 0 {
-		resumeOffset = meta.Offset
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", resumeOffset))
-	}
-	binaryResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, nil, errOCILayerDownload.Wrap(err)
-	}
-	var sigResp *http.Response
-	if sigDigest != "" {
-		sigURL := fmt.Sprintf("https://%s/v2/%s/blobs/%s", registry, repository, sigDigest)
-		sigReq, err := http.NewRequestWithContext(ctx, "GET", sigURL, nil)
-		if err != nil {
-			return binaryResp, nil, errOCILayerDownload.Wrap(err)
-		}
-		sigReq.Header.Set("Authorization", "Bearer "+token)
-		sigResp, err = http.DefaultClient.Do(sigReq)
-		if err != nil {
-			return binaryResp, nil, errOCILayerDownload.Wrap(err)
+
+		digest := layerMap["digest"].(string)
+		switch layerTitle {
+		case title, titleNoExt:
+			digests.binary = digest
+		case title+".sig", titleNoExt+".sig":
+			digests.signature = digest
+		case "LICENSE", titleNoExt+".LICENSE":
+			digests.license = digest
 		}
 	}
-	return binaryResp, sigResp, nil
+
+	return digests
 }
 
-// cleanTempFiles removes .tmp files in the InstallDir that haven't been accessed in over a day.
-func cleanInstallCache(installDir string) error {
-	const oneDay = 24 * time.Hour
-	now := time.Now()
-
-	entries, err := os.ReadDir(installDir)
+func downloadOCIBlob(ctx context.Context, registry, repository, digest, token, tmpPath string) (*http.Response, error) {
+	url := fmt.Sprintf("https://%s/v2/%s/blobs/%s", registry, repository, digest)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return errFileAccess.Wrap(err)
+		return nil, errOCILayerDownload.Wrap(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	if tmpPath != "" {
+		if meta, err := getOCIMeta(tmpPath); err == nil && meta.Offset > 0 {
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", meta.Offset))
+		}
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errOCILayerDownload.Wrap(err)
+	}
+
+	return resp, nil
+}
+
+func cleanInstallCache(cfg *config) error {
+	targets := []struct {
+		dir       string
+		threshold time.Duration
+	}{
+		{cfg.InstallDir, 24 * time.Hour},
+		{cfg.LicenseDir, 10 * time.Second},
+	}
+
+	now := time.Now()
+	for _, target := range targets {
+		if err := cleanDirectory(target.dir, target.threshold, now); err != nil {
+			if verbosityLevel >= silentVerbosityWithErrors {
+				fmt.Fprintf(os.Stderr, "Error cleaning directory %s: %v\n", target.dir, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func cleanDirectory(dir string, threshold time.Duration, now time.Time) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return nil
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
 	}
 
 	for _, entry := range entries {
@@ -532,34 +744,76 @@ func cleanInstallCache(installDir string) error {
 			continue
 		}
 
-		filePath := filepath.Join(installDir, entry.Name())
-		fileInfo, err := os.Stat(filePath)
-		if err != nil {
+		filePath := filepath.Join(dir, entry.Name())
+		if err := removeOldTempFile(filePath, threshold, now); err != nil {
 			if verbosityLevel >= silentVerbosityWithErrors {
-				fmt.Fprintf(os.Stderr, "Error accessing file info for %s: %v\n", filePath, err)
-			}
-			continue
-		}
-		var atime time.Time
-		if sysInfo, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
-			atime = ATime(sysInfo)
-		} else {
-			if verbosityLevel >= extraVerbose {
-				fmt.Fprintf(os.Stderr, "Warning: ATime not supported for %s, skipping cleanup\n", filePath)
-			}
-			continue
-		}
-
-		if now.Sub(atime) > oneDay {
-			if err := os.Remove(filePath); err != nil {
-				if verbosityLevel >= silentVerbosityWithErrors {
-					fmt.Fprintf(os.Stderr, "Error removing old .tmp file %s: %v\n", filePath, err)
-				}
-			} else if verbosityLevel >= extraVerbose {
-				fmt.Printf("Removed old .tmp file: %s\n", filePath)
+				fmt.Fprintf(os.Stderr, "Error processing %s: %v\n", filePath, err)
 			}
 		}
 	}
 
 	return nil
+}
+
+func removeOldTempFile(filePath string, threshold time.Duration, now time.Time) error {
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return err
+	}
+
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		if verbosityLevel >= extraVerbose {
+			fmt.Fprintf(os.Stderr, "No ATime for %s, skipping\n", filePath)
+		}
+		return nil
+	}
+
+	if now.Sub(ATime(stat)) > threshold {
+		if err := os.Remove(filePath); err != nil {
+			return err
+		}
+		if verbosityLevel >= extraVerbose {
+			fmt.Printf("Removed .tmp file: %s\n", filePath)
+		}
+	}
+
+	return nil
+}
+
+
+func httpCheckSignatureAndLicense(ctx context.Context, client *http.Client, url string) (hasSignature, hasLicense bool, err error) {
+	// Check for signature file (.sig)
+	sigReq, err := createHTTPRequest(ctx, "HEAD", url+".sig")
+	if err != nil {
+		// Only return error if we can't create the request
+		return false, false, errDownloadFailed.Wrap(err)
+	}
+
+	sigResp, err := client.Do(sigReq)
+	if err != nil {
+		// HTTP request failed - treat as no signature file available
+		hasSignature = false
+	} else {
+		sigResp.Body.Close()
+		hasSignature = sigResp.StatusCode == http.StatusOK
+	}
+
+	// Check for license file (.LICENSE)
+	licenseReq, err := createHTTPRequest(ctx, "HEAD", url+".LICENSE")
+	if err != nil {
+		// Only return error if we can't create the request
+		return hasSignature, false, errDownloadFailed.Wrap(err)
+	}
+
+	licenseResp, err := client.Do(licenseReq)
+	if err != nil {
+		// HTTP request failed - treat as no license file available
+		hasLicense = false
+	} else {
+		licenseResp.Body.Close()
+		hasLicense = licenseResp.StatusCode == http.StatusOK
+	}
+
+	return hasSignature, hasLicense, nil
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -106,72 +105,71 @@ func findURL(bEntries []binaryEntry, uRepoIndex []binaryEntry, config *config) (
 	allFailed := true
 
 	for _, bEntry := range bEntries {
-		parsedURL, err := url.ParseRequestURI(bEntry.Name)
-		if err == nil && parsedURL.Scheme != "" && parsedURL.Host != "" {
-			if verbosityLevel >= extraVerbose {
-				fmt.Printf("\033[2K\rFound \"%s\" is already a valid URL\n", bEntry.Name)
-			}
+		if bEntry.Bsum == "!no_check" {
 			results = append(results, bEntry)
+			if verbosityLevel >= extraVerbose {
+				fmt.Printf("\033[2K\rSkipping resolution for \"%s\" (its Bsum was marked as \"!no_check\" by stringToBinaryEntry())\n", bEntry.Name)
+			}
 			allFailed = false
 			continue
-		}
-
-		// Check if the binary is installed and update bEntry with installed metadata if available
-		if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); instBEntry.Name != "" {
-			if bEntry.PkgID == "" {
-				bEntry.PkgID = instBEntry.PkgID
-			}
-			if bEntry.Version == "" {
-				bEntry.Version = instBEntry.Version
-			}
-			if bEntry.Repository.Name == "" {
-				bEntry.Repository.Name = instBEntry.Repository.Name
-			}
-		}
-
-		matchingBins := findMatchingBins(bEntry, uRepoIndex)
-
-		if len(matchingBins) == 0 {
-			results = append(results, binaryEntry{
-				Name:        bEntry.Name,
-				DownloadURL: "!not_found",
-				Bsum:        "!no_check",
-			})
-			allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]", parseBinaryEntry(bEntry, false)))
-			continue
-		}
-
-		allFailed = false
-
-		// If a repository is specified, select the binary from that repository
-		if bEntry.Repository.Name != "" {
-			for _, bin := range matchingBins {
-				if bin.Repository.Name == bEntry.Repository.Name {
-					results = append(results, bin)
-					if verbosityLevel >= extraVerbose {
-						fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s repo=%s\n", bEntry.Name, bin.PkgID, bin.Version, bin.Repository.Name)
+		} else {
+			// Check if the binary is installed and update bEntry with installed metadata if available
+					if instBEntry := bEntryOfinstalledBinary(filepath.Join(config.InstallDir, bEntry.Name)); instBEntry.Name != "" {
+						if bEntry.PkgID == "" {
+							bEntry.PkgID = instBEntry.PkgID
+						}
+						if bEntry.Version == "" {
+							bEntry.Version = instBEntry.Version
+						}
+						if bEntry.Repository.Name == "" {
+							bEntry.Repository.Name = instBEntry.Repository.Name
+						}
 					}
-					break
-				}
-			}
-			// If no match with the specified repo, add an error
-			if len(results) == len(bEntries)-1 {
-				results = append(results, binaryEntry{
-					Name:        bEntry.Name,
-					DownloadURL: "!not_found",
-					Bsum:        "!no_check",
-				})
-				allErrors = append(allErrors, fmt.Errorf("no binary found for [%s] in repository %s", parseBinaryEntry(bEntry, false), bEntry.Repository.Name))
-			}
-			continue
-		}
 
-		// If no repository is specified, include the first matching binary
-		results = append(results, matchingBins[0])
-		if verbosityLevel >= extraVerbose {
-			fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s repo=%s\n", bEntry.Name, matchingBins[0].PkgID, matchingBins[0].Version, matchingBins[0].Repository.Name)
+					matchingBins := findMatchingBins(bEntry, uRepoIndex)
+
+					if len(matchingBins) == 0 {
+						results = append(results, binaryEntry{
+							Name:        bEntry.Name,
+							DownloadURL: "!not_found",
+							Bsum:        "!no_check",
+						})
+						allErrors = append(allErrors, fmt.Errorf("didn't find download URL for [%s]", parseBinaryEntry(bEntry, false)))
+						continue
+					}
+
+					allFailed = false
+
+					// If a repository is specified, select the binary from that repository
+					if bEntry.Repository.Name != "" {
+						for _, bin := range matchingBins {
+							if bin.Repository.Name == bEntry.Repository.Name {
+								results = append(results, bin)
+								if verbosityLevel >= extraVerbose {
+									fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s repo=%s\n", bEntry.Name, bin.PkgID, bin.Version, bin.Repository.Name)
+								}
+								break
+							}
+						}
+						// If no match with the specified repo, add an error
+						if len(results) == len(bEntries)-1 {
+							results = append(results, binaryEntry{
+								Name:        bEntry.Name,
+								DownloadURL: "!not_found",
+								Bsum:        "!no_check",
+							})
+							allErrors = append(allErrors, fmt.Errorf("no binary found for [%s] in repository %s", parseBinaryEntry(bEntry, false), bEntry.Repository.Name))
+						}
+						continue
+					}
+
+					// If no repository is specified, include the first matching binary
+					results = append(results, matchingBins[0])
+					if verbosityLevel >= extraVerbose {
+						fmt.Printf("\033[2K\rFound \"%s\" with id=%s version=%s repo=%s\n", bEntry.Name, matchingBins[0].PkgID, matchingBins[0].Version, matchingBins[0].Repository.Name)
+					}
+				}
 		}
-	}
 
 	if allFailed {
 		var errorMessages []string

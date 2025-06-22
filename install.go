@@ -41,7 +41,7 @@ func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry
 	defer cursor.Show()
 
 	// Clean up old .tmp files before installation
-	if err := cleanInstallCache(config.InstallDir); err != nil {
+	if err := cleanInstallCache(config); err != nil {
 		if verbosityLevel >= silentVerbosityWithErrors {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to clean up .tmp files in %s: %v\n", config.InstallDir, err)
 		}
@@ -126,17 +126,17 @@ func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry
 						return
 					}
 
-					if err := runIntegrationHooks(config, destination); err != nil {
+					binInfo := &bEntry
+					if err := embedBEntry(destination, *binInfo); err != nil {
 						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
+						errors = append(errors, fmt.Sprintf("failed to embed the binary's bEntry to its xattr attributes: %v\n", err))
 						errorsMu.Unlock()
 						return
 					}
 
-					binInfo := &bEntry
-					if err := embedBEntry(destination, *binInfo); err != nil {
+					if err := runIntegrationHooks(config, destination); err != nil {
 						errorsMu.Lock()
-						errors = append(errors, fmt.Sprintf("failed to add fullName property to the binary's xattr %s: %v\n", destination, err))
+						errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v\n", bEntry.Name, err))
 						errorsMu.Unlock()
 						return
 					}
@@ -162,17 +162,17 @@ func installBinaries(ctx context.Context, config *config, bEntries []binaryEntry
 					return
 				}
 
-				if err := runIntegrationHooks(config, destination); err != nil {
+				binInfo := &bEntry
+				if err := embedBEntry(destination, *binInfo); err != nil {
 					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err))
+					errors = append(errors, fmt.Sprintf("failed to embed the binary's bEntry to its xattr attributes: %v\n", err))
 					errorsMu.Unlock()
 					return
 				}
 
-				binInfo := &bEntry
-				if err := embedBEntry(destination, *binInfo); err != nil {
+				if err := runIntegrationHooks(config, destination); err != nil {
 					errorsMu.Lock()
-					errors = append(errors, fmt.Sprintf("failed to add fullName property to the binary's xattr %s: %v", destination, err))
+					errors = append(errors, fmt.Sprintf("[%s] could not be handled by its default hooks: %v", bEntry.Name, err))
 					errorsMu.Unlock()
 					return
 				}
@@ -202,7 +202,11 @@ func runIntegrationHooks(config *config, binaryPath string) error {
 	if config.UseIntegrationHooks {
 		ext := filepath.Ext(binaryPath)
 		if hookCommands, exists := config.Hooks.Commands[ext]; exists {
-			if err := executeHookCommand(config, hookCommands.IntegrationCommand, binaryPath, ext, true); err != nil {
+			if err := executeHookCommand(config, &hookCommands, ext, binaryPath, true); err != nil {
+				return errInstallFailed.Wrap(err)
+			}
+		} else if hookCommands, exists := config.Hooks.Commands["*"]; exists {
+			if err := executeHookCommand(config, &hookCommands, ext, binaryPath, true); err != nil {
 				return errInstallFailed.Wrap(err)
 			}
 		}

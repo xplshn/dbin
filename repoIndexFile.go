@@ -21,6 +21,7 @@ type binaryEntry struct {
 	BuildLog    string     `json:"build_log,omitempty"   `
 	Categories  string     `json:"categories,omitempty"  `
 	ExtraBins   string     `json:"provides,omitempty"    `
+	Maintainers string     `json:"maintainers,omitempty" `
 	Screenshots []string   `json:"screenshots,omitempty" `
 	License     []string   `json:"license,omitempty"     `
 	Notes       []string   `json:"notes,omitempty"       `
@@ -28,5 +29,6 @@ type binaryEntry struct {
 	WebURLs     []string   `json:"web_urls,omitempty"    `
 	Snapshots   []snapshot `json:"snapshots,omitempty"   `
 	Rank        uint16     `json:"rank,omitempty"        `
+	WebManifest string     `json:"web_manifest,omitempty"`
 	Repository  repository
 }

@@ -123,27 +123,47 @@ func printBEntry(bEntry *binaryEntry) {
 		label string
 		value any
 	}{
+		// Most important to the user
 		{"Name", bEntry.Name + "#" + bEntry.PkgID},
 		{"Pkg ID", bEntry.PkgID},
+
 		{"Pretty Name", bEntry.PrettyName},
 		{"Description", bEntry.Description},
+
 		{"Version", bEntry.Version},
 		{"Size", bEntry.Size},
+
 		{"Categories", bEntry.Categories},
+
+		{"Download URL", bEntry.DownloadURL},
 		{"WebURLs", bEntry.WebURLs},
 		{"SrcURLs", bEntry.SrcURLs},
-		{"Download URL", bEntry.DownloadURL},
-		{"Icon URL", bEntry.Icon},
+
 		{"B3SUM", bEntry.Bsum},
 		{"SHA256", bEntry.Shasum},
 		{"Build Date", bEntry.BuildDate},
 		{"Build Script", bEntry.BuildScript},
 		{"Build Log", bEntry.BuildLog},
+
+		// ------------------------------------
+
+		// Clutter:
+		// Useless in the context of `dbin`
+		// These are shown only in the complete
+		// repository index (non-lite version)
 		{"Screenshots", bEntry.Screenshots},
+		{"Icon URL", bEntry.Icon},
+		{"Web Manifest", bEntry.WebManifest},
 		{"Extra Bins", bEntry.ExtraBins},
+
+		// Clutter, but useful:
 		{"Snapshots", bEntry.Snapshots},
+
+		// SBUILD meta
+		{"Maintainers", bEntry.Maintainers},
 		{"Notes", bEntry.Notes},
 		{"License", bEntry.License},
+
 		{"Rank", bEntry.Rank},
 	}
 	for _, field := range fields {
@@ -167,6 +187,19 @@ func printBEntry(bEntry *binaryEntry) {
 					fmt.Printf("%s: %s %s\n", prefix, snap.Commit, ternary(snap.Version != "", "["+cyanColor+snap.Version+resetColor+"]", ""))
 				} else {
 					fmt.Printf("%s: %s\n", prefix, "["+cyanColor+snap.Version+resetColor+"]")
+				}
+			}
+		case uint16:
+			if v != 0 {
+				switch v {
+					case 1:
+						fmt.Printf("%s\x1b[0m: 🥇(%v)\n", blueBgWhiteFg+field.label+resetColor, v)
+					case 2:
+						fmt.Printf("%s\x1b[0m: 🥈(%v)\n", blueBgWhiteFg+field.label+resetColor, v)
+					case 3:
+						fmt.Printf("%s\x1b[0m: 🥉(%v)\n", blueBgWhiteFg+field.label+resetColor, v)
+					default:
+						fmt.Printf("%s\x1b[0m: %v\n", blueBgWhiteFg+field.label+resetColor, v)
 				}
 			}
 		default:

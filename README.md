@@ -4,7 +4,7 @@
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/xplshn/dbin?include_prereleases)](https://github.com/xplshn/dbin/releases/latest)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/xplshn/dbin)
 
-<p align="center"><img src="https://github.com/user-attachments/assets/3c2dd460-6590-4e69-9c08-69bcccf77d9d" alt="dbin logo, made by a professional (my brother)" width="150" /></p>
+<p align="center"><img src="https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg" alt="dbin logo, made with love, by @peacefulwilliam <github.com/contrarybaton60>" width="150" /></p>
 
 <!--[Makes my repo look bad because these usually show "Failing"]-------------------------------------------------------------------------------------------
 [![AMD64 repo status](https://github.com/Azathothas/Toolpacks/actions/workflows/build_x86_64_Linux.yaml/badge.svg)](https://github.com/Azathothas/Toolpacks)
@@ -17,7 +17,7 @@ dbin can also work on systems other than Linux, but given that we don't have rep
 
 > Why?
 
- "I tend to think the drawbacks of dynamic linking outweigh the advantages for many (most?) applications." – John Carmack. If you are looking for more in-depth arguments, see: [dynlib - drewdevault.com](https://drewdevault.com/dynlib.html), [cat-v.ORG - Dynamic Linking](https://harmful.cat-v.org/software/dynamic-linking)
+"I tend to think the drawbacks of dynamic linking outweigh the advantages for many (most?) applications." – John Carmack. If you are looking for more in-depth arguments, see: [dynlib - drewdevault.com](https://drewdevault.com/dynlib.html), [cat-v.ORG - Dynamic Linking](https://harmful.cat-v.org/software/dynamic-linking)
 
 > I've seen lots of package manager projects without "packages". What is different about this one?
 
@@ -70,7 +70,7 @@ $ dbin --help
     dbin info
     dbin info | grep a-utils | xargs dbin add # install the entire a-utils suite
     dbin info jq
-    dbin list --described
+    dbin list --detailed
     dbin tldr gum
     dbin --verbose run curl -qsfSL "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -
     dbin --silent run --transparent micro ~/.profile
@@ -117,7 +117,7 @@ Rank: 1102
 Snapshots: HEAD-9b3f7ff-250119T130748-x86_64-linux [2.0.14]
 ```
 ##### Arguments of `list`
-`list` can receive the optional argument `--described`/`-d`. It will display all binaries + their description
+`list` can receive the optional argument `--detailed`/`-d`. It will display all binaries + their description
 ##### Arguments of `search`
 `search` can only receive various search terms, if the name of a binary or a description of a binary contains the term, it is shown as a search result.
 `search` can optionally receive a `--limit` argument, which changes the limit on how many search results can be displayed (default is 90) (you can also put this in your config)
@@ -144,10 +144,9 @@ system_info=$(wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/st
 ![image](https://github.com/user-attachments/assets/949465ab-9572-404f-b02d-319eb3bc2fe0)
 ![image](https://github.com/user-attachments/assets/64700072-a087-4206-8b52-212ecfea668d)
 
-### Where do these binaries come from? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
-- [AppBundleHub](https://github.com/xplshn/AppBundleHUB)
-- [PkgForge's repos](https://docs.pkgforge.dev/repositories)
-   - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs.
+###### dbin uses a format for defining the repository index file that is derived from the endpoints provided by Pkgforge. During this step, we remove unportable programs and re-order variants based on their ID (smaller binaries are prioritized)
+
+`dbin` is a package manager, which can use any repos. But it comes with a strong default selection by default.
 
 > Hmm, can I add my own repos?
 
@@ -195,9 +194,31 @@ NOTE: Not all fields are essential :)
 
 A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenerators/*/generator.go](https://github.com/xplshn/dbin/tree/master/misc/cmd/dbinRepoIndexGenerators)
 
-## Repositories you can optionally enable/add to your config ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
-- `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
-  - The binaries in this repository come from the AM package manager, they aren't guaranteed to work everywhere, unlike the binaries in the official repos. But a lot of these are useful and do work. I recommend you check it out
+# Acknowledgements
+
+### Default repos ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
+- [PkgForge's repos](https://docs.pkgforge.dev/repositories): Portable programs that are truly static, or otherwise self-contained using a wrapper format
+   ![pkgforge_repo](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pkgforge.svg)
+   - <!-- PKGFORGE_COUNT -->
+   - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs.
+- [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Portable programs in .AppBundle format
+  - <!-- APPBUNDLEHUB_COUNT -->
+
+## Optional repos
+- [AM repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
+  - Note that the binaries in this repository come from the AM package manager, they aren't guaranteed to work everywhere, unlike the binaries in the default repos. But a lot of these are useful and do work even on Musl systems. I recommend you check it out
+  - <!-- AM_COUNT -->
+  - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
+
+- [PkgForge Go repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/pkgforge-go_amd64_linux.lite.cbor.zst`
+  - The binaries in this repo are Go projects that have been fetched, filtered and built automagically
+  - <!-- GO_COUNT -->
+  - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/pkgforge-go_amd64_linux.lite.cbor.zst`
+
+- [PkgForge Cargo repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/pkgforge-cargo_amd64_linux.lite.cbor.zst`
+  - The binaries in this repo are Rust projects that have been fetched, filtered and built automagically
+  - <!-- CARGO_COUNT -->
+  - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/pkgforge-cargo_amd64_linux.lite.cbor.zst`
 
 ### Libraries
 I am using these libraries for `dbin`:

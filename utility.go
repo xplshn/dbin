@@ -92,12 +92,26 @@ func stringToBinaryEntry(input string) binaryEntry {
 	var bEntry binaryEntry
 
 	// Accepted formats:
+	//
+	// oci://* || http*://* [
+	//   .Name  = basename of url
+	//   .Bsum = "!no_check"
+	// ]
+	//
 	// name#id:version@repo
 	// name#id:version
 	// name#id@repo
 	// name#id
 	// name@repo
 	// name
+
+	// Lazily Check for URI
+	if idx := strings.Index(input, "://"); idx >= 0 && idx <= 8 {
+		bEntry.Name = filepath.Base(input)
+		bEntry.Bsum = "!no_check"
+		bEntry.DownloadURL = input
+		return bEntry
+	}
 
 	// Split by repository delimiter (@)
 	parts := strings.SplitN(input, string(delimiters[2]), 2)
