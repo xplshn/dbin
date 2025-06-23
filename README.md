@@ -201,22 +201,22 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
    - <!-- PKGFORGE_COUNT -->
    - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs.
 - [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Portable programs in .AppBundle format
-  - 0 0 <!-- APPBUNDLEHUB_COUNT -->
+  - 0 0 0 0 27 27 27 27 <!-- APPBUNDLEHUB_COUNT -->
 
 ## Optional repos
 - [AM repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
   - Note that the binaries in this repository come from the AM package manager, they aren't guaranteed to work everywhere, unlike the binaries in the default repos. But a lot of these are useful and do work even on Musl systems. I recommend you check it out
-  - 2302 2302 <!-- AM_COUNT -->
+  - 2302 2302 2302 2302 2302 2302 2302 2302 <!-- AM_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
 
 - [PkgForge Go repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/pkgforge-go_amd64_linux.lite.cbor.zst`
   - The binaries in this repo are Go projects that have been fetched, filtered and built automagically
-  - 10521 10521 <!-- GO_COUNT -->
+  - 10521 10521 10521 10521 10521 10521 10521 10521 <!-- GO_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/pkgforge-go_amd64_linux.lite.cbor.zst`
 
 - [PkgForge Cargo repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/pkgforge-cargo_amd64_linux.lite.cbor.zst`
   - The binaries in this repo are Rust projects that have been fetched, filtered and built automagically
-  - 4583 4583 <!-- CARGO_COUNT -->
+  - 4583 4583 4583 4583 4583 4583 4583 4583 <!-- CARGO_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/pkgforge-cargo_amd64_linux.lite.cbor.zst`
 
 ### Libraries
