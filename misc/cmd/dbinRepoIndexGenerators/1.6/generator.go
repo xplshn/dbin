@@ -464,6 +464,18 @@ func saveMetadata(filename string, metadata DbinMetadata) error {
 		}
 	}
 	saveAll(filename+".web", webMetadata)
+	// "nlite" version
+	for _, items := range metadata {
+		for i := range items {
+			items[i].Icon = ""
+			items[i].Provides = ""
+			items[i].Shasum = ""
+			items[i].AppstreamId = ""
+			items[i].LongDescription = ""
+			items[i].Screenshots = []string{}
+		}
+	}
+	saveAll(filename+".nlite", metadata)
 	// "lite" version
 	for _, items := range metadata {
 		for i := range items {
