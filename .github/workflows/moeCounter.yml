@@ -24,36 +24,14 @@ jobs:
           
           wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- --install "/usr/local/bin/dbin"
 
-      - name: Get binary count for MoeCounter
-        id: get-listc
-        run: |
-          # First attempt to get the count
-          LISTC=$(dbin list | wc -l)
-          echo "LISTC=$LISTC" >> $GITHUB_ENV
-
-          # If the count is 0, wait 90 seconds and try again
-          if [ "$LISTC" -eq 0 ]; then
-            echo "First attempt returned 0, waiting 90 seconds..."
-            sleep 90
-            LISTC=$(dbin list | wc -l)
-            echo "LISTC after retry=$LISTC" >> $GITHUB_ENV
-          fi
-
-          # If still 0 after retry, fail the job
-          if [ "$LISTC" -eq 0 ]; then
-            echo "ERROR: The count is still 0 after retrying. Exiting without updating counter."
-            exit 1
-          fi
-
-      - name: Download MoeCounter image
-        run: |
-          wget -O ./misc/assets/counter.svg \
-          "https://api.sefinek.net/api/v2/moecounter?number=${{ env.LISTC }}&length=5&theme=default&pixelated=true"
-
       - name: Get package counts for repositories
         id: get-package-counts
         run: |
           # Set DBIN_REPO_URLS for each repository and get counts
+          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.lite.cbor.zst"
+          DEFAULTS_COUNT=$(dbin list | wc -l)
+          echo "DEFAULTS_COUNT=$DEFAULTS_COUNT" >> $GITHUB_ENV
+          
           export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/bincache_amd64_linux.lite.cbor.zst"
           BINCACHE_COUNT=$(dbin list | wc -l)
           echo "BINCACHE_COUNT=$BINCACHE_COUNT" >> $GITHUB_ENV
@@ -87,6 +65,11 @@ jobs:
           sed -i "s|<!-- AM_COUNT -->|${{ env.AM_COUNT }} <!-- AM_COUNT -->|g" README.md
           sed -i "s|<!-- GO_COUNT -->|${{ env.GO_COUNT }} <!-- GO_COUNT -->|g" README.md
           sed -i "s|<!-- CARGO_COUNT -->|${{ env.CARGO_COUNT }} <!-- CARGO_COUNT -->|g" README.md
+
+      - name: Download MoeCounter image
+        run: |
+          wget -O ./misc/assets/counter.svg \
+          "https://api.sefinek.net/api/v2/moecounter?number=${{ env.DEFAULTS_COUNT }}&length=5&theme=default&pixelated=true"
 
       - name: Commit and push updated counter image and README
         run: |
