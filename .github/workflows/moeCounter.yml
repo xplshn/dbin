@@ -1,4 +1,4 @@
-name: Update MoeCounter
+name: Update MoeCounter and Package Counts
 
 on:
   schedule:
@@ -15,18 +15,22 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5.0.2
 
-      - name: Get binary count
+      - name: Install dbin
+        run: |
+          wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- --install "/usr/local/bin/dbin"
+
+      - name: Get binary count for MoeCounter
         id: get-listc
         run: |
           # First attempt to get the count
-          LISTC=$(go run *.go list | wc -l)
+          LISTC=$(dbin list | wc -l)
           echo "LISTC=$LISTC" >> $GITHUB_ENV
 
           # If the count is 0, wait 90 seconds and try again
           if [ "$LISTC" -eq 0 ]; then
             echo "First attempt returned 0, waiting 90 seconds..."
             sleep 90
-            LISTC=$(go run *.go list | wc -l)
+            LISTC=$(dbin list | wc -l)
             echo "LISTC after retry=$LISTC" >> $GITHUB_ENV
           fi
 
@@ -41,12 +45,48 @@ jobs:
           wget -O ./misc/assets/counter.svg \
           "https://api.sefinek.net/api/v2/moecounter?number=${{ env.LISTC }}&length=5&theme=default&pixelated=true"
 
-      - name: Commit and push updated counter image
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get package counts for repositories
+        id: get-package-counts
+        run: |
+          # Set DBIN_REPO_URLS for each repository and get counts
+          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/bincache_amd64_linux.lite.cbor.zst"
+          BINCACHE_COUNT=$(dbin list | wc -l)
+          echo "BINCACHE_COUNT=$BINCACHE_COUNT" >> $GITHUB_ENV
+
+          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/pkgcache_amd64_linux.lite.cbor.zst"
+          PKGCACHE_COUNT=$(dbin list | wc -l)
+          echo "PKGCACHE_COUNT=$PKGCACHE_COUNT" >> $GITHUB_ENV
+
+          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/AppBundleHub_amd64_linux.lite.cbor.zst"
+          APPBUNDLEHUB_COUNT=$(dbin list | wc -l)
+          echo "APPBUNDLEHUB_COUNT=$APPBUNDLEHUB_COUNT" >> $GITHUB_ENV
+
+          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/AM_amd64_linux.lite.cbor.zst"
+          AM_COUNT=$(dbin list | wc -l)
+          echo "AM_COUNT=$AM_COUNT" >> $GITHUB_ENV
+
+          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-go_amd64_linux.lite.cbor.zst"
+          GO_COUNT=$(dbin list | wc -l)
+          echo "GO_COUNT=$GO_COUNT" >> $GITHUB_ENV
+
+          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-cargo_amd64_linux.lite.cbor.zst"
+          CARGO_COUNT=$(dbin list | wc -l)
+          echo "CARGO_COUNT=$CARGO_COUNT" >> $GITHUB_ENV
+
+      - name: Update README with package counts
+        run: |
+          # Replace each PKGCOUNT comment with count + comment
+          sed -i "s|<!-- BINCACHE_COUNT -->|${{ env.BINCACHE_COUNT }} <!-- BINCACHE_COUNT -->|g" README.md
+          sed -i "s|<!-- PKGCACHE_COUNT -->|${{ env.PKGCACHE_COUNT }} <!-- PKGCACHE_COUNT -->|g" README.md
+          sed -i "s|<!-- APPBUNDLEHUB_COUNT -->|${{ env.APPBUNDLEHUB_COUNT }} <!-- APPBUNDLEHUB_COUNT -->|g" README.md
+          sed -i "s|<!-- AM_COUNT -->|${{ env.AM_COUNT }} <!-- AM_COUNT -->|g" README.md
+          sed -i "s|<!-- GO_COUNT -->|${{ env.GO_COUNT }} <!-- GO_COUNT -->|g" README.md
+          sed -i "s|<!-- CARGO_COUNT -->|${{ env.CARGO_COUNT }} <!-- CARGO_COUNT -->|g" README.md
+
+      - name: Commit and push updated counter image and README
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add ./misc/assets/counter.svg
-          git commit -m "[WEEKLY] Update MoeCounter image"
+          git add ./misc/assets/counter.svg README.md
+          git commit -m "[WEEKLY] Update MoeCounter image and package counts"
           git push
