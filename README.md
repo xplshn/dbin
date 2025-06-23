@@ -198,7 +198,8 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
 
 ### Default repos ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
 - [PkgForge's repos](https://docs.pkgforge.dev/repositories): Portable programs that are truly static, or otherwise self-contained using a wrapper format
-   - <!-- PKGFORGE_COUNT -->
+   - Bincache: <!-- PKGCACHE_COUNT -->
+   - Pkgcache: <!-- BINCACHE_COUNT -->
    - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs.
 - [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Portable programs in .AppBundle format
   - 0 0 0 0 27 27 27 27 <!-- APPBUNDLEHUB_COUNT -->27
@@ -207,6 +208,7 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
 - [AM repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
   - Note that the binaries in this repository come from the AM package manager, they aren't guaranteed to work everywhere, unlike the binaries in the default repos. But a lot of these are useful and do work even on Musl systems. I recommend you check it out
   - 2302 2302 2302 2302 2302 2302 2302 2302 <!-- AM_COUNT -->2302
+  - NOTE: Scrapped by pkgforge. Adapted to `dbin` format at `dbin-metadata`
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
 
 - [PkgForge Go repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/pkgforge-go_amd64_linux.lite.cbor.zst`
