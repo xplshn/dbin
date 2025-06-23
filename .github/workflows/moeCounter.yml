@@ -57,7 +57,7 @@ jobs:
           PKGCACHE_COUNT=$(dbin list | wc -l)
           echo "PKGCACHE_COUNT=$PKGCACHE_COUNT" >> $GITHUB_ENV
 
-          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/AppBundleHub_amd64_linux.lite.cbor.zst"
+          export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/AppBundleHUB_amd64_linux.lite.cbor.zst"
           APPBUNDLEHUB_COUNT=$(dbin list | wc -l)
           echo "APPBUNDLEHUB_COUNT=$APPBUNDLEHUB_COUNT" >> $GITHUB_ENV
 
