@@ -59,12 +59,12 @@ jobs:
       - name: Update README with package counts
         run: |
           # Replace each PKGCOUNT comment with count + comment
-          sed -i "s|<!-- BINCACHE_COUNT -->|${{ env.BINCACHE_COUNT }} <!-- BINCACHE_COUNT -->|g" README.md
-          sed -i "s|<!-- PKGCACHE_COUNT -->|${{ env.PKGCACHE_COUNT }} <!-- PKGCACHE_COUNT -->|g" README.md
-          sed -i "s|<!-- APPBUNDLEHUB_COUNT -->|${{ env.APPBUNDLEHUB_COUNT }} <!-- APPBUNDLEHUB_COUNT -->|g" README.md
-          sed -i "s|<!-- AM_COUNT -->|${{ env.AM_COUNT }} <!-- AM_COUNT -->|g" README.md
-          sed -i "s|<!-- GO_COUNT -->|${{ env.GO_COUNT }} <!-- GO_COUNT -->|g" README.md
-          sed -i "s|<!-- CARGO_COUNT -->|${{ env.CARGO_COUNT }} <!-- CARGO_COUNT -->|g" README.md
+          sed -i "s|<!-- BINCACHE_COUNT -->.*|<!-- BINCACHE_COUNT -->${{ env.BINCACHE_COUNT }}|" README.md
+          sed -i "s|<!-- PKGCACHE_COUNT -->.*|<!-- PKGCACHE_COUNT -->${{ env.PKGCACHE_COUNT }}|" README.md
+          sed -i "s|<!-- APPBUNDLEHUB_COUNT -->.*|<!-- APPBUNDLEHUB_COUNT -->${{ env.APPBUNDLEHUB_COUNT }}|" README.md
+          sed -i "s|<!-- AM_COUNT -->.*|<!-- AM_COUNT -->${{ env.AM_COUNT }}|" README.md
+          sed -i "s|<!-- GO_COUNT -->.*|<!-- GO_COUNT -->${{ env.GO_COUNT }}|" README.md
+          sed -i "s|<!-- CARGO_COUNT -->.*|<!-- CARGO_COUNT -->${{ env.CARGO_COUNT }}|" README.md
 
       - name: Download MoeCounter image
         run: |
