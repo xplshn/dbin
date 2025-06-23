@@ -198,29 +198,34 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
 # Acknowledgements
 
 ### Default repos ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
-- [PkgForge's repos](https://docs.pkgforge.dev/repositories): Portable programs that are truly static, or otherwise self-contained using a wrapper format
+###### NOTE: All of them are based on external sources, except AppBundleHUB. As I'm not a package maintainer. The default repos come within the same file
+
+- [PkgForge's repos](https://docs.pkgforge.dev/repositories): External repository with __Portable__ programs that are _truly static, or otherwise self-contained_ using a wrapper format
    - Pkgcache: 203 <!-- PKGCACHE_COUNT -->
    - Bincache: 3921 <!-- BINCACHE_COUNT -->
    - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs.
-- [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Portable programs in .AppBundle format
+- [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Only self-hosted repository: __Portable__ programs in .AppBundle format
   - 27 <!-- APPBUNDLEHUB_COUNT -->
+- URLs
+  - Lite (default): `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.lite.cbor.zst`: .lite version doesn't have include possible field of `dbin info`, only those which are relevant to the user & are used by `dbin`
+  - Complete: `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.cbor.zst`: opposite of .lite, contains all fields of the DbinItem type defined in the repository generators at [misc/cmd/dbinRepoIndexGenerators/*/generator.go](misc/cmd/dbinRepoIndexGenerators)
+  - Web: `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.web.cbor.zst`: so that websites can list the packages in these repositories, a .web endpoint is also provided for all of them. This version includes the URL to the program's icon file, as well as screenshots, family, etc. This data is not used in `dbin`, but someone may want it, so it was put in a separate file
 
 ## Optional repos
-- [AM repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
-  - Note that the binaries in this repository come from the AM package manager, they aren't guaranteed to work everywhere, unlike the binaries in the default repos. But a lot of these are useful and do work even on Musl systems. I recommend you check it out
+- [AM repo](https://github.com/ivan-hc/am): External repository with not-so portable programs that work only on glibc-based distros.
   - 2302 <!-- AM_COUNT -->
   - NOTE: Scrapped by pkgforge. Adapted to `dbin` format at `dbin-metadata`
-  - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/AM_amd64_linux.lite.cbor.zst`
+  - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/AM_amd64_linux.lite.cbor.zst`
 
-- [PkgForge Go repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/pkgforge-go_amd64_linux.lite.cbor.zst`
+- [PkgForge Go repo](https://github.com/pkgforge-go): External repository with __Portable__ _truly static_ programs, they are the result of scrapping various sources with Go repositories and compilng them. You can read more about the process at the docs of the upstream project: https://docs.pkgforge.dev/repositories/external/pkgforge-go
   - The binaries in this repo are Go projects that have been fetched, filtered and built automagically
   - 10531 <!-- GO_COUNT -->
-  - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/pkgforge-go_amd64_linux.lite.cbor.zst`
+  - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-go_amd64_linux.lite.cbor.zst`
 
-- [PkgForge Cargo repo](https://github.com/ivan-hc/am): `https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/1.5/pkgforge-cargo_amd64_linux.lite.cbor.zst`
+- [PkgForge Cargo repo](https://github.com/pkgforge-cargo): 
   - The binaries in this repo are Rust projects that have been fetched, filtered and built automagically
   - 4583 <!-- CARGO_COUNT -->
-  - URL: `https://d.xplshn.com.ar/misc/cmd/1.5/pkgforge-cargo_amd64_linux.lite.cbor.zst`
+  - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-cargo_amd64_linux.lite.cbor.zst`
 
 ### Libraries
 I am using these libraries for `dbin`:
