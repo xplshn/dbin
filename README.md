@@ -202,8 +202,12 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
 
 - [PkgForge's repos](https://docs.pkgforge.dev/repositories): External repository with __Portable__ programs that are _truly static, or otherwise self-contained_ using a wrapper format
    - Pkgcache: 203 <!-- PKGCACHE_COUNT -->
+     - Detailed repo info: https://docs.pkgforge.dev/repositories/pkgcache
+     - Package request doc: https://docs.pkgforge.dev/repositories/pkgcache/package-request
    - Bincache: 3921 <!-- BINCACHE_COUNT -->
-   - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs.
+     - Detailed repo info: https://docs.pkgforge.dev/repositories/bincache
+     - Package request doc: https://docs.pkgforge.dev/repositories/bincache/package-request
+   - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs. These are a minority of the  programs included.
 - [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Only self-hosted repository: __Portable__ programs in .AppBundle format
   - 27 <!-- APPBUNDLEHUB_COUNT -->
 - URLs
