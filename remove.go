@@ -43,23 +43,18 @@ func removeBinaries(config *config, bEntries []binaryEntry) error {
 		go func(bEntry binaryEntry) {
 			defer wg.Done()
 
-			installPath := filepath.Join(installDir, filepath.Base(bEntry.Name))
-			licensePath := filepath.Join(config.LicenseDir, fmt.Sprintf("%s_LICENSE", parseBinaryEntry(bEntry, false)))
-
-			trackedBEntry, err := readEmbeddedBEntry(installPath)
+			// Try to find the binary by name or by matching user.FullName
+			binaryPath, trackedBEntry, err := findBinaryByNameOrFullName(installDir, bEntry.Name)
 			if err != nil {
 				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Warning: Failed to retrieve full name for '%s'. Skipping removal because this program may not have been installed by dbin.\n", parseBinaryEntry(bEntry, true))
+					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist or was not installed by dbin: %v\n", bEntry.Name, err)
 				}
 				return
 			}
 
-			if filepath.Base(bEntry.Name) != filepath.Base(trackedBEntry.Name) {
-				installPath = filepath.Join(installDir, filepath.Base(trackedBEntry.Name))
-				licensePath = filepath.Join(config.LicenseDir, fmt.Sprintf("%s_LICENSE", filepath.Base(parseBinaryEntry(trackedBEntry, false))))
-			}
+			licensePath := filepath.Join(config.LicenseDir, fmt.Sprintf("%s_LICENSE", filepath.Base(parseBinaryEntry(trackedBEntry, false))))
 
-			if !fileExists(installPath) {
+			if !fileExists(binaryPath) {
 				if verbosityLevel >= normalVerbosity {
 					fmt.Fprintf(os.Stderr, "Warning: '%s' does not exist in %s\n", bEntry.Name, installDir)
 				}
@@ -68,14 +63,14 @@ func removeBinaries(config *config, bEntries []binaryEntry) error {
 
 			if trackedBEntry.PkgID == "" {
 				if verbosityLevel >= normalVerbosity {
-					fmt.Fprintf(os.Stderr, "Skipping '%s': it was not installed by dbin\n", bEntry.Name)
+					fmt.Fprintf(os.Stderr, "Warning: '%s' was not installed by dbin\n", bEntry.Name)
 				}
 				return
 			}
 
-			if err := runDeintegrationHooks(config, installPath); err != nil {
+			if err := runDeintegrationHooks(config, binaryPath); err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
-					fmt.Fprintf(os.Stderr, "%s\n", err)
+					fmt.Fprintf(os.Stderr, "Error running deintegration hooks for '%s': %v\n", bEntry.Name, err)
 				}
 				mutex.Lock()
 				removeErrors = append(removeErrors, err.Error())
@@ -83,10 +78,10 @@ func removeBinaries(config *config, bEntries []binaryEntry) error {
 				return
 			}
 
-			err = os.Remove(installPath)
+			err = os.Remove(binaryPath)
 			if err != nil {
 				if verbosityLevel >= silentVerbosityWithErrors {
-					fmt.Fprintf(os.Stderr, "failed to remove '%s' from %s. %v\n", bEntry.Name, installDir, err)
+					fmt.Fprintf(os.Stderr, "Failed to remove '%s' from %s: %v\n", bEntry.Name, installDir, err)
 				}
 				mutex.Lock()
 				removeErrors = append(removeErrors, fmt.Sprintf("failed to remove '%s' from %s: %v", bEntry.Name, installDir, err))
@@ -117,6 +112,50 @@ func removeBinaries(config *config, bEntries []binaryEntry) error {
 	}
 
 	return nil
+}
+
+// findBinaryByNameOrFullName searches for a binary in installDir by its name or by matching the user.FullName xattr.
+func findBinaryByNameOrFullName(installDir, name string) (string, binaryEntry, error) {
+	// First, try direct path
+	binaryPath := filepath.Join(installDir, filepath.Base(name))
+	if fileExists(binaryPath) {
+		trackedBEntry, err := readEmbeddedBEntry(binaryPath)
+		if err == nil && trackedBEntry.Name != "" {
+			return binaryPath, trackedBEntry, nil
+		}
+	}
+
+	// If direct path fails, scan directory for matching user.FullName
+	entries, err := os.ReadDir(installDir)
+	if err != nil {
+		return "", binaryEntry{}, errFileAccess.Wrap(err)
+	}
+
+	// Normalize the input name for comparison
+	inputBEntry := stringToBinaryEntry(name)
+	inputFullName := parseBinaryEntry(inputBEntry, false)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		binaryPath = filepath.Join(installDir, entry.Name())
+		if !isExecutable(binaryPath) || isSymlink(binaryPath) {
+			continue
+		}
+
+		trackedBEntry, err := readEmbeddedBEntry(binaryPath)
+		if err != nil || trackedBEntry.Name == "" {
+			continue
+		}
+
+		trackedFullName := parseBinaryEntry(trackedBEntry, false)
+		if trackedFullName == inputFullName || trackedBEntry.Name == filepath.Base(name) {
+			return binaryPath, trackedBEntry, nil
+		}
+	}
+
+	return "", binaryEntry{}, errFileNotFound.New("binary '%s' not found in %s", name, installDir)
 }
 
 func runDeintegrationHooks(config *config, binaryPath string) error {

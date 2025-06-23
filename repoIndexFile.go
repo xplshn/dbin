@@ -30,5 +30,7 @@ type binaryEntry struct {
 	Snapshots   []snapshot `json:"snapshots,omitempty"   `
 	Rank        uint16     `json:"rank,omitempty"        `
 	WebManifest string     `json:"web_manifest,omitempty"`
+	// specific to `dbin`'s internal needs:
+	binaryPath string      `json:"-"`
 	Repository  repository
 }

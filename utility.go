@@ -41,6 +41,7 @@ var (
 
 const (
 	blueColor         = "\x1b[0;34m"
+	yellowColor       = "\x1b[0;33m"
 	cyanColor         = "\x1b[0;36m"
 	intenseBlackColor = "\x1b[0;90m"
 	blueBgWhiteFg     = "\x1b[48;5;4m"
@@ -360,7 +361,10 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 		return binaryEntry{}, errXAttr.New("xattr: user.FullName attribute not found for binary: %s", binaryPath)
 	}
 
-	return stringToBinaryEntry(string(fullName)), nil
+	bEntry := stringToBinaryEntry(string(fullName))
+	bEntry.binaryPath = binaryPath
+
+	return bEntry, nil
 }
 
 func accessCachedOrFetch(url, filename string, cfg *config, syncInterval time.Duration) ([]byte, error) {
