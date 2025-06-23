@@ -210,10 +210,16 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
    - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs. These are a minority of the  programs included.
 - [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Only self-hosted repository: __Portable__ programs in .AppBundle format
   - 27 <!-- APPBUNDLEHUB_COUNT -->
-- URLs
-  - Lite (default): `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.lite.cbor.zst`: .lite version doesn't have include possible field of `dbin info`, only those which are relevant to the user & are used by `dbin`
-  - Complete: `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.cbor.zst`: opposite of .lite, contains all fields of the DbinItem type defined in the repository generators at [misc/cmd/dbinRepoIndexGenerators/*/generator.go](misc/cmd/dbinRepoIndexGenerators)
-  - Web: `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.web.cbor.zst`: so that websites can list the packages in these repositories, a .web endpoint is also provided for all of them. This version includes the URL to the program's icon file, as well as screenshots, family, etc. This data is not used in `dbin`, but someone may want it, so it was put in a separate file
+
+##### Endpoints
+
+- Lite (recommended): `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.lite.cbor.zst`: .lite version doesn't include all possible fields of `dbin info`, only those which are relevant to the user & are used by `dbin`. Namely: `{Web Manifest, Sha256, Screenshots, IconURL, Provides, AppsStreamID, LongDescription}`
+- NLite (default): `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.nlite.cbor.zst`: .nlite is like .lite, but includes all the fields that upstream forces me to. Namely: "Web Manifest"
+- Complete: `https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.cbor.zst`: opposite of .lite, contains all fields of the DbinItem type defined in the repository generators at [misc/cmd/dbinRepoIndexGenerators/*/generator.go](misc/cmd/dbinRepoIndexGenerators)
+
+It makes no difference which endpoint you choose. `.lite` will be the best option for embedded hardware, unmarshalling the Complete endpoint is slow on embedded hardware, from experience, even for the MT7622 router.
+
+NOTE: If you're using an Opteron Venus or similar ancient CPU, it may be better to use the uncompressed .lite endpoint, as the bottleneck is your CPU, not network
 
 ## Optional repos
 - [AM repo](https://github.com/ivan-hc/am): External repository with not-so portable programs that work only on glibc-based distros.
