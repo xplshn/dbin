@@ -17,6 +17,10 @@ jobs:
           # Disable config file reads
           export DBIN_NOCONFIG="1"
           echo "DBIN_NOCONFIG=$DBIN_NOCONFIG" >> $GITHUB_ENV
+
+          # Set cache dir to /tmp
+          export DBIN_CACHE_DIR="/tmp/dbin"
+          echo "DBIN_CACHE_DIR=$DBIN_CACHE_DIR" >> $GITHUB_ENV
           
           wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- --install "/usr/local/bin/dbin"
 
