@@ -231,7 +231,7 @@ func loadConfig() (*config, error) {
 	}
 
 	for v := version - 0.1; v >= version-0.3; v -= 0.1 {
-		url := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".lite.cbor.zst")
+		url := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".nlite.cbor.zst")
 		for _, repo := range cfg.Repositories {
 			if repo.URL == url {
 				fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, version)
