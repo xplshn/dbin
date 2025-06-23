@@ -56,6 +56,7 @@ $ dbin --help
     DBIN_REOWN         If present, and set to ONE (1), it makes dbin update programs that may not have been installed by dbin
     DBIN_NOCONFIG      If present, and set to ONE (1), it makes dbin use its builtin config, it won't create or read an existing one
     DBIN_REPO_URLs     If present, it must contain one or more repository's index file urls separated by ;
+  NOTE: Check out `config --show` to see all parameters and their env vars
 
 ```
 
