@@ -526,10 +526,10 @@ func main() {
 	}
 
 	realArchs := map[string]string{
-		"x86_64-Linux":      "amd64_linux",
-		"aarch64-Linux":     "arm64_linux",
-		"riscv64-Linux":     "riscv64_linux",
-		"loongarch64-Linux": "loongarch64_linux",
+		"x86_64-Linux":  "amd64_linux",
+		"aarch64-Linux": "arm64_linux",
+		"riscv64-Linux": "riscv64_linux",
+		"loong64-Linux": "loongarch64_linux",
 	}
 
 	// At least the amd64 repo should have succeeded in order for the fetch failure
