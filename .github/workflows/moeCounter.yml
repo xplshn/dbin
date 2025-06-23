@@ -21,7 +21,7 @@ jobs:
           # Set cache dir to /tmp
           export DBIN_CACHE_DIR="/tmp/dbin"
           echo "DBIN_CACHE_DIR=$DBIN_CACHE_DIR" >> $GITHUB_ENV
-          
+
           wget -qO- "https://raw.githubusercontent.com/xplshn/dbin/master/stubdl" | sh -s -- --install "/usr/local/bin/dbin"
 
       - name: Get package counts for repositories
@@ -31,7 +31,7 @@ jobs:
           export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/amd64_linux.lite.cbor.zst"
           DEFAULTS_COUNT=$(dbin list | wc -l)
           echo "DEFAULTS_COUNT=$DEFAULTS_COUNT" >> $GITHUB_ENV
-          
+
           export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/bincache_amd64_linux.lite.cbor.zst"
           BINCACHE_COUNT=$(dbin list | wc -l)
           echo "BINCACHE_COUNT=$BINCACHE_COUNT" >> $GITHUB_ENV
@@ -58,13 +58,13 @@ jobs:
 
       - name: Update README with package counts
         run: |
-          # Replace each PKGCOUNT comment with count + comment
-          sed -i "s|<!-- BINCACHE_COUNT -->.*|<!-- BINCACHE_COUNT -->${{ env.BINCACHE_COUNT }}|" README.md
-          sed -i "s|<!-- PKGCACHE_COUNT -->.*|<!-- PKGCACHE_COUNT -->${{ env.PKGCACHE_COUNT }}|" README.md
-          sed -i "s|<!-- APPBUNDLEHUB_COUNT -->.*|<!-- APPBUNDLEHUB_COUNT -->${{ env.APPBUNDLEHUB_COUNT }}|" README.md
-          sed -i "s|<!-- AM_COUNT -->.*|<!-- AM_COUNT -->${{ env.AM_COUNT }}|" README.md
-          sed -i "s|<!-- GO_COUNT -->.*|<!-- GO_COUNT -->${{ env.GO_COUNT }}|" README.md
-          sed -i "s|<!-- CARGO_COUNT -->.*|<!-- CARGO_COUNT -->${{ env.CARGO_COUNT }}|" README.md
+          # Replace entire line containing each PKGCOUNT comment with new count + comment
+          sed -i "s|.*<!-- BINCACHE_COUNT -->.*|   - Bincache: ${{ env.BINCACHE_COUNT }} <!-- BINCACHE_COUNT -->|" README.md
+          sed -i "s|.*<!-- PKGCACHE_COUNT -->.*|   - Pkgcache: ${{ env.PKGCACHE_COUNT }} <!-- PKGCACHE_COUNT -->|" README.md
+          sed -i "s|.*<!-- APPBUNDLEHUB_COUNT -->.*|  - ${{ env.APPBUNDLEHUB_COUNT }} <!-- APPBUNDLEHUB_COUNT -->|" README.md
+          sed -i "s|.*<!-- AM_COUNT -->.*|  - ${{ env.AM_COUNT }} <!-- AM_COUNT -->|" README.md
+          sed -i "s|.*<!-- GO_COUNT -->.*|  - ${{ env.GO_COUNT }} <!-- GO_COUNT -->|" README.md
+          sed -i "s|.*<!-- CARGO_COUNT -->.*|  - ${{ env.CARGO_COUNT }} <!-- CARGO_COUNT -->|" README.md
 
       - name: Download MoeCounter image
         run: |
