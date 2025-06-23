@@ -8,7 +8,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/urfave/cli/v3"
 )
@@ -72,9 +74,27 @@ func main() {
 		EnableShellCompletion: true,
 	}
 
+	pathDirs := strings.Split(os.Getenv("PATH"), string(os.PathListSeparator))
+	found := false
+	for _, dir := range pathDirs {
+		if !found || len(pathDirs) == 0 {
+			if dir == "." || dir == ".." {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(dir, filepath.Base(os.Args[0]))); err == nil {
+				found = true
+				break
+			}
+		}
+	}
+
 	if err := app.Run(context.Background(), os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
+	}
+
+	if !found {
+		fmt.Fprintf(os.Stderr, "\n%swarning%s: dbin not in $PATH\n", yellowColor, resetColor)
 	}
 }
 
