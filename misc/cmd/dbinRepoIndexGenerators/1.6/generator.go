@@ -585,7 +585,7 @@ func main() {
 					"https://github.com/pkgforge-go/builder/raw/refs/heads/main/data/%s.json",
 					"https://meta.pkgforge.dev/external/pkgforge-go/%s.json",
 				},
-				Single: true,
+				Standalone: true,
 				//Filter: func(items *[]DbinItem) {
 				//	var filteredItems []DbinItem
 				//	for _, item := range *items {
