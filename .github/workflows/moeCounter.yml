@@ -48,6 +48,9 @@ jobs:
       - name: Get package counts for repositories
         id: get-package-counts
         run: |
+          # Disable config file reads
+          export DBIN_NOCONFIG=1
+          
           # Set DBIN_REPO_URLS for each repository and get counts
           export DBIN_REPO_URLS="https://d.xplshn.com.ar/misc/cmd/1.6/bincache_amd64_linux.lite.cbor.zst"
           BINCACHE_COUNT=$(dbin list | wc -l)
