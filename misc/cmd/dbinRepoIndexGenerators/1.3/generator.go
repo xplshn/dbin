@@ -386,74 +386,74 @@ func main() {
 	}
 
 	repositories := []struct {
-			Repo    repository
-			Handler RepositoryHandler
-		}{
-			{
-				Repo: repository{
-					Name: "bincache",
-					URL: "https://meta.pkgforge.dev/bincache/%s.json",
-					Single: true,
-				},
-				Handler: PkgForgeHandler{},
+		Repo    repository
+		Handler RepositoryHandler
+	}{
+		{
+			Repo: repository{
+				Name:   "bincache",
+				URL:    "https://meta.pkgforge.dev/bincache/%s.json",
+				Single: true,
 			},
-			{
-				Repo: repository{
-					Name: "pkgcache",
-					URL: "https://meta.pkgforge.dev/pkgcache/%s.json",
-					Single: true,
-				},
-				Handler: PkgForgeHandler{},
+			Handler: PkgForgeHandler{},
+		},
+		{
+			Repo: repository{
+				Name:   "pkgcache",
+				URL:    "https://meta.pkgforge.dev/pkgcache/%s.json",
+				Single: true,
 			},
-			//{
-			//	Repo: repository{
-			//		Name: "pkgforge-go",
-			//		URL: "https://meta.pkgforge.dev/external/pkgforge-go/%s.json",
-			//		Standalone: true,
-			//	},
-			//	Handler: PkgForgeHandler{},
-			//},
-			//{
-			//	Repo: repository{
-			//		Name: "pkgforge-cargo",
-			//		URL: "https://meta.pkgforge.dev/external/pkgforge-cargo/%s.json",
-			//		Standalone: true,
-			//	},
-			//	Handler: PkgForgeHandler{},
-			//},
-			//{
-			//	Repo: repository{
-			//		Name: "AM",
-			//		URL: "https://meta.pkgforge.dev/external/am/%s.json",
-			//		Standalone: true,
-			//	},
-			//	Handler: PkgForgeHandler{},
-			//},
-			//{
-			//	Repo: repository{
-			//		Name: "appimage-github-io",
-			//		URL: "https://meta.pkgforge.dev/external/appimage.github.io/%s.json",
-			//		Standalone: true,
-			//	},
-			//	Handler: PkgForgeHandler{},
-			//},
-			{
-				Repo: repository{
-					Name: "AppBundleHUB",
-					URL: "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_%s.json",
-					Single: true,
-				},
-				Handler: DbinHandler{},
+			Handler: PkgForgeHandler{},
+		},
+		//{
+		//	Repo: repository{
+		//		Name: "pkgforge-go",
+		//		URL: "https://meta.pkgforge.dev/external/pkgforge-go/%s.json",
+		//		Standalone: true,
+		//	},
+		//	Handler: PkgForgeHandler{},
+		//},
+		//{
+		//	Repo: repository{
+		//		Name: "pkgforge-cargo",
+		//		URL: "https://meta.pkgforge.dev/external/pkgforge-cargo/%s.json",
+		//		Standalone: true,
+		//	},
+		//	Handler: PkgForgeHandler{},
+		//},
+		//{
+		//	Repo: repository{
+		//		Name: "AM",
+		//		URL: "https://meta.pkgforge.dev/external/am/%s.json",
+		//		Standalone: true,
+		//	},
+		//	Handler: PkgForgeHandler{},
+		//},
+		//{
+		//	Repo: repository{
+		//		Name: "appimage-github-io",
+		//		URL: "https://meta.pkgforge.dev/external/appimage.github.io/%s.json",
+		//		Standalone: true,
+		//	},
+		//	Handler: PkgForgeHandler{},
+		//},
+		{
+			Repo: repository{
+				Name:   "AppBundleHUB",
+				URL:    "https://github.com/xplshn/AppBundleHUB/releases/download/latest_metadata/metadata_%s.json",
+				Single: true,
 			},
-			//{
-			//	Repo: repository{
-			//		Name: "dbin",
-			//		URL: "http://192.168.1.59/d/%s",
-			//		Single: true,
-			//	},
-			//	Handler: DbinHandler{},
-			//},
-		}
+			Handler: DbinHandler{},
+		},
+		//{
+		//	Repo: repository{
+		//		Name: "dbin",
+		//		URL: "http://192.168.1.59/d/%s",
+		//		Single: true,
+		//	},
+		//	Handler: DbinHandler{},
+		//},
+	}
 
 	for arch, outputArch := range realArchs {
 		dbinMetadata := make(DbinMetadata)
