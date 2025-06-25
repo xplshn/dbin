@@ -292,6 +292,7 @@ func createHTTPRequest(ctx context.Context, method, url string) (*http.Request, 
 	req.Header.Set("Pragma", "no-cache")
 	req.Header.Set("Expires", "0")
 	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", version))
+
 	return req, nil
 }
 

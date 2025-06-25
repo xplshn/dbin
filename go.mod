@@ -6,7 +6,7 @@ toolchain go1.24.3
 
 require (
 	github.com/a-h/templ v0.3.898
-	github.com/breml/rootcerts v0.2.22
+	github.com/breml/rootcerts v0.3.0
 	github.com/fxamacker/cbor/v2 v2.8.0
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.18.0
@@ -25,7 +25,7 @@ require (
 )
 
 require (
-	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
