@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -388,7 +389,7 @@ func accessCachedOrFetch(url, filename string, cfg *config, syncInterval time.Du
 	}
 	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("User-Agent", fmt.Sprintf("dbin/%.1f", version))
+	req.Header.Set("dbin", strconv.FormatFloat(version, 'f', -1, 32))
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
