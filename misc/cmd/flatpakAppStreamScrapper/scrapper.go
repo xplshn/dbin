@@ -11,14 +11,13 @@ import (
 	"strconv"
 	"strings"
 
+	"jaytaylor.com/html2text"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
 	"github.com/shamaton/msgpack/v2"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
 )
-
-const lang = ""
 
 type Tag struct {
 	XMLName xml.Name
@@ -54,13 +53,21 @@ type Releases struct {
 }
 
 type Component struct {
-	Name        []Tag        `xml:"name"`
-	Screenshots []Screenshot `xml:"screenshots>screenshot"`
-	Summary     []Tag        `xml:"summary"`
-	Description []Tag        `xml:"description>p"`
-	Categories  []Tag        `xml:"categories>category"`
-	Keywords    []Tag        `xml:"keywords>keyword"`
-	Icons       []struct {
+	Names       []struct {
+		Lang    string `xml:"lang,attr"`
+		Content string `xml:",chardata"`
+	} `xml:"name"`
+	Summaries   []struct {
+		Lang    string `xml:"lang,attr"`
+		Content string `xml:",chardata"`
+	} `xml:"summary"`
+	Descriptions []struct {
+		Lang    string `xml:"lang,attr"`
+		Content string `xml:",innerxml"`
+	} `xml:"description"`
+	Categories []Tag `xml:"categories>category"`
+	Keywords   []Tag `xml:"keywords>keyword"`
+	Icons      []struct {
 		Type   string `xml:"type,attr"`
 		Width  string `xml:"width,attr"`
 		Height string `xml:"height,attr"`
@@ -78,6 +85,7 @@ type Component struct {
 	} `xml:"launchable"`
 	ContentRating []Tag    `xml:"content_rating"`
 	Releases      Releases `xml:"releases"`
+	Screenshots   []Screenshot `xml:"screenshots>screenshot"`
 }
 
 type AppStreamData struct {
@@ -126,24 +134,32 @@ func saveCBOR(filename string, metadata []AppStreamData) error {
 	}
 	return os.WriteFile(filename+".cbor", cborData, 0644)
 }
+
 func saveJSON(filename string, metadata []AppStreamData) error {
-	jsonData, err := json.MarshalIndent(metadata, "", " ")
-	if err != nil {
+	var buffer strings.Builder
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false) // Prevent escaping HTML tags
+	encoder.SetIndent("", " ")
+
+	if err := encoder.Encode(metadata); err != nil {
 		return err
 	}
+
+	jsonData := []byte(buffer.String())
 	if err := os.WriteFile(filename+".json", jsonData, 0644); err != nil {
 		return err
 	}
-	// Minify JSON
+
 	m := minify.New()
 	m.AddFunc("application/json", mjson.Minify)
-	if jsonData, err = m.Bytes("application/json", jsonData); err != nil {
+	if minifiedData, err := m.Bytes("application/json", jsonData); err != nil {
 		return err
-	} else if err := os.WriteFile(filename+".min.json", jsonData, 0644); err != nil {
+	} else if err := os.WriteFile(filename+".min.json", minifiedData, 0644); err != nil {
 		return err
 	}
 	return nil
 }
+
 func saveMsgp(filename string, metadata []AppStreamData) error {
 	msgpData, err := msgpack.Marshal(metadata)
 	if err != nil {
@@ -162,15 +178,24 @@ func getCategoriesString(categories []Tag) string {
 	return strings.Join(categoryStrings, ",")
 }
 
-func getRichDescription(descriptions []Tag) string {
+func getRichDescription(descriptions []struct {
+	Lang    string `xml:"lang,attr"`
+	Content string `xml:",innerxml"`
+}) string {
 	return getContentByLang(descriptions)
 }
 
-func getName(names []Tag) string {
+func getName(names []struct {
+	Lang    string `xml:"lang,attr"`
+	Content string `xml:",chardata"`
+}) string {
 	return getContentByLang(names)
 }
 
-func getSummary(summaries []Tag) string {
+func getSummary(summaries []struct {
+	Lang    string `xml:"lang,attr"`
+	Content string `xml:",chardata"`
+}) string {
 	return getContentByLang(summaries)
 }
 
@@ -182,12 +207,60 @@ func getContentRating(ratings []Tag) string {
 	return contentRating.String()
 }
 
-func getContentByLang(tags []Tag) string {
-	for _, tag := range tags {
-		if tag.Lang == lang {
-			return tag.Content
+func getContentByLang[T any](elements []T) string {
+	for _, elem := range elements {
+		switch v := any(elem).(type) {
+		case struct {
+			Lang    string `xml:"lang,attr"`
+			Content string `xml:",chardata"`
+		}:
+			if v.Lang == "en" || v.Lang == "en_US" || v.Lang == "en_GB" {
+				return strings.TrimSpace(v.Content)
+			}
+		case struct {
+			Lang    string `xml:"lang,attr"`
+			Content string `xml:",innerxml"`
+		}:
+			if v.Lang == "en" || v.Lang == "en_US" || v.Lang == "en_GB" {
+				return strings.TrimSpace(v.Content)
+			}
 		}
 	}
+
+	for _, elem := range elements {
+		switch v := any(elem).(type) {
+		case struct {
+			Lang    string `xml:"lang,attr"`
+			Content string `xml:",chardata"`
+		}:
+			if v.Lang == "" {
+				return strings.TrimSpace(v.Content)
+			}
+		case struct {
+			Lang    string `xml:"lang,attr"`
+			Content string `xml:",innerxml"`
+		}:
+			if v.Lang == "" {
+				return strings.TrimSpace(v.Content)
+			}
+		}
+	}
+
+	if len(elements) > 0 {
+		switch v := any(elements[0]).(type) {
+		case struct {
+			Lang    string `xml:"lang,attr"`
+			Content string `xml:",chardata"`
+		}:
+			return strings.TrimSpace(v.Content)
+		case struct {
+			Lang    string `xml:"lang,attr"`
+			Content string `xml:",innerxml"`
+		}:
+			return strings.TrimSpace(v.Content)
+		}
+	}
+
 	return ""
 }
 
@@ -231,7 +304,6 @@ func main() {
 		}
 
 		for _, screenshot := range component.Screenshots {
-			// Sort images by area (largest first)
 			sort.Slice(screenshot.Images, func(i, j int) bool {
 				widthI, _ := strconv.Atoi(screenshot.Images[i].Width)
 				heightI, _ := strconv.Atoi(screenshot.Images[i].Height)
@@ -250,9 +322,9 @@ func main() {
 		}
 
 		categories := getCategoriesString(component.Categories)
-		richDescription := getRichDescription(component.Description)
-		name := getName(component.Name)
-		summary := getSummary(component.Summary)
+		richDescription := getRichDescription(component.Descriptions)
+		name := getName(component.Names)
+		summary := getSummary(component.Summaries)
 		contentRating := getContentRating(component.ContentRating)
 		version := ""
 		if len(component.Releases.Release) > 0 {
