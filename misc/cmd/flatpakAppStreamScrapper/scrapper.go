@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"jaytaylor.com/html2text"
+	"github.com/k3a/html2text"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
 	"github.com/shamaton/msgpack/v2"
@@ -138,7 +138,7 @@ func saveCBOR(filename string, metadata []AppStreamData) error {
 func saveJSON(filename string, metadata []AppStreamData) error {
 	var buffer strings.Builder
 	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false) // Prevent escaping HTML tags
+	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", " ")
 
 	if err := encoder.Encode(metadata); err != nil {
@@ -200,11 +200,37 @@ func getSummary(summaries []struct {
 }
 
 func getContentRating(ratings []Tag) string {
-	var contentRating strings.Builder
+	var ratingStrings []string
 	for _, rating := range ratings {
-		contentRating.WriteString(rating.Content)
+		decoder := xml.NewDecoder(strings.NewReader(rating.Content))
+		for {
+			tok, err := decoder.Token()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				continue
+			}
+			switch se := tok.(type) {
+			case xml.StartElement:
+				if se.Name.Local == "content_attribute" {
+					var id string
+					for _, attr := range se.Attr {
+						if attr.Name.Local == "id" {
+							id = attr.Value
+							break
+						}
+					}
+					var value string
+					decoder.DecodeElement(&value, &se)
+					if id != "" && value != "" {
+						ratingStrings = append(ratingStrings, fmt.Sprintf("%s:%s", id, strings.TrimSpace(value)))
+					}
+				}
+			}
+		}
 	}
-	return contentRating.String()
+	return strings.Join(ratingStrings, ",")
 }
 
 func getContentByLang[T any](elements []T) string {
@@ -334,12 +360,12 @@ func main() {
 		metadata = append(metadata, AppStreamData{
 			AppId:           component.Id,
 			Name:            name,
-			Summary:         summary,
+			Summary:         html2text.HTML2Text(summary),
 			ContentRating:   contentRating,
 			Icons:           icons,
 			Screenshots:     screenshots,
 			Categories:      categories,
-			RichDescription: richDescription,
+			RichDescription: html2text.HTML2Text(richDescription),
 			Version:         version,
 		})
 	}
@@ -350,3 +376,6 @@ func main() {
 		fmt.Println("Metadata saved successfully.")
 	}
 }
+
+
+
