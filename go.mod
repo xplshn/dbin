@@ -12,6 +12,7 @@ require (
 	github.com/goccy/go-yaml v1.18.0
 	github.com/hedzr/progressbar v1.2.8
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7
+	github.com/k3a/html2text v1.2.1
 	github.com/klauspost/compress v1.18.0
 	github.com/pkg/xattr v0.4.11
 	github.com/shamaton/msgpack/v2 v2.2.3
@@ -22,20 +23,10 @@ require (
 	github.com/zeebo/errs v1.4.0
 	golang.org/x/term v0.32.0
 	gopkg.in/yaml.v3 v3.0.1
-	jaytaylor.com/html2text v0.0.0-20230321000545-74c2419ad056
 )
 
 require (
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/olekukonko/errors v1.1.0 // indirect
-	github.com/olekukonko/ll v0.0.9 // indirect
-	github.com/olekukonko/tablewriter v1.0.7 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/ssor/bom v0.0.0-20170718123548-6386211fdfcf // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
