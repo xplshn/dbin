@@ -201,7 +201,7 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
 ###### NOTE: All of them are based on external sources, except AppBundleHUB. As I'm not a package maintainer. The default repos come within the same file
 
 - [PkgForge's repos](https://docs.pkgforge.dev/repositories): External repository with __Portable__ programs that are _truly static, or otherwise self-contained_ using a wrapper format
-   - Pkgcache: 203 <!-- PKGCACHE_COUNT -->
+   - Pkgcache: 205 <!-- PKGCACHE_COUNT -->
      - Detailed repo info: https://docs.pkgforge.dev/repositories/pkgcache
      - Package request doc: https://docs.pkgforge.dev/repositories/pkgcache/package-request
    - Bincache: 3924 <!-- BINCACHE_COUNT -->
@@ -209,7 +209,7 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
      - Package request doc: https://docs.pkgforge.dev/repositories/bincache/package-request
    - Note however that pkgforge also has dynamic (unportable) programs/packages (that only run on Debian & derivatives), `dbin` filters these out, leaving behind only the static/portable programs. These are a minority of the  programs included.
 - [AppBundleHub](https://github.com/xplshn/AppBundleHUB): Only self-hosted repository: __Portable__ programs in .AppBundle format
-  - 27 <!-- APPBUNDLEHUB_COUNT -->
+  - 34 <!-- APPBUNDLEHUB_COUNT -->
 
 ##### Endpoints
 
@@ -223,18 +223,18 @@ NOTE: If you're using an Opteron Venus or similar ancient CPU, it may be better 
 
 ## Optional repos
 - [AM repo](https://docs.pkgforge.dev/repositories/external/am): External repository with not-so portable programs that work only on glibc-based distros. The packages come from the [AM](https://github.com/ivan-hc/AM) package manager
-  - 2305 <!-- AM_COUNT -->
+  - 2236 <!-- AM_COUNT -->
   - NOTE: Scrapped by pkgforge. Adapted to `dbin` format at `dbin-metadata`
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/AM_amd64_linux.lite.cbor.zst`
 
 - [PkgForge Go repo](https://docs.pkgforge.dev/repositories/external/go): External repository with __Portable__ _truly static_ programs, they are the result of scrapping various sources with Go repositories and compilng them. You can read more about the process at the docs of the upstream project: https://docs.pkgforge.dev/repositories/external/pkgforge-go
   - The binaries in this repo are Go projects that have been fetched, filtered and built automagically
-  - 14991 <!-- GO_COUNT -->
+  - 17577 <!-- GO_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-go_amd64_linux.lite.cbor.zst`
 
 - [PkgForge Cargo repo](https://docs.pkgforge.dev/repositories/external/pkgforge-cargo): 
   - The binaries in this repo are Rust projects that have been fetched, filtered and built automagically
-  - 5631 <!-- CARGO_COUNT -->
+  - 5665 <!-- CARGO_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-cargo_amd64_linux.lite.cbor.zst`
 
 ### Libraries
