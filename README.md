@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/badge/license-%20RABRMS-bright_green)](https://github.com/xplshn/dbin/blob/master/LICENSE)
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/xplshn/dbin?include_prereleases)](https://github.com/xplshn/dbin/releases/latest)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/xplshn/dbin)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/xplshn/dbin)
 
 <p align="center"><img src="https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/logo_by_peacefulwilliam.svg" alt="dbin logo, made with love, by @peacefulwilliam <github.com/contrarybaton60>" width="150" /></p>
 
@@ -232,7 +233,7 @@ NOTE: If you're using an Opteron Venus or similar ancient CPU, it may be better 
   - 23702 <!-- GO_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-go_amd64_linux.lite.cbor.zst`
 
-- [PkgForge Cargo repo](https://docs.pkgforge.dev/repositories/external/pkgforge-cargo): 
+- [PkgForge Cargo repo](https://docs.pkgforge.dev/repositories/external/pkgforge-cargo):
   - The binaries in this repo are Rust projects that have been fetched, filtered and built automagically
   - 5700 <!-- CARGO_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-cargo_amd64_linux.lite.cbor.zst`
