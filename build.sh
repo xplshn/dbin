@@ -1,7 +1,7 @@
 #!/bin/sh -eux
              # In an ideal future: ↓
 OSes="linux" #OSes="android darwin dragonfly freebsd linux nacl netbsd openbsd plan9 solaris"
-ARCHs="amd64 arm64 riscv64"
+ARCHs="amd64 arm64 riscv64 loong64"
 
 for GOOS in $OSes; do
     export GOOS
