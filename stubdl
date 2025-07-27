@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DEST="/tmp/._bdlstub_dbin.bin"
+DEST="${TMPDIR:-/tmp}/._bdlstub_dbin.bin"
 
 # Determine architecture
 ARCH="$(uname -m)"
