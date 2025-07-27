@@ -23,6 +23,11 @@ func searchCommand() *cli.Command {
 				Aliases: []string{"l"},
 				Usage:   "Set the limit of entries to be shown at once on the screen",
 			},
+			&cli.StringFlag{
+				Name:    "repo",
+				Aliases: []string{"repos", "r"},
+				Usage:   "Filter binaries by repository name, comma-separated",
+			},
 		},
 		Action: func(_ context.Context, c *cli.Command) error {
 			config, err := loadConfig()
@@ -38,6 +43,23 @@ func searchCommand() *cli.Command {
 			if err != nil {
 				return errSearchFailed.Wrap(err)
 			}
+
+			// Apply repository filter if specified
+			if repoNames := c.String("repo"); repoNames != "" {
+				repoSet := make(map[string]struct{})
+				for _, repo := range strings.Split(repoNames, ",") {
+					repoSet[strings.TrimSpace(repo)] = struct{}{}
+				}
+				// In-line filter to avoid dependency on list.go's filterBEntries
+				filtered := make([]binaryEntry, 0, len(uRepoIndex))
+				for _, entry := range uRepoIndex {
+					if _, ok := repoSet[entry.Repository.Name]; ok {
+						filtered = append(filtered, entry)
+					}
+				}
+				uRepoIndex = filtered
+			}
+
 			return fSearch(config, c.Args().Slice(), uRepoIndex)
 		},
 	}
