@@ -224,18 +224,18 @@ NOTE: If you're using an Opteron Venus or similar ancient CPU, it may be better 
 
 ## Optional repos
 - [AM repo](https://docs.pkgforge.dev/repositories/external/am): External repository with not-so portable programs that work only on glibc-based distros. The packages come from the [AM](https://github.com/ivan-hc/AM) package manager
-  - 2244 <!-- AM_COUNT -->
+  - 2246 <!-- AM_COUNT -->
   - NOTE: Scrapped by pkgforge. Adapted to `dbin` format at `dbin-metadata`
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/AM_amd64_linux.lite.cbor.zst`
 
 - [PkgForge Go repo](https://docs.pkgforge.dev/repositories/external/go): External repository with __Portable__ _truly static_ programs, they are the result of scrapping various sources with Go repositories and compilng them. You can read more about the process at the docs of the upstream project: https://docs.pkgforge.dev/repositories/external/pkgforge-go
   - The binaries in this repo are Go projects that have been fetched, filtered and built automagically
-  - 25375 <!-- GO_COUNT -->
+  - 26257 <!-- GO_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-go_amd64_linux.lite.cbor.zst`
 
 - [PkgForge Cargo repo](https://docs.pkgforge.dev/repositories/external/pkgforge-cargo):
   - The binaries in this repo are Rust projects that have been fetched, filtered and built automagically
-  - 5822 <!-- CARGO_COUNT -->
+  - 5876 <!-- CARGO_COUNT -->
   - URL: `https://d.xplshn.com.ar/misc/cmd/1.6/pkgforge-cargo_amd64_linux.lite.cbor.zst`
 
 ### Libraries
