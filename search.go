@@ -50,14 +50,10 @@ func searchCommand() *cli.Command {
 				for _, repo := range strings.Split(repoNames, ",") {
 					repoSet[strings.TrimSpace(repo)] = struct{}{}
 				}
-				// In-line filter to avoid dependency on list.go's filterBEntries
-				filtered := make([]binaryEntry, 0, len(uRepoIndex))
-				for _, entry := range uRepoIndex {
-					if _, ok := repoSet[entry.Repository.Name]; ok {
-						filtered = append(filtered, entry)
-					}
-				}
-				uRepoIndex = filtered
+				filterBEntries(&uRepoIndex, func(entry binaryEntry) bool {
+					_, ok := repoSet[entry.Repository.Name]
+					return ok
+				})
 			}
 
 			return fSearch(config, c.Args().Slice(), uRepoIndex)
