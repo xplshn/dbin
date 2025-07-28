@@ -39,8 +39,8 @@ type config struct {
 	CacheDir            string       `yaml:"CacheDir" env:"DBIN_CACHE_DIR" description:"Directory where cached binaries will be stored."`
 	LicenseDir          string       `yaml:"LicenseDir" env:"DBIN_LICENSE_DIR" description:"Directory where license files will be stored."`
 	CreateLicenses      bool         `yaml:"CreateLicenses" env:"DBIN_CREATE_LICENSES" description:"Enable saving of license files from OCI downloads."`
-	Limit               uint         `yaml:"SearchResultsLimit" description:"Limit the number of search results displayed."`
-	ProgressbarStyle    int          `yaml:"PbarStyle,omitempty" description:"Style of the progress bar."`
+	Limit               uint         `yaml:"SearchResultsLimit" env:"DBIN_SEARCH_LIMIT" description:"Limit the number of search results displayed."`
+	ProgressbarStyle    int          `yaml:"PbarStyle,omitempty" env:"DBIN_PB_STYLE" description:"Style of the progress bar."`
 	DisableTruncation   bool         `yaml:"Truncation" env:"DBIN_NOTRUNCATION" description:"Disable truncation of output."`
 	RetakeOwnership     bool         `yaml:"RetakeOwnership" env:"DBIN_REOWN" description:"Retake ownership of installed binaries."`
 	UseIntegrationHooks bool         `yaml:"IntegrationHooks" env:"DBIN_USEHOOKS" description:"Use integration hooks for binaries."`
