@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/adrg/xdg"
 	"github.com/goccy/go-yaml"
 	"github.com/urfave/cli/v3"
 	"github.com/zeebo/errs"
@@ -31,6 +32,7 @@ type repository struct {
 	URL          string            `yaml:"URL" description:"URL of the repository."`
 	PubKeys      map[string]string `yaml:"pubKeys" description:"URLs to the public keys for signature verification."`
 	SyncInterval time.Duration     `yaml:"syncInterval" description:"Interval for syncing this repository."`
+	FallbackURLs []string          `yaml:"fallbackURLs,omitempty" description:"Fallback URLs for the repository."`
 }
 
 type config struct {
@@ -80,11 +82,7 @@ func configCommand() *cli.Command {
 			if c.Bool("new") {
 				configFilePath := os.Getenv("DBIN_CONFIG_FILE")
 				if configFilePath == "" {
-					userConfigDir, err := os.UserConfigDir()
-					if err != nil {
-						return errConfigFileAccess.Wrap(err)
-					}
-					configFilePath = filepath.Join(userConfigDir, "dbin", "dbin.yaml")
+					configFilePath = filepath.Join(xdg.ConfigHome, "dbin", "dbin.yaml")
 				}
 				return createDefaultConfigAt(configFilePath)
 			} else if c.Bool("show") {
@@ -213,11 +211,7 @@ func loadConfig() (*config, error) {
 
 	configFilePath := os.Getenv("DBIN_CONFIG_FILE")
 	if configFilePath == "" {
-		userConfigDir, err := os.UserConfigDir()
-		if err != nil {
-			return nil, errConfigFileAccess.Wrap(err)
-		}
-		configFilePath = filepath.Join(userConfigDir, "dbin", "dbin.yaml")
+		configFilePath = filepath.Join(xdg.ConfigHome, "dbin", "dbin.yaml")
 	}
 
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
@@ -231,10 +225,17 @@ func loadConfig() (*config, error) {
 	}
 
 	for v := version - 0.1; v >= version-0.3; v -= 0.1 {
-		url := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", v, arch, ".nlite.cbor.zst")
+		main := fmt.Sprintf("https://d.xplshn.com.ar/misc/cmd/%.1f/%s.nlite.cbor.zst", v, arch)
+		fallback := fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s.nlite.cbor.zst", v, arch)
+	
 		for _, repo := range cfg.Repositories {
-			if repo.URL == url {
-				fmt.Printf("Warning: Your config may be outdated. Your repoURL matches version: %.1f, but we're in version: %.1f\n", v, version)
+			if repo.URL == main {
+				fmt.Printf("Warning: One of your repository URLs points to version %.1f, which may be outdated. Current version is %.1f\n", v, version)
+			}
+			for _, fb := range repo.FallbackURLs {
+				if fb == fallback {
+					fmt.Printf("Warning: One of your fallback URLs points to version %.1f, which may be outdated. Current version is %.1f\n", v, version)
+				}
 			}
 		}
 	}
@@ -306,30 +307,17 @@ func overrideWithEnv(cfg *config) {
 }
 
 func setDefaultValues(config *config) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Printf("failed to get user's Home directory: %v\n", err)
-		return
-	}
-	config.InstallDir = filepath.Join(homeDir, ".local/bin")
-	tempDir, err := os.UserCacheDir()
-	if err != nil {
-		fmt.Printf("failed to get user's Cache directory: %v\n", err)
-		return
-	}
-	config.CacheDir = filepath.Join(tempDir, "dbin_cache")
-
-	userConfigDir, err := os.UserConfigDir()
-	if err != nil {
-		fmt.Printf("failed to get user's Config directory: %v\n", err)
-		return
-	}
-	config.LicenseDir = filepath.Join(userConfigDir, "dbin", "licenses")
+	config.InstallDir = filepath.Join(xdg.BinHome)
+	config.CacheDir = filepath.Join(xdg.CacheHome, "dbin_cache")
+	config.LicenseDir = filepath.Join(xdg.ConfigHome, "dbin", "licenses")
 	config.CreateLicenses = true
 
 	config.Repositories = []repository{
 		{
-			URL: fmt.Sprintf("https://d.xplshn.com.ar/misc/cmd/%.1f/%s%s", version, arch, ".lite.cbor.zst"),
+			URL: fmt.Sprintf("https://d.xplshn.com.ar/misc/cmd/%.1f/%s%s", version, arch, ".nlite.cbor.zst"),
+			FallbackURLs: []string{
+				fmt.Sprintf("https://github.com/xplshn/dbin-metadata/raw/refs/heads/master/misc/cmd/%.1f/%s%s", version, arch, ".nlite.cbor.zst"),
+			},
 			PubKeys: map[string]string{
 				"bincache": "https://meta.pkgforge.dev/bincache/minisign.pub",
 				"pkgcache": "https://meta.pkgforge.dev/pkgcache/minisign.pub",
@@ -339,7 +327,7 @@ func setDefaultValues(config *config) {
 	}
 
 	config.DisableTruncation = false
-	config.Limit = 9999
+	config.Limit = 999999
 	config.UseIntegrationHooks = true
 	config.RetakeOwnership = false
 	config.ProgressbarStyle = 1

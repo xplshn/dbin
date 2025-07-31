@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	unsupportedArchMsg = "Unsupported architecture: "
-	version            = 1.6
+	version            = 1.7
 	maxCacheSize       = 15
 	binariesToDelete   = 5
 	// --------------------------------
