@@ -8,7 +8,7 @@ for GOOS in $OSes; do
     for GOARCH in $ARCHs; do
         export GOARCH                                       # In an ideal future: ↓
         go build -o "./dbin_$GOARCH"                        # go build -o "./dbin_$GOARCH_$GOOS"
-        strip -sx --strip-all-gnu "./dbin_$GOARCH"          # strip -sx "./dbin_$GOARCH_$GOOS"
+        strip -sx "./dbin_$GOARCH"                          # strip -sx "./dbin_$GOARCH_$GOOS"
         cp "./dbin_$GOARCH" "./dbin_$GOARCH.upx"            # cp "./dbin_$GOARCH" "./dbin_$GOARCH_$GOOS.upx"
         upx "./dbin_$GOARCH.upx" || rm "./dbin_$GOARCH.upx" # upx "./dbin_$GOARCH_$GOOS.upx"
     done
