@@ -237,11 +237,22 @@ func validateFileType(filePath string) error {
 		return nil
 	}
 
-	// Check for shebang
 	content := string(buf[:n])
+	// Check for bad responses
+	if strings.HasPrefix(content, "<!DOCTYPE html>") || strings.HasPrefix(content, "<html>") {
+		return errFileTypeInvalid.New("file looks like HTML: %s", strings.TrimLeft(content, " \t\r\n"))
+	}
+	// Check for Nix Objects/Nix Garbage
 	if strings.HasPrefix(content, "#!") {
-		if regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`).MatchString(content) {
-			return errFileTypeInvalid.New("file contains invalid shebang (nix object/garbage): %s", content)
+		firstLine := content
+		if i := strings.IndexByte(content, '\n'); i >= 0 {
+			firstLine = content[:i]
+		}
+		if regexp.MustCompile(`^#!\s*/nix/store/[^/]+/`).MatchString(firstLine) {
+			return errFileTypeInvalid.New("file contains invalid shebang (nix object/garbage): [%s]", firstLine)
+		}
+		if strings.Count(content, "\n") < 5 {
+			return errFileTypeInvalid.New("file with shebang is less than 5 lines long. (nix object/garbage): \n---\n%s\n---", content)
 		}
 		return nil
 	}
