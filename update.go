@@ -140,11 +140,23 @@ func update(config *config, programsToUpdate []binaryEntry, uRepoIndex []binaryE
 
 	if len(outdatedPrograms) > 0 {
 		fmt.Print("\033[2K\r")
-		if err := installBinaries(context.Background(), config, outdatedPrograms, uRepoIndex); err != nil {
+		err := installBinaries(context.Background(), config, outdatedPrograms, uRepoIndex)
+		if err != nil {
 			atomic.AddUint32(&errors, 1)
-			if verbosityLevel >= silentVerbosityWithErrors {
-				fmt.Printf("Failed to update programs: %v\n", outdatedPrograms)
+		}
+	
+		var stillOutdated []string
+		for _, program := range outdatedPrograms {
+			installPath := filepath.Join(config.InstallDir, filepath.Base(program.Name))
+			localB3sum, sumErr := calculateChecksum(installPath)
+			repoBEntry, infoErr := getBinaryInfo(config, program, uRepoIndex)
+			if sumErr != nil || infoErr != nil || localB3sum != repoBEntry.Bsum {
+				stillOutdated = append(stillOutdated, program.Name)
 			}
+		}
+	
+		if len(stillOutdated) > 0 && verbosityLevel >= silentVerbosityWithErrors {
+			fmt.Printf("Failed to update programs: %s\n", strings.Join(stillOutdated, ", "))
 		}
 	}
 
