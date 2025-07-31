@@ -32,6 +32,7 @@ var (
 	errFileNotFound    = errs.Class("file not found")
 	errXAttr           = errs.Class("xattr error")
 	errCacheAccess     = errs.Class("cache access error")
+	errNoURLs          = errs.Class("no URLs provided")
 	delimiters         = []rune{
 		'#', // .PkgID
 		':', // .Version
@@ -367,49 +368,76 @@ func readEmbeddedBEntry(binaryPath string) (binaryEntry, error) {
 	return bEntry, nil
 }
 
-func accessCachedOrFetch(url, filename string, cfg *config, syncInterval time.Duration) ([]byte, error) {
-	cacheFilePath := filepath.Join(cfg.CacheDir, ternary(filename != "", "."+filename, "."+filepath.Base(url)))
+func accessCachedOrFetch(urls []string, filename string, cfg *config, syncInterval time.Duration) ([]byte, error) {
+	if len(urls) == 0 {
+		return nil, errNoURLs.Wrap(errs.New("urls: []string contains no URLs"))
+	}
+	mainURL := urls[0]
+	var fallbacks []string
+	if len(urls) > 1 {
+		fallbacks = urls[1:]
+	}
+
+	cacheFilePath := filepath.Join(cfg.CacheDir, ternary(filename != "", "."+filename, "."+filepath.Base(mainURL)))
 
 	if err := os.MkdirAll(cfg.CacheDir, 0755); err != nil {
 		return nil, errCacheAccess.Wrap(err)
 	}
 
-	fileInfo, err := os.Stat(cacheFilePath)
-	if err == nil && time.Since(fileInfo.ModTime()) < syncInterval {
-		bodyBytes, err := os.ReadFile(cacheFilePath)
+	if info, err := os.Stat(cacheFilePath); err == nil && time.Since(info.ModTime()) < syncInterval {
+		data, err := os.ReadFile(cacheFilePath)
 		if err != nil {
 			return nil, errCacheAccess.Wrap(err)
 		}
-		return bodyBytes, nil
+		return data, nil
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, errCacheAccess.Wrap(err)
-	}
-	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("dbin", strconv.FormatFloat(version, 'f', -1, 32))
-	client := &http.Client{}
-	response, err := client.Do(req)
-	if err != nil {
-		return nil, errCacheAccess.Wrap(err)
-	}
-	if response.StatusCode != http.StatusOK {
-		return nil, errCacheAccess.New("received status code %d", response.StatusCode)
+	tryFetch := func(u string) ([]byte, int, error) {
+		req, err := http.NewRequest("GET", u, nil)
+		if err != nil {
+			return nil, -1, err
+		}
+		req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		req.Header.Set("Pragma", "no-cache")
+		req.Header.Set("dbin", strconv.FormatFloat(version, 'f', -1, 32))
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, -1, err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		return body, resp.StatusCode, err
 	}
 
-	bodyBytes, err := io.ReadAll(response.Body)
+	// Try main
+	body, code, err := tryFetch(mainURL)
+	if err == nil && code == http.StatusOK {
+		_ = os.WriteFile(cacheFilePath, body, 0644)
+		return body, nil
+	}
 	if err != nil {
-		return nil, errCacheAccess.Wrap(err)
+		fmt.Fprintf(os.Stderr, "Warning: [nil] Failed to fetch: %s\n", mainURL)
+	} else if code != http.StatusTooManyRequests {
+		fmt.Fprintf(os.Stderr, "Warning: [%d] Failed to fetch: %s\n", code, mainURL)
 	}
 
-	err = os.WriteFile(cacheFilePath, bodyBytes, 0644)
-	if err != nil {
-		return nil, errCacheAccess.Wrap(err)
+	// Try fallbacks
+	for i, fb := range fallbacks {
+		body, code, err := tryFetch(fb)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: [net] Fallback[%d] failed: %s — %v\n", i, fb, err)
+			continue
+		}
+		if code == http.StatusOK {
+			_ = os.WriteFile(cacheFilePath, body, 0644)
+			return body, nil
+		}
+		fmt.Fprintf(os.Stderr, "Warning: [%d] Fallback[%d] failed: %s\n", code, i, fb)
 	}
 
-	return bodyBytes, nil
+	return nil, errCacheAccess.New("fetch failed for %s", mainURL)
 }
 
 func decodeRepoIndex(config *config) ([]binaryEntry, error) {
@@ -430,7 +458,8 @@ func decodeRepoIndex(config *config) ([]binaryEntry, error) {
 				return nil, errFileAccess.Wrap(err)
 			}
 		} else {
-			bodyBytes, err = accessCachedOrFetch(repo.URL, "", config, repo.SyncInterval)
+			urls := append([]string{repo.URL}, repo.FallbackURLs...)
+			bodyBytes, err = accessCachedOrFetch(urls, "", config, repo.SyncInterval)
 			if err != nil {
 				return nil, err
 			}

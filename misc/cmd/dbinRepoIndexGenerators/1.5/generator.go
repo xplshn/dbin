@@ -12,8 +12,6 @@ import (
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
-	"github.com/goccy/go-yaml"
-	"github.com/shamaton/msgpack/v2"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
 	"github.com/tiendc/go-deepcopy"
@@ -418,17 +416,10 @@ func reorderItems(str []map[string]string, metadata DbinMetadata) {
 }
 
 func saveAll(filename string, metadata DbinMetadata) error {
-	if err := saveCBOR(filename, metadata); err != nil {
-		return err
-	}
 	if err := saveJSON(filename, metadata); err != nil {
 		return err
 	}
-	if err := saveMsgp(filename, metadata); err != nil {
-		return err
-	}
-	genAMMeta(filename, metadata)
-	return saveYAML(filename, metadata)
+	return saveCBOR(filename, metadata)
 }
 
 func saveMetadata(filename string, metadata DbinMetadata) error {
@@ -515,20 +506,6 @@ func saveJSON(filename string, metadata DbinMetadata) error {
 		return err
 	}
 	return nil
-}
-func saveMsgp(filename string, metadata DbinMetadata) error {
-	msgpData, err := msgpack.Marshal(metadata)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filename+".msgp", msgpData, 0644)
-}
-func saveYAML(filename string, metadata DbinMetadata) error {
-	yamlData, err := yaml.Marshal(metadata)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filename+".yaml", yamlData, 0644)
 }
 
 func main() {

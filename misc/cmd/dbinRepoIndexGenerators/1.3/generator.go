@@ -11,7 +11,6 @@ import (
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/goccy/go-json"
-	"github.com/goccy/go-yaml"
 	minify "github.com/tdewolff/minify/v2"
 	mjson "github.com/tdewolff/minify/v2/json"
 	"github.com/tiendc/go-deepcopy"
@@ -290,11 +289,7 @@ func saveAll(filename string, metadata DbinMetadata) error {
 	if err := saveJSON(filename, metadata); err != nil {
 		return err
 	}
-	if err := saveCBOR(filename, metadata); err != nil {
-		return err
-	}
-	//genAMMeta(filename, dbinMetadata)
-	return saveYAML(filename, metadata)
+	return saveCBOR(filename, metadata)
 }
 
 func saveMetadata(filename string, metadata DbinMetadata) error {
@@ -349,14 +344,6 @@ func saveCBOR(filename string, metadata DbinMetadata) error {
 		return err
 	}
 	return os.WriteFile(filename+".cbor", cborData, 0644)
-}
-
-func saveYAML(filename string, metadata DbinMetadata) error {
-	yamlData, err := yaml.Marshal(metadata)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filename+".yaml", yamlData, 0644)
 }
 
 func saveJSON(filename string, metadata DbinMetadata) error {

@@ -255,7 +255,7 @@ func verifySignature(binaryPath string, sigData []byte, bEntry *binaryEntry, cfg
 		return nil
 	}
 
-	pubKeyData, err := accessCachedOrFetch(pubKeyURL, bEntry.Repository.Name+".minisign", cfg, bEntry.Repository.SyncInterval)
+	pubKeyData, err := accessCachedOrFetch([]string{pubKeyURL}, bEntry.Repository.Name+".minisign", cfg, bEntry.Repository.SyncInterval)
 	if err != nil {
 		return errSignatureVerify.Wrap(err)
 	}
