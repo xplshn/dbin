@@ -17,8 +17,8 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/pkg/xattr v0.4.12
 	github.com/shamaton/msgpack/v2 v2.2.3
-	github.com/tdewolff/minify/v2 v2.23.8
-	github.com/tiendc/go-deepcopy v1.6.0
+	github.com/tdewolff/minify/v2 v2.23.10
+	github.com/tiendc/go-deepcopy v1.6.1
 	github.com/urfave/cli/v3 v3.3.8
 	github.com/zeebo/blake3 v0.2.4
 	github.com/zeebo/errs v1.4.0
