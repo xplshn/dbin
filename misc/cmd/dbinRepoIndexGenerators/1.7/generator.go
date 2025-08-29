@@ -598,7 +598,9 @@ func main() {
 						//	fmt.Printf("[pkgforge-go]: repo filter: %s#%s contains bad word (%s)", item.Name, item.PkgId, "bindings")
 						//} */
 						item.PkgId = strings.Replace(item.PkgId, "#", ".", -1)
-						filteredItems = append(filteredItems, item)
+						if item.Description != "No Description Provided" {
+							filteredItems = append(filteredItems, item)
+						}
 					}
 					*items = filteredItems
 				},
