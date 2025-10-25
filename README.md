@@ -24,7 +24,7 @@ dbin can also work on systems other than Linux, but given that we don't have rep
 
  There are currently ![Current amount of binaries in the repos! x86_64](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/counter.svg) binaries in our repos. They are all statically linked.
 
-### Features ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
+### Features ![pin](./misc/assets/pin.svg)
 
 ```
 $ dbin --help
@@ -79,7 +79,7 @@ $ dbin --help
     dbin run chromium.dwfs.AppBundle "https://www.paypal.com/donate/?hosted_button_id=77G7ZFXVZ44EE" # Donate?
 ```
 
-#### Features ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
+#### Features ![pin](./misc/assets/pin.svg)
 - Ability to install specific versions of binaries (by specifying the Snapshot you want to install of it)
 - Ability to use user-curated repositories, as the format for the repository indexes is quite simple
   Note that a repo index for `dbin` can be in either of these formats:
@@ -93,7 +93,7 @@ $ dbin --help
 - `dbin` will survive even if the upstream repo disappears. `dbin` has a repository index that is held in its own repo. And given that the upstream binaries are held & built in GHCR, all build logs and binaries will continue to be usable/downloadable even if `pkgforge` disappears or experiences downtime
 - The binaries in `dbin` are specifically filtered for `portability` (meaning, they work on older kernel versions, they work on `Musl` and `Glibc` and even weird yet wonderful systems like [AliceLinux](https://github.com/xplshn/alicelinux), [OasisLinux](https://github.com/oasislinux/oasis) or FreeBSD (with linuxlator, so that you don't have to set up an Ubuntu chroot to install a Linux web browser and be able to watch DRM content, etc)
 
-#### What are these optional flags? ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
+#### What are these optional flags? ![pin](./misc/assets/pin.svg)
 ##### Flags that correspond to the `run` functionality
 In the case of `--transparent`, it runs the program from $PATH and if it isn't available in the user's $PATH it will pull the binary from `dbin`'s repos and run it from cache.
 ##### `Update` arguments:
@@ -124,7 +124,7 @@ Snapshots: HEAD-9b3f7ff-250119T130748-x86_64-linux [2.0.14]
 `search` can only receive various search terms, if the name of a binary or a description of a binary contains the term, it is shown as a search result.
 `search` can optionally receive a `--limit` argument, which changes the limit on how many search results can be displayed (default is 90) (you can also put this in your config)
 
-## Getting Started ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
+## Getting Started ![pin](./misc/assets/pin.svg)
 
 To begin using dbin, simply run one of these commands on your Linux/FreeBSD+Linuxlator system. No additional setup is required. You may also build the project using `go build` or `go install`
 #### Use without installing
@@ -198,7 +198,7 @@ A schema of the metadata format can be found here [/misc/cmd/dbinRepoIndexGenera
 
 # Acknowledgements
 
-### Default repos ![pin](https://raw.githubusercontent.com/xplshn/dbin/master/misc/assets/pin.svg)
+### Default repos ![pin](./misc/assets/pin.svg)
 ###### NOTE: All of them are based on external sources, except AppBundleHUB. As I'm not a package maintainer. The default repos come within the same file
 
 - [PkgForge's repos](https://docs.pkgforge.dev/repositories): External repository with __Portable__ programs that are _truly static, or otherwise self-contained_ using a wrapper format
