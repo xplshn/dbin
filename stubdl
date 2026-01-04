@@ -1,51 +1,30 @@
 #!/bin/sh
 
-DEST="${TMPDIR:-/tmp}/._bdlstub_dbin.bin"
-
-# Determine architecture
 ARCH="$(uname -m)"
 case "$ARCH" in
-    x86_64) ARCH_SUFFIX="amd64" ;;
-    aarch64) ARCH_SUFFIX="arm64" ;;
-    *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+    x86_64|amd64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+    riscv64) ARCH="riscv64" ;;
+    loongarch64|loong64) ARCH="loong64" ;;
+    *) echo "dbin: unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 
-DBIN_URL="https://github.com/xplshn/dbin/releases/latest/download/dbin_${ARCH_SUFFIX}.upx"
+DEST="${TMPDIR:-/tmp}/.dbin_$ARCH"
+URL="https://github.com/xplshn/dbin/releases/download/1.7/dbin_$ARCH"
+[ "$ARCH" = "amd64" ] || [ "$ARCH" = "arm64" ] && URL="$URL.upx"
 
-# Handle --install option
-if [ "$1" = "--install" ]; then
-    DEST="$2"
-    shift 2
-fi
+[ "$1" = "--install" ] && { DEST="$2"; shift 2; }
 
-# Function to download the binary
-download_dbin() {
+if [ ! -x "$DEST" ]; then
     if command -v curl >/dev/null 2>&1; then
-        curl -qfsSL "$DBIN_URL" -o "$DEST"
+        curl -fsSL "$URL" -o "$DEST" || exit 1
     elif command -v wget >/dev/null 2>&1; then
-        wget -q "$DBIN_URL" -O "$DEST"
+        wget -q "$URL" -O "$DEST" || exit 1
     else
-        echo "Neither curl nor wget are available."
-        exit 1
+        echo "dbin: curl or wget required" >&2; exit 1
     fi
-}
-
-# Check if binary exists and is executable
-if [ -e "$DEST" ] && [ ! "$1" = "--install" ]; then
-    # Run the binary
-    "$DEST" "$@"
-else
-    # Download and install the binary
-    mkdir -p "$(dirname "$DEST")"
-    download_dbin
-
-    if [ "$1" = "--install" ]; then
-        chmod +x "$DEST"
-        echo "DBIN IS NOW AVAILABLE. ($DEST)"
-        exit 0
-    fi
-
-    # Make the binary executable and run it
     chmod +x "$DEST"
-    "$DEST" "$@"
+    [ "$1" = "--install" ] && { echo "dbin: installed to $DEST"; exit 0; }
 fi
+
+exec "$DEST" "$@"
