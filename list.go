@@ -14,18 +14,14 @@ var (
 )
 
 // filterBEntries applies a filter function to a []binaryEntry
-func filterBEntries(entries *[]binaryEntry, filterFunc func(binaryEntry) bool) {
-	if entries == nil {
-		return
-	}
-
-	filtered := make([]binaryEntry, 0, len(*entries))
-	for _, entry := range *entries {
+func filterBEntries(entries []binaryEntry, filterFunc func(binaryEntry) bool) []binaryEntry {
+	filtered := make([]binaryEntry, 0, len(entries))
+	for _, entry := range entries {
 		if filterFunc(entry) {
 			filtered = append(filtered, entry)
 		}
 	}
-	*entries = filtered
+	return filtered
 }
 
 func listCommand() *cli.Command {
@@ -67,7 +63,7 @@ func listCommand() *cli.Command {
 				for _, repo := range strings.Split(repoNames, ",") {
 					repoSet[strings.TrimSpace(repo)] = struct{}{}
 				}
-				filterBEntries(&bEntries, func(entry binaryEntry) bool {
+				bEntries = filterBEntries(bEntries, func(entry binaryEntry) bool {
 					_, ok := repoSet[entry.Repository.Name]
 					return ok
 				})
@@ -82,7 +78,7 @@ func listCommand() *cli.Command {
 }
 
 func listBinaries(uRepoIndex []binaryEntry) ([]binaryEntry, error) {
-	filterBEntries(&uRepoIndex, func(entry binaryEntry) bool {
+	uRepoIndex = filterBEntries(uRepoIndex, func(entry binaryEntry) bool {
 		return entry.Name != "" //&& entry.Description != ""
 	})
 
